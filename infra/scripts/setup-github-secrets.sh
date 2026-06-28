@@ -7,16 +7,18 @@
 #
 # Prerequisites:
 #   - GitHub CLI (gh) installed and authenticated
-#   - Run setup-federated-credentials.sh first to obtain AZURE_CREDENTIALS
+#   - Run setup-federated-credentials.sh first to obtain client-id, tenant-id
 #
 # Usage (non-interactive):
 #   ./setup-github-secrets.sh \
 #     --repo "owner/repo" \
-#     --azure-credentials '{"clientId":"...","clientSecret":"...",...}' \
+#     --client-id "00000000-0000-0000-0000-000000000000" \
+#     --tenant-id "00000000-0000-0000-0000-000000000000" \
 #     --subscription-id "00000000-0000-0000-0000-000000000000" \
 #     --resource-group "rg-opencode-chat-prod" \
 #     --opencode-api-key "sk-..." \
 #     --cosmosdb-key "..." \
+#     --swa-deployment-token "..." \
 #     --location "japaneast" \
 #     --app-service-name "api-prod" \
 #     --static-web-app-name "opencode-chat"
@@ -35,12 +37,13 @@ Options:
   -h, --help                  Show this help message
   --repo <owner/repo>         GitHub repository (auto-detected from git remote
                               if omitted)
-  --azure-credentials <json>  Azure SP credentials JSON (from setup-federated-
-                              credentials.sh output)
+  --client-id <id>            Azure SP client (app) ID
+  --tenant-id <id>            Azure AD tenant ID
   --subscription-id <id>      Azure subscription ID
   --resource-group <name>     Azure resource group name
   --opencode-api-key <key>    OpenCode Go API key
   --cosmosdb-key <key>        CosmosDB access key
+  --swa-deployment-token <token> Azure Static Web Apps deployment token
   --location <region>         Azure region (default: japaneast)
   --app-service-name <name>   App Service name
   --static-web-app-name <name> Static Web App name
@@ -54,11 +57,13 @@ EOF
 # Parse arguments
 # ---------------------------------------------------------------------------
 REPO=""
-AZURE_CREDENTIALS=""
+CLIENT_ID=""
+TENANT_ID=""
 SUBSCRIPTION_ID=""
 RESOURCE_GROUP=""
 OPENCODE_API_KEY=""
 COSMOSDB_KEY=""
+SWA_DEPLOYMENT_TOKEN=""
 LOCATION=""
 APP_SERVICE_NAME=""
 SWA_NAME=""
@@ -67,11 +72,13 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)              print_help ;;
     --repo)                 REPO="$2"; shift 2 ;;
-    --azure-credentials)    AZURE_CREDENTIALS="$2"; shift 2 ;;
+    --client-id)            CLIENT_ID="$2"; shift 2 ;;
+    --tenant-id)            TENANT_ID="$2"; shift 2 ;;
     --subscription-id)      SUBSCRIPTION_ID="$2"; shift 2 ;;
     --resource-group)       RESOURCE_GROUP="$2"; shift 2 ;;
     --opencode-api-key)     OPENCODE_API_KEY="$2"; shift 2 ;;
     --cosmosdb-key)         COSMOSDB_KEY="$2"; shift 2 ;;
+    --swa-deployment-token) SWA_DEPLOYMENT_TOKEN="$2"; shift 2 ;;
     --location)             LOCATION="$2"; shift 2 ;;
     --app-service-name)     APP_SERVICE_NAME="$2"; shift 2 ;;
     --static-web-app-name)  SWA_NAME="$2"; shift 2 ;;
@@ -165,11 +172,13 @@ echo "  Step 1/2: Registering GitHub Secrets"
 echo "──────────────────────────────────────────────────────────────────────────"
 echo ""
 
-set_secret "AZURE_CREDENTIALS"      "$AZURE_CREDENTIALS"     "Azure SP credentials JSON"
-set_secret "AZURE_SUBSCRIPTION_ID"  "$SUBSCRIPTION_ID"       "Azure subscription ID"
-set_secret "AZURE_RESOURCE_GROUP"   "$RESOURCE_GROUP"        "Azure resource group name"
-set_secret "OPENCODE_GO_API_KEY"    "$OPENCODE_API_KEY"      "OpenCode Go API key"
-set_secret "COSMOSDB_KEY"           "$COSMOSDB_KEY"          "CosmosDB access key"
+set_secret "AZURE_CLIENT_ID"         "$CLIENT_ID"             "Azure SP client (app) ID"
+set_secret "AZURE_TENANT_ID"         "$TENANT_ID"             "Azure AD tenant ID"
+set_secret "AZURE_SUBSCRIPTION_ID"   "$SUBSCRIPTION_ID"       "Azure subscription ID"
+set_secret "AZURE_RESOURCE_GROUP"    "$RESOURCE_GROUP"        "Azure resource group name"
+set_secret "OPENCODE_GO_API_KEY"     "$OPENCODE_API_KEY"      "OpenCode Go API key"
+set_secret "COSMOSDB_KEY"            "$COSMOSDB_KEY"          "CosmosDB access key"
+set_secret "SWA_DEPLOYMENT_TOKEN"    "$SWA_DEPLOYMENT_TOKEN"  "Azure Static Web Apps deployment token"
 
 echo ""
 echo "──────────────────────────────────────────────────────────────────────────"

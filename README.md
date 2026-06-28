@@ -191,7 +191,8 @@ npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token
 
 | Secret | 説明 |
 |--------|------|
-| `AZURE_CREDENTIALS` | Azure Service Principal 認証情報（OIDC Federated Credentials） |
+| `AZURE_CLIENT_ID` | Azure SP クライアント (App) ID（OIDC Federated Credentials） |
+| `AZURE_TENANT_ID` | Azure AD テナント ID（OIDC Federated Credentials） |
 | `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID |
 | `AZURE_RESOURCE_GROUP` | デプロイ先のリソースグループ名 |
 | `OPENCODE_GO_API_KEY` | OpenCode Go API キー |
