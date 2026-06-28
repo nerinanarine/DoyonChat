@@ -31,11 +31,13 @@
 | [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🔴 未対応 | UX改善 | — | 現在は固定「New Chat」 |
 | [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🔴 未対応 | セキュリティ | — | P1-006 の前提条件 |
 | [P1-006](items/P1-006-user-separated-chats.md) | ユーザーごとにチャットを分ける | P1 | 🔴 未対応 | セキュリティ | — | P1-005 完了後に実装 |
+| [P1-007](items/P1-007-reasoning-display.md) | Reasoning モデルの Thinking コンテンツをわかりやすく表示 | P1 | 🔴 未対応 | UX改善 | — | 思考と回答を視覚的に分離 |
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
 | [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🔴 未対応 | UX改善 | — | 種別ごとにメッセージ変更 |
 | [P2-004](items/P2-004-image-validation.md) | 画像サイズ制限のフロントエンドバリデーション | P2 | 🔴 未対応 | 機能追加 | — | P1-001 と同時実装推奨 |
 | [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🔴 未対応 | UX改善 | — | インライン編集 |
+| [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🔴 未対応 | コスト・スケーリング | — | SSE ストリーミングの互換性要確認 |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |
 | [P3-002](items/P3-002-search.md) | 会話の検索 | P3 | 🔴 未対応 | 利便性 | — | クライアントサイド検索 |
 | [P3-003](items/P3-003-export.md) | 会話のエクスポート | P3 | 🔴 未対応 | 利便性 | — | Markdown / JSON |
