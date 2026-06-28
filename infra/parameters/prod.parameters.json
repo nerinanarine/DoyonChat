@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "prod"
+    },
+    "location": {
+      "value": "japaneast"
+    },
+    "appServiceSku": {
+      "value": {
+        "name": "P1v2",
+        "tier": "PremiumV2",
+        "capacity": 2
+      }
+    },
+    "tenantId": {
+      "value": "TENANT_ID"
+    },
+    "objectId": {
+      "value": "OBJECT_ID"
+    }
+  }
+}

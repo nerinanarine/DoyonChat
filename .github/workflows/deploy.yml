@@ -1,0 +1,143 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+
+env:
+  AZURE_RESOURCE_GROUP: rg-opencode-chat-${{ github.event.inputs.environment || 'staging' }}
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy-infra:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Validate Bicep
+        run: |
+          az bicep build --file infra/main.bicep
+
+      - name: What-If
+        run: |
+          az deployment group what-if \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/${{ github.event.inputs.environment || 'staging' }}.parameters.json \
+            openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }}
+
+      - name: Deploy Infrastructure
+        run: |
+          az deployment group create \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/${{ github.event.inputs.environment || 'staging' }}.parameters.json \
+            openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }}
+
+  deploy-app:
+    needs: deploy-infra
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Backend to App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: api-${{ github.event.inputs.environment || 'staging' }}
+          package: backend
+          slot-name: production
+
+      - name: Build and Deploy Frontend to Static Web Apps
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+
+      - name: Deploy Frontend to Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOYMENT_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend
+          output_location: frontend/dist
+
+  smoke-test:
+    needs: deploy-app
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Health Check
+        run: |
+          API_URL="https://api-${{ github.event.inputs.environment || 'staging' }}.azurewebsites.net"
+          curl -f --max-time 30 "$API_URL/api/health" || exit 1
+
+      - name: Models Endpoint
+        run: |
+          API_URL="https://api-${{ github.event.inputs.environment || 'staging' }}.azurewebsites.net"
+          curl -f --max-time 30 "$API_URL/api/models" || exit 1
+
+  deploy-prod:
+    needs: smoke-test
+    if: github.event.inputs.environment == 'prod' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Infrastructure to Production
+        run: |
+          az deployment group create \
+            --resource-group rg-opencode-chat-prod \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/prod.parameters.json \
+            openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }}
+
+      - name: Deploy Backend to Production
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: api-prod
+          package: backend
+
+      - name: Deploy Frontend to Production
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.SWA_PRODUCTION_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend
+          output_location: frontend/dist

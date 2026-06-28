@@ -1,0 +1,756 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "16800957407967848933"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "metadata": {
+        "description": "Environment name (dev, staging, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "environment": "[parameters('environment')]",
+        "project": "opencode-chat",
+        "managedBy": "bicep"
+      },
+      "metadata": {
+        "description": "Tags applied to all resources"
+      }
+    },
+    "cosmosDbDatabaseName": {
+      "type": "string",
+      "defaultValue": "chatdb",
+      "metadata": {
+        "description": "CosmosDB database name"
+      }
+    },
+    "appServiceSku": {
+      "type": "object",
+      "defaultValue": {
+        "name": "P1v2",
+        "tier": "PremiumV2",
+        "capacity": 1
+      },
+      "metadata": {
+        "description": "App Service Plan SKU"
+      }
+    },
+    "openCodeGoApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "OpenCode Go API key"
+      }
+    },
+    "cosmosDbKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "CosmosDB primary key (optional, auto-retrieved if omitted)"
+      }
+    },
+    "tenantId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure AD tenant ID for Key Vault"
+      }
+    },
+    "objectId": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure AD object ID for Key Vault access"
+      }
+    }
+  },
+  "variables": {
+    "cosmosDbAccountName": "[format('cosmos-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "appServicePlanName": "[format('asp-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "apiAppName": "[format('api-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "staticWebAppName": "[format('swa-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "keyVaultName": "[format('kv-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "appInsightsName": "[format('appi-{0}', parameters('environment'))]",
+    "logAnalyticsWorkspaceName": "[format('log-{0}', parameters('environment'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "monitor-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "logAnalyticsWorkspaceName": {
+            "value": "[variables('logAnalyticsWorkspaceName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "597305156341110970"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[parameters('logAnalyticsWorkspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30
+              }
+            }
+          ],
+          "outputs": {
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "value": "[parameters('logAnalyticsWorkspaceName')]"
+            },
+            "logAnalyticsCustomerId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "cosmosdb-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "cosmosDbAccountName": {
+            "value": "[variables('cosmosDbAccountName')]"
+          },
+          "cosmosDbDatabaseName": {
+            "value": "[parameters('cosmosDbDatabaseName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "14859799531112905852"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "cosmosDbAccountName": {
+              "type": "string"
+            },
+            "cosmosDbDatabaseName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2023-11-15",
+              "name": "[parameters('cosmosDbAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "GlobalDocumentDB",
+              "properties": {
+                "databaseAccountOfferType": "Standard",
+                "consistencyPolicy": {
+                  "defaultConsistencyLevel": "Session"
+                },
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]",
+                    "failoverPriority": 0,
+                    "isZoneRedundant": false
+                  }
+                ],
+                "capabilities": [
+                  {
+                    "name": "EnableServerless"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2023-11-15",
+              "name": "[format('{0}/{1}', parameters('cosmosDbAccountName'), parameters('cosmosDbDatabaseName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[parameters('cosmosDbDatabaseName')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2023-11-15",
+              "name": "[format('{0}/{1}/{2}', parameters('cosmosDbAccountName'), parameters('cosmosDbDatabaseName'), 'conversations')]",
+              "properties": {
+                "resource": {
+                  "id": "conversations",
+                  "partitionKey": {
+                    "paths": [
+                      "/id"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDbAccountName'), parameters('cosmosDbDatabaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2023-11-15",
+              "name": "[format('{0}/{1}/{2}', parameters('cosmosDbAccountName'), parameters('cosmosDbDatabaseName'), 'messages')]",
+              "properties": {
+                "resource": {
+                  "id": "messages",
+                  "partitionKey": {
+                    "paths": [
+                      "/conversationId"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDbAccountName'), parameters('cosmosDbDatabaseName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "cosmosDbEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2023-11-15').documentEndpoint]"
+            },
+            "cosmosDbAccountName": {
+              "type": "string",
+              "value": "[parameters('cosmosDbAccountName')]"
+            },
+            "cosmosDbPrimaryKey": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2023-11-15').primaryMasterKey]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "appinsights-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "appInsightsName": {
+            "value": "[variables('appInsightsName')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitor-module'), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "14854335148454075826"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "appInsightsName": {
+              "type": "string"
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('appInsightsName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[parameters('logAnalyticsWorkspaceId')]"
+              }
+            }
+          ],
+          "outputs": {
+            "appInsightsConnectionString": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+            },
+            "appInsightsInstrumentationKey": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').InstrumentationKey]"
+            },
+            "appInsightsName": {
+              "type": "string",
+              "value": "[parameters('appInsightsName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'monitor-module')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "keyvault-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "keyVaultName": {
+            "value": "[variables('keyVaultName')]"
+          },
+          "tenantId": {
+            "value": "[parameters('tenantId')]"
+          },
+          "objectId": {
+            "value": "[parameters('objectId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "15115126282233750523"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "keyVaultName": {
+              "type": "string"
+            },
+            "tenantId": {
+              "type": "string"
+            },
+            "objectId": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "tenantId": "[parameters('tenantId')]",
+                "sku": {
+                  "name": "standard",
+                  "family": "A"
+                },
+                "accessPolicies": [
+                  {
+                    "tenantId": "[parameters('tenantId')]",
+                    "objectId": "[parameters('objectId')]",
+                    "permissions": {
+                      "secrets": [
+                        "get",
+                        "list",
+                        "set",
+                        "delete"
+                      ]
+                    }
+                  }
+                ],
+                "softDeleteRetentionInDays": 7,
+                "enablePurgeProtection": true
+              }
+            }
+          ],
+          "outputs": {
+            "keyVaultName": {
+              "type": "string",
+              "value": "[parameters('keyVaultName')]"
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "appservice-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "appServicePlanName": {
+            "value": "[variables('appServicePlanName')]"
+          },
+          "apiAppName": {
+            "value": "[variables('apiAppName')]"
+          },
+          "sku": {
+            "value": "[parameters('appServiceSku')]"
+          },
+          "cosmosDbEndpoint": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmosdb-module'), '2025-04-01').outputs.cosmosDbEndpoint.value]"
+          },
+          "cosmosDbKey": "[if(not(equals(parameters('cosmosDbKey'), '')), createObject('value', parameters('cosmosDbKey')), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'cosmosdb-module'), '2025-04-01').outputs.cosmosDbPrimaryKey.value))]",
+          "openCodeGoApiKey": {
+            "value": "[parameters('openCodeGoApiKey')]"
+          },
+          "frontendUrl": "[if(equals(parameters('environment'), 'dev'), createObject('value', 'http://localhost:5173'), createObject('value', format('https://{0}.azurestaticapps.net', variables('staticWebAppName'))))]"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "9943833773059666071"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "appServicePlanName": {
+              "type": "string"
+            },
+            "apiAppName": {
+              "type": "string"
+            },
+            "sku": {
+              "type": "object",
+              "defaultValue": {
+                "name": "P1v2",
+                "tier": "PremiumV2",
+                "capacity": 1
+              }
+            },
+            "nodeVersion": {
+              "type": "string",
+              "defaultValue": "20-lts"
+            },
+            "cosmosDbEndpoint": {
+              "type": "string"
+            },
+            "cosmosDbKey": {
+              "type": "string"
+            },
+            "openCodeGoApiKey": {
+              "type": "string"
+            },
+            "frontendUrl": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2022-09-01",
+              "name": "[parameters('appServicePlanName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "linux",
+              "properties": {
+                "reserved": true
+              },
+              "sku": "[parameters('sku')]"
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2022-09-01",
+              "name": "[parameters('apiAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "app,linux",
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "siteConfig": {
+                  "linuxFxVersion": "[format('NODE|{0}', parameters('nodeVersion'))]",
+                  "appSettings": [
+                    {
+                      "name": "PORT",
+                      "value": "3000"
+                    },
+                    {
+                      "name": "COSMOSDB_ENDPOINT",
+                      "value": "[parameters('cosmosDbEndpoint')]"
+                    },
+                    {
+                      "name": "COSMOSDB_KEY",
+                      "value": "[parameters('cosmosDbKey')]"
+                    },
+                    {
+                      "name": "COSMOSDB_DATABASE",
+                      "value": "chatdb"
+                    },
+                    {
+                      "name": "OPENCODE_GO_API_KEY",
+                      "value": "[parameters('openCodeGoApiKey')]"
+                    },
+                    {
+                      "name": "OPENCODE_GO_MODEL",
+                      "value": "kimi-k2.6"
+                    },
+                    {
+                      "name": "FRONTEND_URL",
+                      "value": "[parameters('frontendUrl')]"
+                    },
+                    {
+                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                      "value": "[parameters('nodeVersion')]"
+                    },
+                    {
+                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                      "value": "true"
+                    }
+                  ],
+                  "alwaysOn": true,
+                  "http20Enabled": true,
+                  "cors": {
+                    "allowedOrigins": [
+                      "[parameters('frontendUrl')]"
+                    ]
+                  }
+                },
+                "httpsOnly": true
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "apiAppUrl": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('apiAppName')), '2022-09-01').defaultHostName)]"
+            },
+            "apiAppName": {
+              "type": "string",
+              "value": "[parameters('apiAppName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'cosmosdb-module')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "staticwebapp-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "eastasia"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "staticWebAppName": {
+            "value": "[variables('staticWebAppName')]"
+          },
+          "apiUrl": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppUrl.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "5315091231889093505"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "staticWebAppName": {
+              "type": "string"
+            },
+            "apiUrl": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/staticSites",
+              "apiVersion": "2022-03-01",
+              "name": "[parameters('staticWebAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard",
+                "tier": "Standard"
+              },
+              "properties": {}
+            }
+          ],
+          "outputs": {
+            "staticWebAppUrl": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2022-03-01').defaultHostname)]"
+            },
+            "staticWebAppName": {
+              "type": "string",
+              "value": "[parameters('staticWebAppName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'appservice-module')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apiUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppUrl.value]"
+    },
+    "frontendUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'staticwebapp-module'), '2025-04-01').outputs.staticWebAppUrl.value]"
+    },
+    "cosmosDbEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmosdb-module'), '2025-04-01').outputs.cosmosDbEndpoint.value]"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-module'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+    }
+  }
+}
