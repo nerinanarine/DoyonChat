@@ -151,14 +151,62 @@ gh workflow run ci.yml --repo YOUR_ORG/YOUR_REPO --ref main
 
 ---
 
+## Phase 7: ブランチ保護ルール設定
+
+main ブランチへの直接プッシュを禁止し、PR マージ前に CI チェックの成功を必須化します。
+
+### 設定手順
+
+1. GitHub リポジトリを開き、**Settings > Branches** に移動
+2. **Branch protection rules** の **Add rule** をクリック
+3. **Branch name pattern** に `main` を入力
+4. 以下の項目を有効化：
+
+| 設定項目 | 状態 | 説明 |
+|----------|------|------|
+| **Restrict deletions** | ✅ | ブランチの強制削除を禁止 |
+| **Require a pull request before merging** | ✅ | PR 必須化 |
+| → Require approvals | 0 | 個人プロジェクトのためレビュー承認は不要 |
+| → Dismiss stale PR approvals when new commits are pushed | ✅ | 新コミット時に承認を無効化 |
+| **Require status checks to pass before merging** | ✅ | CI チェック成功を必須化 |
+| → Search for status checks: | `test-backend`, `validate-infra` | ci.yml のジョブ名を入力して追加 |
+| → Require branches to be up to date before merging | ✅ | マージ前に最新 main を取り込むことを強制 |
+| **Require conversation resolution before merging** | ✅ | 未解決のレビューコメントをブロック |
+| **Do not allow bypassing the above settings** | ✅ | Admin 権限でもブランチ保護を迂回不可 |
+| **Restrict pushes that create files larger than 100 MB** | ✅ | 大ファイルの誤コミット防止 |
+
+5. **Create** をクリックして保存
+
+### 検証
+
+設定後、以下を確認します：
+
+```bash
+# main ブランチに直接プッシュしようとする（拒否されるはず）
+git checkout main
+git pull
+echo "test" >> README.md
+git add README.md
+git commit -m "test direct push"
+git push origin main
+# → ! [remote rejected] main -> main (protected branch hook declined)
+```
+
+拒否されたら成功です。必ず Feature ブランチを切って PR を経由する必要があります。
+
+---
+
 ## 次のステップ
 
-Phase 3 のセットアップ完了後は、[Phase 4: デプロイワークフロー](../004-deploy-workflow/plan.md) に進みます。
+ブランチ保護ルールの設定完了後、以下のフローで運用します：
 
-Phase 4 では以下を実装します：
-- `.github/workflows/deploy.yml` の本番環境単一フロー化（現在の staging/prod 分離を修正）
-- `azure/login@v2` への統一（現在の @v1 を更新）
-- main ブランチマージ時の自動デプロイ設定
+1. Feature ブランチを切る: `bash .specify/extensions/git/scripts/bash/create-new-feature.sh "feature name"`
+2. コード変更 → コミット → PR 作成
+3. CI チェック（`test-backend` / `validate-infra`）が自動実行
+4. チェック成功後、PR をマージ
+5. main マージにより `deploy.yml` が自動実行 → 本番デプロイ
+
+全フェーズ完了後は [Phase 8: 最終検証・ドキュメント更新](./plan.md) を参照してください。
 
 ---
 
