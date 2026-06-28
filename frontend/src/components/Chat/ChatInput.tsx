@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Send, Square, ImagePlus, X } from 'lucide-react';
+import { validateImageFile, fileToBase64, resizeImageIfNeeded } from '../../utils/image';
 
 interface ChatInputProps {
   onSend: (text: string, imageBase64?: string) => void;
@@ -36,20 +37,57 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, isStreaming, disa
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('画像サイズは5MB以下にしてください');
+  const [dragActive, setDragActive] = useState(false);
+
+  const processImage = useCallback(async (file: File) => {
+    const error = validateImageFile(file);
+    if (error) {
+      alert(error);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result as string);
-    reader.readAsDataURL(file);
-  };
+    try {
+      const base64 = await fileToBase64(file);
+      const resized = await resizeImageIfNeeded(base64);
+      setImage(resized);
+    } catch {
+      alert('画像の処理に失敗しました');
+    }
+  }, []);
+
+  const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processImage(file);
+  }, [processImage]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await processImage(file);
+  }, [processImage]);
 
   return (
-    <div className="border-t border-gray-200 bg-white px-4 py-3">
+    <div
+      className={`border-t border-gray-200 bg-white px-4 py-3 ${dragActive ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {image && (
         <div className="relative inline-block mb-2">
           <img src={image} alt="preview" className="h-16 rounded-lg border border-gray-200" />
