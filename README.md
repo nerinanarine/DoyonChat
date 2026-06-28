@@ -171,6 +171,45 @@ VITE_API_URL="https://<api-url>/api" npm run build
 npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token "<token>"
 ```
 
+## CI/CD
+
+本プロジェクトは GitHub Actions を使用した CI/CD パイプラインを備えています。
+
+### ワークフロー
+
+| ワークフロー | トリガー | 内容 |
+|-------------|---------|------|
+| `ci.yml` | PR（opened, synchronize, reopened） | バックエンドのテスト (`npm test`)、インフラ検証 (`bicep build` + `validate`) |
+| `deploy.yml` | main ブランチへの push / `workflow_dispatch` | テスト → インフラデプロイ → バックエンド + フロントエンドの自動デプロイ |
+
+### CI ステータス
+
+[![CI](https://github.com/nerinanarine/DoyonChat/actions/workflows/ci.yml/badge.svg)](https://github.com/nerinanarine/DoyonChat/actions/workflows/ci.yml)
+[![Deploy](https://github.com/nerinanarine/DoyonChat/actions/workflows/deploy.yml/badge.svg)](https://github.com/nerinanarine/DoyonChat/actions/workflows/deploy.yml)
+
+### 必要な GitHub Secrets
+
+| Secret | 説明 |
+|--------|------|
+| `AZURE_CREDENTIALS` | Azure Service Principal 認証情報（OIDC Federated Credentials） |
+| `AZURE_SUBSCRIPTION_ID` | Azure サブスクリプション ID |
+| `AZURE_RESOURCE_GROUP` | デプロイ先のリソースグループ名 |
+| `OPENCODE_GO_API_KEY` | OpenCode Go API キー |
+| `COSMOSDB_KEY` | CosmosDB アクセスキー |
+| `SWA_DEPLOYMENT_TOKEN` | Azure Static Web Apps のデプロイトークン |
+
+### 必要な GitHub Variables
+
+| Variable | 説明 |
+|----------|------|
+| `AZURE_LOCATION` | Azure リージョン（例: `japaneast`） |
+| `APP_SERVICE_NAME` | App Service 名 |
+| `STATIC_WEB_APP_NAME` | Static Web App 名 |
+
+### セットアップ手順
+
+詳細なセットアップ手順は [specs/003-setup-ci-cd-pipeline/setup-guide.md](specs/003-setup-ci-cd-pipeline/setup-guide.md) を参照してください。
+
 ## 対応モデル
 
 | モデル | マルチモーダル | 備考 |

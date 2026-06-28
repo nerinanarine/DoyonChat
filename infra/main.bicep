@@ -113,6 +113,7 @@ module staticWebApp './modules/staticWebApp.bicep' = {
   }
 }
 
+output apiAppName string = appService.outputs.apiAppName
 output apiUrl string = appService.outputs.apiAppUrl
 output frontendUrl string = staticWebApp.outputs.staticWebAppUrl
 output cosmosDbEndpoint string = cosmosdb.outputs.cosmosDbEndpoint

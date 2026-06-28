@@ -69,7 +69,7 @@ jobs:
 
   deploy-backend:
     needs: deploy-infra
-    if: always() && !cancelled() && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
+    if: always() && !cancelled() && needs.deploy-infra.result == 'success'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -115,7 +115,7 @@ jobs:
 
   deploy-frontend:
     needs: deploy-infra
-    if: always() && !cancelled() && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
+    if: always() && !cancelled() && needs.deploy-infra.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
