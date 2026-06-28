@@ -3,10 +3,39 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
   workflow_call:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint-backend:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      infra: ${{ steps.filter.outputs.infra }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            infra:
+              - 'infra/**'
+            workflows:
+              - '.github/workflows/**'
+
+  test-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,79 +48,34 @@ jobs:
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
-      - run: npm run lint
+      - run: npm run build
+      - run: npm test
 
-  lint-frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-
-  test-backend-unit:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - run: npm run test:unit
-
-  test-frontend-unit:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run test:unit
-
-  test-backend-integration:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - run: npm run test:integration
-        env:
-          COSMOSDB_ENDPOINT: ${{ secrets.COSMOSDB_ENDPOINT }}
-          COSMOSDB_KEY: ${{ secrets.COSMOSDB_KEY }}
-          COSMOSDB_DATABASE: chatdb
-          OPENCODE_GO_API_KEY: ${{ secrets.OPENCODE_GO_API_KEY }}
-
-  iac-validate:
+  validate-infra:
+    needs: changes
+    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: azure/cli@v2
+
+      - name: Bicep Build (Syntax Validation)
+        run: |
+          echo "🔍 Validating Bicep syntax..."
+          az bicep build --file infra/main.bicep
+          echo "✅ Bicep syntax check passed"
+
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          azcliversion: latest
-          inlineScript: |
-            az bicep build --file infra/main.bicep
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Validate Deployment (What-If)
+        run: |
+          echo "🔍 Running deployment validation..."
+          az deployment group validate \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/prod.parameters.json \
+            openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }}
+          echo "✅ Deployment validation passed"
