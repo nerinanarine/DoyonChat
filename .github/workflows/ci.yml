@@ -59,6 +59,8 @@ jobs:
 
       - name: Bicep Build (Syntax Validation)
         run: |
+          echo "🔧 Installing Bicep CLI..."
+          az bicep install
           echo "🔍 Validating Bicep syntax..."
           az bicep build --file infra/main.bicep
           echo "✅ Bicep syntax check passed"

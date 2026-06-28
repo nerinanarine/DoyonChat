@@ -44,6 +44,8 @@ jobs:
     needs: test
     if: always() && !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
+    outputs:
+      apiAppName: ${{ steps.infra-deploy.outputs.apiAppName }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,16 +55,21 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy Infrastructure
+        id: infra-deploy
         run: |
-          az deployment group create \
+          API_APP_NAME=$(az deployment group create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/prod.parameters.json \
             openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
-            cosmosDbKey=${{ secrets.COSMOSDB_KEY }}
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
+            --query 'properties.outputs.apiAppName.value' \
+            -o tsv)
+          echo "apiAppName=${API_APP_NAME}" >> $GITHUB_OUTPUT
 
   deploy-backend:
     needs: deploy-infra
+    if: always() && !cancelled() && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -88,26 +95,27 @@ jobs:
 
       - name: Prepare Deployment Package
         run: |
-          npm prune --production
+          npm prune --omit=dev
           zip -r backend-deploy.zip dist package.json node_modules
 
       - name: Deploy to App Service
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ vars.APP_SERVICE_NAME }}
+          app-name: ${{ needs.deploy-infra.outputs.apiAppName }}
           package: backend/backend-deploy.zip
 
       - name: Update App Settings
         run: |
           az webapp config appsettings set \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ vars.APP_SERVICE_NAME }} \
+            --name ${{ needs.deploy-infra.outputs.apiAppName }} \
             --settings \
               OPENCODE_GO_API_KEY=${{ secrets.OPENCODE_GO_API_KEY }} \
               COSMOSDB_KEY=${{ secrets.COSMOSDB_KEY }}
 
   deploy-frontend:
     needs: deploy-infra
+    if: always() && !cancelled() && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
