@@ -2,13 +2,6 @@
 
 生成 AI（OpenCode Go）と対話できるチャット Web アプリ。複数の AI モデルを切り替えながら、ストリーミング応答でリアルタイムに会話できます。
 
-## デプロイ済み環境
-
-| 環境 | URL | 状態 |
-|------|-----|------|
-| フロントエンド | https://mango-river-085453200.7.azurestaticapps.net | 🟢 稼働中 |
-| バックエンド API | https://api-dev-tk7g56gremuuy.azurewebsites.net | 🟢 稼働中 |
-
 ## 主な機能
 
 - 💬 **テキストチャット** — 複数の AI モデルと自然な対話
