@@ -1,4 +1,4 @@
-import { OpenCodeGoMessage } from '../types';
+import { Message, OpenCodeGoMessage } from '../types';
 
 const API_BASE = 'https://opencode.ai/zen/go/v1';
 
@@ -130,4 +130,20 @@ function parseSSELine(line: string): StreamChunk | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Converts Message array to OpenCodeGoMessage format for the API.
+ * Messages with imageUrl are formatted as multimodal content arrays.
+ */
+export function formatMessagesForApi(messages: Message[]): OpenCodeGoMessage[] {
+  return messages.map((m) => ({
+    role: m.role,
+    content: m.imageUrl
+      ? [
+          { type: 'text' as const, text: m.content },
+          { type: 'image_url' as const, image_url: { url: m.imageUrl } },
+        ]
+      : m.content,
+  }));
 }

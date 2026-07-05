@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "16800957407967848933"
+      "templateHash": "5458700306580239949"
     }
   },
   "parameters": {
@@ -523,7 +523,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "9943833773059666071"
+              "templateHash": "1882053312722483698"
             }
           },
           "parameters": {
@@ -623,7 +623,7 @@
                     },
                     {
                       "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
-                      "value": "true"
+                      "value": "false"
                     }
                   ],
                   "alwaysOn": true,
@@ -736,6 +736,10 @@
     }
   ],
   "outputs": {
+    "apiAppName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppName.value]"
+    },
     "apiUrl": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppUrl.value]"

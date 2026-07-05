@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AppError } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
-import { streamChat } from '../services/opencodeGo';
+import { streamChat, formatMessagesForApi } from '../services/opencodeGo';
 import { OpenCodeGoMessage } from '../types';
 
 const router = Router();
@@ -44,18 +44,7 @@ router.post('/', async (req, res, next) => {
     }
 
     // Build history for API
-    const history: OpenCodeGoMessage[] = messages.map((m) => {
-      if (m.imageUrl) {
-        return {
-          role: m.role,
-          content: [
-            { type: 'text', text: m.content },
-            { type: 'image_url', image_url: { url: m.imageUrl } },
-          ],
-        };
-      }
-      return { role: m.role, content: m.content };
-    });
+    const history: OpenCodeGoMessage[] = formatMessagesForApi(messages);
 
     // If last message wasn't the user one we just saved, append it
     if (history.length === 0 || history[history.length - 1].role !== 'user') {
