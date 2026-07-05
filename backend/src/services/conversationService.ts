@@ -1,5 +1,5 @@
 import { Conversation, Message } from '../types';
-import { conversationsContainer, messagesContainer } from '../db/index';
+import { getConversationsContainer, getMessagesContainer } from '../db/index';
 
 let useMemory = false;
 const memoryConversations: Map<string, Conversation> = new Map();
@@ -8,7 +8,7 @@ const memoryMessages: Map<string, Message> = new Map();
 async function ensureConversationContainer() {
   if (useMemory) return;
   try {
-    await conversationsContainer.read();
+    await getConversationsContainer().read();
   } catch {
     useMemory = true;
     console.warn('[conversationService] CosmosDB unavailable, falling back to in-memory store');
@@ -18,7 +18,7 @@ async function ensureConversationContainer() {
 async function ensureMessageContainer() {
   if (useMemory) return;
   try {
-    await messagesContainer.read();
+    await getMessagesContainer().read();
   } catch {
     useMemory = true;
     console.warn('[conversationService] CosmosDB unavailable, falling back to in-memory store');
@@ -32,7 +32,7 @@ export async function listConversations(): Promise<Conversation[]> {
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
   }
-  const { resources } = await conversationsContainer.items
+  const { resources } = await getConversationsContainer().items
     .query({ query: 'SELECT * FROM c ORDER BY c.updatedAt DESC' })
     .fetchAll();
   return resources;
@@ -44,7 +44,7 @@ export async function getConversation(id: string): Promise<Conversation | null> 
     return memoryConversations.get(id) || null;
   }
   try {
-    const { resource } = await conversationsContainer.item(id, id).read();
+    const { resource } = await getConversationsContainer().item(id, id).read();
     return resource || null;
   } catch {
     return null;
@@ -65,7 +65,7 @@ export async function createConversation(title = 'New Chat', model = 'kimi-k2.6'
     memoryConversations.set(conversation.id, conversation);
     return conversation;
   }
-  const { resource } = await conversationsContainer.items.create(conversation);
+  const { resource } = await getConversationsContainer().items.create(conversation);
   return resource as Conversation;
 }
 
@@ -78,7 +78,7 @@ export async function updateConversationModel(id: string, model: string): Promis
     memoryConversations.set(id, updated);
     return updated;
   }
-  const { resource } = await conversationsContainer.item(id, id).replace(updated);
+  const { resource } = await getConversationsContainer().item(id, id).replace(updated);
   return resource as Conversation;
 }
 
@@ -93,15 +93,15 @@ export async function deleteConversation(id: string): Promise<boolean> {
     return true;
   }
   try {
-    await conversationsContainer.item(id, id).delete();
-    const { resources: msgs } = await messagesContainer.items
+    await getConversationsContainer().item(id, id).delete();
+    const { resources: msgs } = await getMessagesContainer().items
       .query(
         { query: 'SELECT c.id FROM c WHERE c.conversationId = @conversationId', parameters: [{ name: '@conversationId', value: id }] },
         { partitionKey: id }
       )
       .fetchAll();
     for (const msg of msgs) {
-      await messagesContainer.item(msg.id, id).delete();
+      await getMessagesContainer().item(msg.id, id).delete();
     }
     return true;
   } catch {
@@ -116,7 +116,7 @@ export async function listMessages(conversationId: string): Promise<Message[]> {
       .filter((m) => m.conversationId === conversationId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
-  const { resources } = await messagesContainer.items
+  const { resources } = await getMessagesContainer().items
     .query(
       { query: 'SELECT * FROM c WHERE c.conversationId = @conversationId ORDER BY c.createdAt ASC', parameters: [{ name: '@conversationId', value: conversationId }] },
       { partitionKey: conversationId }
@@ -142,12 +142,12 @@ export async function addMessage(message: Omit<Message, 'id' | 'createdAt'>): Pr
     }
     return fullMessage;
   }
-  const { resource } = await messagesContainer.items.create(fullMessage);
+  const { resource } = await getMessagesContainer().items.create(fullMessage);
   // Update conversation updatedAt
   const conv = await getConversation(message.conversationId);
   if (conv) {
     conv.updatedAt = now;
-    await conversationsContainer.item(conv.id, conv.id).replace(conv);
+    await getConversationsContainer().item(conv.id, conv.id).replace(conv);
   }
   return resource as Message;
 }
