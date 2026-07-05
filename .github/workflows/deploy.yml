@@ -55,6 +55,7 @@ jobs:
     outputs:
       apiAppName: ${{ steps.infra-deploy.outputs.apiAppName }}
       apiUrl: ${{ steps.infra-deploy.outputs.apiUrl }}
+      frontendUrl: ${{ steps.infra-deploy.outputs.frontendUrl }}
     steps:
       - uses: actions/checkout@v4
 
@@ -78,8 +79,10 @@ jobs:
             -o json)
           API_APP_NAME=$(echo "$OUTPUTS" | jq -r '.apiAppName.value')
           API_URL=$(echo "$OUTPUTS" | jq -r '.apiUrl.value')
+          FRONTEND_URL=$(echo "$OUTPUTS" | jq -r '.frontendUrl.value')
           echo "apiAppName=${API_APP_NAME}" >> $GITHUB_OUTPUT
           echo "apiUrl=${API_URL}" >> $GITHUB_OUTPUT
+          echo "frontendUrl=${FRONTEND_URL}" >> $GITHUB_OUTPUT
 
   deploy-backend:
     needs: deploy-infra
@@ -127,7 +130,8 @@ jobs:
             --name ${{ needs.deploy-infra.outputs.apiAppName }} \
             --settings \
               OPENCODE_GO_API_KEY=${{ secrets.OPENCODE_GO_API_KEY }} \
-              COSMOSDB_KEY=${{ secrets.COSMOSDB_KEY }}
+              COSMOSDB_KEY=${{ secrets.COSMOSDB_KEY }} \
+              FRONTEND_URL=${{ needs.deploy-infra.outputs.frontendUrl }}
 
   deploy-frontend:
     needs: deploy-infra
