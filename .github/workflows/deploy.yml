@@ -54,6 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       apiAppName: ${{ steps.infra-deploy.outputs.apiAppName }}
+      apiUrl: ${{ steps.infra-deploy.outputs.apiUrl }}
     steps:
       - uses: actions/checkout@v4
 
@@ -67,15 +68,18 @@ jobs:
       - name: Deploy Infrastructure
         id: infra-deploy
         run: |
-          API_APP_NAME=$(az deployment group create \
+          OUTPUTS=$(az deployment group create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/prod.parameters.json \
             openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
             cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
-            --query 'properties.outputs.apiAppName.value' \
-            -o tsv)
+            --query 'properties.outputs' \
+            -o json)
+          API_APP_NAME=$(echo "$OUTPUTS" | jq -r '.apiAppName.value')
+          API_URL=$(echo "$OUTPUTS" | jq -r '.apiUrl.value')
           echo "apiAppName=${API_APP_NAME}" >> $GITHUB_OUTPUT
+          echo "apiUrl=${API_URL}" >> $GITHUB_OUTPUT
 
   deploy-backend:
     needs: deploy-infra
@@ -140,6 +144,8 @@ jobs:
 
       - name: Build Frontend
         working-directory: frontend
+        env:
+          VITE_API_URL: ${{ needs.deploy-infra.outputs.apiUrl }}/api
         run: |
           npm ci
           npm run build
