@@ -76,7 +76,7 @@ DoyonChat に Microsoft Entra ID（旧 Azure AD）による認証を導入する
 | `VITE_ENTRA_CLIENT_ID` | Entra ID アプリ登録のクライアント ID | `00000000-0000-0000-0000-000000000000` |
 | `VITE_ENTRA_TENANT_ID` | テナント ID | `common` または組織のテナント ID |
 | `VITE_ENTRA_REDIRECT_URI` | ログイン後のリダイレクト先 | `http://localhost:5173` |
-| `VITE_API_BASE_URL` | バックエンド API のベース URL | `http://localhost:3000/api` |
+| `VITE_API_URL` | バックエンド API のベース URL | `http://localhost:3000/api` |
 
 ### バックエンド（`.env`）
 
@@ -85,7 +85,7 @@ DoyonChat に Microsoft Entra ID（旧 Azure AD）による認証を導入する
 | `AUTH_ENABLED` | 認証有効フラグ | `true` |
 | `ENTRA_TENANT_ID` | テナント ID | `common` または組織のテナント ID |
 | `ENTRA_CLIENT_ID` | クライアント ID（audience 検証用）| `00000000-0000-0000-0000-000000000000` |
-| `CORS_ORIGIN` | フロントエンドのオリジン | `http://localhost:5173` |
+| `FRONTEND_URL` | フロントエンドのオリジン（CORS 許可用） | `http://localhost:5173` |
 
 > **注意:** ローカル開発時は `AUTH_ENABLED=false` / `VITE_AUTH_ENABLED=false` に設定し、ダミーユーザーモードで動作させる。
 
