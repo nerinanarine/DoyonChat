@@ -13,7 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-async function getToken(): Promise<string | null> {
+export async function getToken(): Promise<string | null> {
   if (!authEnabled) return null;
 
   const account = msalInstance.getAllAccounts()[0];
@@ -39,7 +39,7 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> | undefined),
   };
 
   if (token) {

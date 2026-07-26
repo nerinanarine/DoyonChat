@@ -1,5 +1,5 @@
 import { Conversation, Message, ModelInfo } from '../types';
-import { get, post, del, put } from './api';
+import { get, post, del, put, getToken } from './api';
 
 export async function fetchModels(): Promise<ModelInfo[]> {
   return get<ModelInfo[]>('/models');
@@ -38,9 +38,15 @@ export function streamChat(
 
   (async () => {
     try {
+      const token = await getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ conversationId, message, imageBase64 }),
         signal: controller.signal,
       });
