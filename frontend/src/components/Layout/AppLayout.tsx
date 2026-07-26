@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { useMsal } from '@azure/msal-react';
+import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { Conversation, ModelInfo } from '../../types';
 import ConversationList from '../Sidebar/ConversationList';
 
@@ -24,11 +25,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onChangeModel,
   children,
 }) => {
+  const { instance } = useMsal();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
   const activeModel = models.find((m) => m.id === activeConversation?.model) || models[0];
+
+  const handleLogout = () => {
+    instance.logoutRedirect();
+  };
 
   return (
     <div className="h-screen flex bg-white">
@@ -90,7 +97,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             </h1>
           </div>
 
-          {activeConversation && (
+          <div className="flex items-center gap-2">
+            {authEnabled && (
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                title="ログアウト"
+              >
+                <LogOut size={18} />
+              </button>
+            )}
+            {activeConversation && (
             <div className="relative">
               <button
                 onClick={() => setModelMenuOpen(!modelMenuOpen)}
@@ -122,7 +139,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 </>
               )}
             </div>
-          )}
+            )}
+          </div>
         </header>
 
         {/* Page content */}

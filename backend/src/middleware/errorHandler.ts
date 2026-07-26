@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { UnauthorizedError } from 'express-jwt';
 
 export class AppError extends Error {
   constructor(
@@ -17,6 +18,13 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   console.error(`[Error] ${err.message}`, err.stack);
+
+  if (err instanceof UnauthorizedError) {
+    res.status(401).json({
+      error: 'Unauthorized: invalid or expired token',
+    });
+    return;
+  }
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({

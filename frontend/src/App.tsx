@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useIsAuthenticated } from '@azure/msal-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
 import AppLayout from './components/Layout/AppLayout';
 import ChatMessageList from './components/Chat/ChatMessageList';
 import ChatInput from './components/Chat/ChatInput';
+import LoginPage from './components/Auth/LoginPage';
 import { ModelInfo } from './types';
 import * as api from './services/chatApi';
 
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+
 function App() {
+  const isAuthenticated = useIsAuthenticated();
   const { conversations, loading: convLoading, create, remove, load } = useConversations();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -73,6 +78,10 @@ function App() {
     },
     [activeConversationId, create, models, sendMessage],
   );
+
+  if (authEnabled && !isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <AppLayout

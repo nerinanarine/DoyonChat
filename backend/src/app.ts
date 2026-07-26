@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { errorHandler } from './middleware/errorHandler';
+import { authMiddleware, extractUserId } from './middleware/auth';
 import chatRouter from './routes/chat';
 import conversationsRouter from './routes/conversations';
 import modelsRouter from './routes/models';
@@ -29,6 +30,10 @@ app.use(express.json({ limit: '10mb' }));
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Auth middleware for all /api/* routes except /api/health
+app.use('/api', authMiddleware);
+app.use('/api', extractUserId);
 
 app.use('/api/chat', chatRouter);
 app.use('/api/conversations', conversationsRouter);

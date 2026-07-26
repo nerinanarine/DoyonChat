@@ -1,4 +1,7 @@
+import { msalInstance } from '../auth/msalConfig';
+
 const API_URL = import.meta.env.VITE_API_URL || '/api';
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
 export class ApiError extends Error {
   constructor(
@@ -10,18 +13,48 @@ export class ApiError extends Error {
   }
 }
 
+async function getToken(): Promise<string | null> {
+  if (!authEnabled) return null;
+
+  const account = msalInstance.getAllAccounts()[0];
+  if (!account) return null;
+
+  try {
+    const response = await msalInstance.acquireTokenSilent({
+      scopes: ['openid', 'profile'],
+      account,
+    });
+    return response.accessToken;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
   const url = `${API_URL}${path}`;
+  const token = await getToken();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   });
+
+  if (response.status === 401 && authEnabled) {
+    msalInstance.logoutRedirect();
+    throw new ApiError(401, 'Unauthorized: session expired');
+  }
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'Unknown error');
