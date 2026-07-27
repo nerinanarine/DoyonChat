@@ -39,6 +39,7 @@
 | [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🔴 未対応 | UX改善 | — | インライン編集 |
 | [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🔴 未対応 | コスト・スケーリング | — | SSE ストリーミングの互換性要確認 |
 | [P2-007](items/P2-007-cicd-cleanup.md) | CI/CD ワークフロー重複・クリーンアップ | P2 | 🔴 未対応 | 運用改善 | — | 未使用 Secret/Var 整理、Bicep 重複排除、ビルド二重実行回避 |
+| [P2-008](items/P2-008-user-settings.md) | ユーザーごとに設定を保存できる機能 | P2 | 🔴 未対応 | 利便性 | — | P1-005 完了後に実装 |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |
 | [P3-002](items/P3-002-search.md) | 会話の検索 | P3 | 🔴 未対応 | 利便性 | — | クライアントサイド検索 |
 | [P3-003](items/P3-003-export.md) | 会話のエクスポート | P3 | 🔴 未対応 | 利便性 | — | Markdown / JSON |
@@ -48,6 +49,7 @@
 | [P3-007](items/P3-007-tests.md) | ユニットテスト強化 | P3 | 🔴 未対応 | 品質 | — | カバレッジ 80% 目標 |
 | [P3-008](items/P3-008-cicd-docs-fix.md) | CI/CD 関連ドキュメントの誤記修正 | P3 | 🔴 未対応 | ドキュメント | — | spec.md FR-003、setup-guide 手順3.1 |
 | [P3-009](items/P3-009-cicd-security-hardening.md) | CI/CD セキュリティハードニング | P3 | 🔴 未対応 | セキュリティ | — | SHA ピン化、permissions 宣言の一貫化 |
+| [P3-010](items/P3-010-ai-agent.md) | AIのエージェント化 | P3 | 🔴 未対応 | 機能追加 | — | Function Calling・ツール連携検討 |
 | [P4-001](items/P4-001-pwa.md) | PWA（Progressive Web App）対応 | P4 | 🔴 未対応 | 機能追加 | — | vite-plugin-pwa |
 | [P4-002](items/P4-002-templates.md) | プロンプトテンプレート | P4 | 🔴 未対応 | 機能追加 | — | localStorage 保存 |
 | [P4-003](items/P4-003-code-exec.md) | コードブロックの実行機能 | P4 | 🔴 未対応 | 機能追加 | — | Sandpack 検討 |

@@ -8,10 +8,11 @@ on:
       environment:
         description: 'Target environment'
         required: true
-        default: 'production'
+        default: 'prod'
         type: choice
         options:
-          - production
+          - dev
+          - prod
       skip-tests:
         description: 'Skip tests'
         required: false
@@ -23,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-prod
+  group: deploy-${{ github.event_name == 'push' && 'dev' || inputs.environment }}
   cancel-in-progress: false
 
 jobs:
@@ -52,6 +53,7 @@ jobs:
     needs: test
     if: always() && !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
     outputs:
       apiAppName: ${{ steps.infra-deploy.outputs.apiAppName }}
       apiUrl: ${{ steps.infra-deploy.outputs.apiUrl }}
@@ -68,11 +70,13 @@ jobs:
 
       - name: Deploy Infrastructure
         id: infra-deploy
+        env:
+          TARGET_ENV: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
         run: |
           OUTPUTS=$(az deployment group create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
-            --parameters infra/parameters/prod.parameters.json \
+            --parameters infra/parameters/${TARGET_ENV}.parameters.json \
             openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
             cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
             --query 'properties.outputs' \
@@ -88,6 +92,7 @@ jobs:
     needs: deploy-infra
     if: always() && !cancelled() && needs.deploy-infra.result == 'success'
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
     defaults:
       run:
         working-directory: backend
@@ -131,12 +136,16 @@ jobs:
             --settings \
               OPENCODE_GO_API_KEY=${{ secrets.OPENCODE_GO_API_KEY }} \
               COSMOSDB_KEY=${{ secrets.COSMOSDB_KEY }} \
-              FRONTEND_URL=${{ needs.deploy-infra.outputs.frontendUrl }}
+              FRONTEND_URL=${{ needs.deploy-infra.outputs.frontendUrl }} \
+              AUTH_ENABLED=${{ vars.AUTH_ENABLED || 'false' }} \
+              ENTRA_TENANT_ID=${{ vars.ENTRA_TENANT_ID }} \
+              ENTRA_CLIENT_ID=${{ vars.ENTRA_CLIENT_ID }}
 
   deploy-frontend:
     needs: deploy-infra
     if: always() && !cancelled() && needs.deploy-infra.result == 'success'
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
     steps:
       - uses: actions/checkout@v4
 
@@ -150,11 +159,16 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: ${{ needs.deploy-infra.outputs.apiUrl }}/api
+          VITE_AUTH_ENABLED: ${{ vars.AUTH_ENABLED || 'false' }}
+          VITE_ENTRA_CLIENT_ID: ${{ vars.ENTRA_CLIENT_ID }}
+          VITE_ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
+          VITE_ENTRA_REDIRECT_URI: ${{ needs.deploy-infra.outputs.frontendUrl }}
         run: |
           npm ci
           npm run build
           echo "VITE_API_URL=$VITE_API_URL"
-          grep -o "api-prod-ybx4bcrxobh7u.azurewebsites.net" dist/assets/*.js | head -3 || echo "API URL not found in build"
+          API_HOST=$(echo "$VITE_API_URL" | sed -E 's|https?://([^/]+)/.*|\1|')
+          grep -o "$API_HOST" dist/assets/*.js | head -3 || echo "API URL not found in build"
 
       - name: Deploy to Static Web Apps
         uses: Azure/static-web-apps-deploy@v1

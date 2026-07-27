@@ -67,7 +67,32 @@
 
 ## 実装メモ
 
-> 対応後にここに実装内容・マージコミット・注意点を記載してください。
+### 実装内容
+
+- **フロントエンド:**
+  - `@azure/msal-react` + `@azure/msal-browser` を導入
+  - `MsalProvider` でアプリをラップ (`main.tsx`)
+  - `useIsAuthenticated` で認証状態を判定し、未ログイン時は `LoginPage` を表示 (`App.tsx`)
+  - API リクエスト時に `acquireTokenSilent` でトークンを取得し `Authorization: Bearer` ヘッダーを付与 (`services/api.ts`)
+  - 401 レスポンスを受信したら `logoutRedirect()` を呼び出し (`services/api.ts`)
+  - `AppLayout` にログアウトボタンを追加
+
+- **バックエンド:**
+  - `express-jwt` + `jwks-rsa` + `jsonwebtoken` を導入
+  - `auth.ts` ミドルウェアを新規作成: JWKS による署名検証、`req.userId` への `oid` 設定
+  - `/api/*` ルートに認証ミドルウェアを適用（`/api/health` 除く）
+  - `AUTH_ENABLED=false` 時はダミーユーザー (`dev-user`) として通過
+  - `errorHandler` で `UnauthorizedError` を 401 でハンドリング
+
+### ブランチ
+
+- `P1-005-entra-id-auth`
+
+### 注意点
+
+- Docker 環境内で `npm install` に時間がかかる（ネットワーク/ディスク I/O 制約）
+- `backend/package-lock.json` は復元済み
+- テスト実行はローカル環境で `npm install` 完了後に実施推奨
 
 ---
 
@@ -76,3 +101,4 @@
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-06-28 | 🔴 未対応 | 初期作成 |
+| 2026-07-05 | 🟡 実装中 | バックエンド・フロントエンド実装完了 |
