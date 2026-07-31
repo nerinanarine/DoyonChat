@@ -9,6 +9,8 @@
 
 ## 1. Entra ID アプリ登録の作成
 
+> この章のアプリ登録は**ユーザー認証専用**です。GitHub Actions からのデプロイ認証には別のアプリ登録を使用します（5.3.2 参照）。
+
 ### 1.1 Azure Portal へアクセス
 
 1. [Azure Portal](https://portal.azure.com/) にログイン
@@ -156,13 +158,29 @@ AUTH_ENABLED=false
 
 | Secret | 環境ごとの値 |
 |--------|-------------|
-| `AZURE_CLIENT_ID` | デプロイ用アプリ登録（OIDC）のクライアント ID |
-| `AZURE_TENANT_ID` | テナント ID |
-| `AZURE_SUBSCRIPTION_ID` | サブスクリプション ID |
+| `AZURE_CREDENTIALS` | デプロイ用アプリ登録の資格情報 JSON（両環境で共通、下記参照） |
 | `AZURE_RESOURCE_GROUP` | 各環境のリソースグループ名 |
 | `OPENCODE_GO_API_KEY` | API キー |
 | `COSMOSDB_KEY` | 各環境の Cosmos DB キー |
 | `SWA_DEPLOYMENT_TOKEN` | 各環境の SWA デプロイトークン |
+
+`AZURE_CREDENTIALS` の形式（デプロイ用アプリ登録の **証明書とシークレット** でクライアントシークレットを発行し、以下の JSON を組み立てる）:
+
+```json
+{
+  "clientId": "<デプロイ用アプリのクライアントID>",
+  "clientSecret": "<クライアントシークレットの値>",
+  "subscriptionId": "<サブスクリプションID>",
+  "tenantId": "<テナントID>"
+}
+```
+
+> **デプロイ用アプリ登録について:** ユーザー認証用（1章）とは**別の**アプリ登録を1つ作成し、dev / prod で共有します。以下の設定が必要です:
+>
+> 1. **クライアントシークレットの発行:** **証明書とシークレット** → **新しいクライアント シークレット** を作成し、表示される**値**をコピー（一度しか表示されません）
+> 2. **RBAC:** dev / prod 両方のリソースグループに **共同作成者** ロールを付与
+>
+> ⚠️ シークレットには有効期限があります（ポータルでは最長2年）。**期限切れ前のローテーション運用**（新シークレット発行 → `AZURE_CREDENTIALS` 更新）が必要です。
 
 > **重要:** Environments 作成前に main へ push すると、リポジトリスコープの Secrets（prod 向けの値）で dev デプロイが実行され、prod のリソースグループに dev リソースが作成されてしまいます。必ず先に Environments と環境スコープ Secrets を設定してから push してください。
 
