@@ -29,7 +29,7 @@
 | [P1-002](items/P1-002-multimodal-warning.md) | マルチモーダル非対応モデル警告 | P1 | 🔴 未対応 | UX改善 | FR-014 | glm-5.x のみ対応 |
 | [P1-003](items/P1-003-partial-save-on-stop.md) | ストリーミング中断時の中間保存 | P1 | 🔴 未対応 | データ保全 | — | データ損失防止 |
 | [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🔴 未対応 | UX改善 | — | 現在は固定「New Chat」 |
-| [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🔴 未対応 | セキュリティ | — | P1-006 の前提条件 |
+| [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🟢 対応済み | セキュリティ | — | P1-006 の前提条件を完了 |
 | [P1-006](items/P1-006-user-separated-chats.md) | ユーザーごとにチャットを分ける | P1 | 🔴 未対応 | セキュリティ | — | P1-005 完了後に実装 |
 | [P1-007](items/P1-007-reasoning-display.md) | Reasoning モデルの Thinking コンテンツをわかりやすく表示 | P1 | 🔴 未対応 | UX改善 | — | 思考と回答を視覚的に分離 |
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
