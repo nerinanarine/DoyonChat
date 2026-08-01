@@ -83,6 +83,8 @@ API 用クライアント ID は `ENTRA_API_CLIENT_ID` として使用します�
 api://<API 用クライアントID>/access_as_user
 ```
 
+> **audience の注意:** DoyonChat は Microsoft identity platform の v2 エンドポイントを使用します。v2 のアクセストークンの `aud` は `api://<API 用クライアントID>` ではなく、API アプリのクライアント ID（GUID）になります。バックエンドは `ENTRA_API_CLIENT_ID` の GUID を audience として検証します。
+
 必要に応じて、API 用アプリ登録の **API の公開** → **承認済みクライアント アプリケーション**から、対応する SPA 認証用アプリのクライアント ID を追加し、`access_as_user` を選択します。これによりユーザーごとの追加同意を省略できます。
 
 ### 2.3 SPA 認証用アプリに API 権限を追加
@@ -291,7 +293,7 @@ AUTH_ENABLED=false
 ### 401 Unauthorized（バックエンド）
 
 - **原因:** トークンの audience (`aud`) が API 用アプリの audience と一致しない
-- **対策:** `ENTRA_API_CLIENT_ID` が API 用アプリのクライアント ID と一致し、トークンの audience が `api://<ENTRA_API_CLIENT_ID>` になっているか確認
+- **対策:** `ENTRA_API_CLIENT_ID` が API 用アプリのクライアント ID と一致し、v2 トークンの audience (`aud`) が `<ENTRA_API_CLIENT_ID>` の GUID になっているか確認
 
 ### 401 Unauthorized（issuer 不一致）
 
