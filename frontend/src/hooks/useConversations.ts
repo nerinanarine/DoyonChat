@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Conversation } from '../types';
 import * as api from '../services/chatApi';
 
-export function useConversations() {
+export function useConversations(enabled = true) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +21,9 @@ export function useConversations() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     load();
-  }, [load]);
+  }, [load, enabled]);
 
   const create = useCallback(async (title?: string, model?: string) => {
     const conv = await api.createConversation(title, model);

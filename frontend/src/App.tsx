@@ -13,17 +13,19 @@ const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
 function App() {
   const isAuthenticated = useIsAuthenticated();
-  const { conversations, loading: convLoading, create, remove, load } = useConversations();
+  const dataEnabled = !authEnabled || isAuthenticated;
+  const { conversations, loading: convLoading, create, remove, load } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
 
   const { messages, streamingText, isStreaming, loadMessages, sendMessage, stop } =
     useChat(activeConversationId);
 
-  // Load models on mount
+  // Load models once authenticated
   useEffect(() => {
+    if (!dataEnabled) return;
     api.fetchModels().then(setModels).catch(console.error);
-  }, []);
+  }, [dataEnabled]);
 
   // Load messages when conversation changes
   useEffect(() => {

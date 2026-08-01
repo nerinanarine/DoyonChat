@@ -1,3 +1,4 @@
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
 import { msalInstance, apiScope } from '../auth/msalConfig';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -25,7 +26,11 @@ export async function getToken(): Promise<string | null> {
       account,
     });
     return response.accessToken;
-  } catch {
+  } catch (err) {
+    if (err instanceof InteractionRequiredAuthError) {
+      // 新スコープの同意などインタラクションが必要 → リダイレクトで取得（このページを離れる）
+      await msalInstance.acquireTokenRedirect({ scopes: [apiScope] });
+    }
     return null;
   }
 }
@@ -51,7 +56,9 @@ async function request<T>(
     ...options,
   });
 
-  if (response.status === 401 && authEnabled) {
+  // トークン付きで 401 = トークン無効/期限切れのためログアウトしてログイン画面へ
+  // （トークンなしの 401 でログアウトすると未ログイン時にループするため除外）
+  if (response.status === 401 && authEnabled && token) {
     msalInstance.logoutRedirect();
     throw new ApiError(401, 'Unauthorized: session expired');
   }
