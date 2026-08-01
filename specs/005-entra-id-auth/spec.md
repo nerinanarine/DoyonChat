@@ -182,7 +182,7 @@ export const authMiddleware = expressjwt({
   secret: jwksClient.getSigningKey as GetVerificationKey,
   algorithms: ['RS256'],
   issuer: `https://login.microsoftonline.com/${process.env.ENTRA_TENANT_ID}/v2.0`,
-  audience: `api://${process.env.ENTRA_API_CLIENT_ID}`,
+  audience: process.env.ENTRA_API_CLIENT_ID,
 }).unless({ path: ['/api/health'] });
 ```
 
