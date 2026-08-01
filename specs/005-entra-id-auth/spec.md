@@ -143,7 +143,7 @@ const getToken = async (): Promise<string | null> => {
   const account = msalInstance.getAllAccounts()[0];
   if (!account) return null;
   const response = await msalInstance.acquireTokenSilent({
-    scopes: ['openid', 'profile'],
+    scopes: [`api://${import.meta.env.VITE_ENTRA_CLIENT_ID}/access_as_user`],
     account,
   });
   return response.accessToken;
@@ -181,7 +181,7 @@ export const authMiddleware = expressjwt({
   secret: jwksClient.getSigningKey as GetVerificationKey,
   algorithms: ['RS256'],
   issuer: `https://login.microsoftonline.com/${process.env.ENTRA_TENANT_ID}/v2.0`,
-  audience: process.env.ENTRA_CLIENT_ID,
+  audience: `api://${process.env.ENTRA_CLIENT_ID}`,
 }).unless({ path: ['/api/health'] });
 ```
 
