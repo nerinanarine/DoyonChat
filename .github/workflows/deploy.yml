@@ -124,7 +124,16 @@ jobs:
           package: backend/backend-deploy.zip
 
       - name: Update App Settings
+        env:
+          AUTH_ENABLED: ${{ vars.AUTH_ENABLED || 'false' }}
+          ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
+          ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID }}
         run: |
+          if [ "$AUTH_ENABLED" = "true" ]; then
+            test -n "$ENTRA_TENANT_ID" || { echo "::error::ENTRA_TENANT_ID is required when authentication is enabled"; exit 1; }
+            test -n "$ENTRA_API_CLIENT_ID" || { echo "::error::ENTRA_API_CLIENT_ID is required when authentication is enabled"; exit 1; }
+          fi
+
           az webapp config appsettings set \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --name ${{ needs.deploy-infra.outputs.apiAppName }} \
@@ -132,9 +141,9 @@ jobs:
               OPENCODE_GO_API_KEY=${{ secrets.OPENCODE_GO_API_KEY }} \
               COSMOSDB_KEY=${{ secrets.COSMOSDB_KEY }} \
               FRONTEND_URL=${{ needs.deploy-infra.outputs.frontendUrl }} \
-              AUTH_ENABLED=${{ vars.AUTH_ENABLED || 'false' }} \
-              ENTRA_TENANT_ID=${{ vars.ENTRA_TENANT_ID }} \
-              ENTRA_CLIENT_ID=${{ vars.ENTRA_CLIENT_ID }}
+              AUTH_ENABLED=$AUTH_ENABLED \
+              ENTRA_TENANT_ID=$ENTRA_TENANT_ID \
+              ENTRA_API_CLIENT_ID=$ENTRA_API_CLIENT_ID
 
   deploy-frontend:
     needs: deploy-infra
@@ -156,9 +165,16 @@ jobs:
           VITE_API_URL: ${{ needs.deploy-infra.outputs.apiUrl }}/api
           VITE_AUTH_ENABLED: ${{ vars.AUTH_ENABLED || 'false' }}
           VITE_ENTRA_CLIENT_ID: ${{ vars.ENTRA_CLIENT_ID }}
+          VITE_ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID }}
           VITE_ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
           VITE_ENTRA_REDIRECT_URI: ${{ needs.deploy-infra.outputs.frontendUrl }}
         run: |
+          if [ "$VITE_AUTH_ENABLED" = "true" ]; then
+            test -n "$VITE_ENTRA_CLIENT_ID" || { echo "::error::ENTRA_CLIENT_ID is required when authentication is enabled"; exit 1; }
+            test -n "$VITE_ENTRA_API_CLIENT_ID" || { echo "::error::ENTRA_API_CLIENT_ID is required when authentication is enabled"; exit 1; }
+            test -n "$VITE_ENTRA_TENANT_ID" || { echo "::error::ENTRA_TENANT_ID is required when authentication is enabled"; exit 1; }
+          fi
+
           npm ci
           npm run build
           echo "VITE_API_URL=$VITE_API_URL"

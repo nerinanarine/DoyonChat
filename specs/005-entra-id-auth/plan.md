@@ -13,7 +13,7 @@
 - **ファイル:** `backend/src/middleware/auth.ts`（新規）
 - **内容:**
   - JWKS クライアント設定
-  - `expressjwt` ミドルウェア（署名検証、issuer/audience 検証）
+  - `expressjwt` ミドルウェア（署名検証、issuer/API アプリの audience 検証）
   - `extractUserId` ミドルウェア（`req.userId = token.oid`）
   - `AUTH_ENABLED=false` 時のダミーユーザー対応
 - **工数:** 1h
@@ -62,7 +62,7 @@
 
 #### 2.3 Vite 環境変数型定義
 - **ファイル:** `frontend/src/vite-env.d.ts`
-- **内容:** `ImportMetaEnv` に `VITE_AUTH_ENABLED`, `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_REDIRECT_URI` を追加
+- **内容:** `ImportMetaEnv` に `VITE_AUTH_ENABLED`, `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_API_CLIENT_ID`, `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_REDIRECT_URI` を追加
 - **工数:** 0.25h
 
 #### 2.4 main.tsx で MsalProvider ラップ
@@ -88,7 +88,7 @@
 #### 2.7 API サービスのトークン連携
 - **ファイル:** `frontend/src/services/api.ts`
 - **内容:**
-  - `getToken()` ヘルパー関数（`acquireTokenSilent`）
+  - `getToken()` ヘルパー関数（`api://<API_CLIENT_ID>/access_as_user` を使った `acquireTokenSilent`）
   - API 呼び出し時に `Authorization: Bearer <token>` を付与
   - 401 レスポンス時に `logoutRedirect()` を呼び出し
 - **工数:** 1h

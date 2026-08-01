@@ -3,7 +3,7 @@ import { expressjwt, GetVerificationKey } from 'express-jwt';
 import jwksRsa from 'jwks-rsa';
 
 const tenantId = process.env.ENTRA_TENANT_ID || 'common';
-const clientId = process.env.ENTRA_CLIENT_ID || '';
+const apiClientId = process.env.ENTRA_API_CLIENT_ID || '';
 
 const jwksClient = jwksRsa({
   jwksUri: `https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`,
@@ -25,7 +25,7 @@ const jwtMiddleware = expressjwt({
   secret: getVerificationKey,
   algorithms: ['RS256'],
   issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
-  audience: `api://${clientId}`,
+  audience: `api://${apiClientId}`,
 }).unless({
   path: ['/api/health'],
 });

@@ -73,7 +73,8 @@ DoyonChat に Microsoft Entra ID（旧 Azure AD）による認証を導入する
 | 変数 | 説明 | 例 |
 |------|------|-----|
 | `VITE_AUTH_ENABLED` | 認証有効フラグ | `true` |
-| `VITE_ENTRA_CLIENT_ID` | Entra ID アプリ登録のクライアント ID | `00000000-0000-0000-0000-000000000000` |
+| `VITE_ENTRA_CLIENT_ID` | SPA 認証用アプリ登録のクライアント ID | `00000000-0000-0000-0000-000000000000` |
+| `VITE_ENTRA_API_CLIENT_ID` | API 用アプリ登録のクライアント ID | `00000000-0000-0000-0000-000000000000` |
 | `VITE_ENTRA_TENANT_ID` | テナント ID | `common` または組織のテナント ID |
 | `VITE_ENTRA_REDIRECT_URI` | ログイン後のリダイレクト先 | `http://localhost:5173` |
 | `VITE_API_URL` | バックエンド API のベース URL | `http://localhost:3000/api` |
@@ -84,7 +85,7 @@ DoyonChat に Microsoft Entra ID（旧 Azure AD）による認証を導入する
 |------|------|-----|
 | `AUTH_ENABLED` | 認証有効フラグ | `true` |
 | `ENTRA_TENANT_ID` | テナント ID | `common` または組織のテナント ID |
-| `ENTRA_CLIENT_ID` | クライアント ID（audience 検証用）| `00000000-0000-0000-0000-000000000000` |
+| `ENTRA_API_CLIENT_ID` | API 用クライアント ID（audience 検証用）| `00000000-0000-0000-0000-000000000000` |
 | `FRONTEND_URL` | フロントエンドのオリジン（CORS 許可用） | `http://localhost:5173` |
 
 > **注意:** ローカル開発時は `AUTH_ENABLED=false` / `VITE_AUTH_ENABLED=false` に設定し、ダミーユーザーモードで動作させる。
@@ -143,7 +144,7 @@ const getToken = async (): Promise<string | null> => {
   const account = msalInstance.getAllAccounts()[0];
   if (!account) return null;
   const response = await msalInstance.acquireTokenSilent({
-    scopes: [`api://${import.meta.env.VITE_ENTRA_CLIENT_ID}/access_as_user`],
+    scopes: [`api://${import.meta.env.VITE_ENTRA_API_CLIENT_ID}/access_as_user`],
     account,
   });
   return response.accessToken;
@@ -181,7 +182,7 @@ export const authMiddleware = expressjwt({
   secret: jwksClient.getSigningKey as GetVerificationKey,
   algorithms: ['RS256'],
   issuer: `https://login.microsoftonline.com/${process.env.ENTRA_TENANT_ID}/v2.0`,
-  audience: `api://${process.env.ENTRA_CLIENT_ID}`,
+  audience: `api://${process.env.ENTRA_API_CLIENT_ID}`,
 }).unless({ path: ['/api/health'] });
 ```
 
