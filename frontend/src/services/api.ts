@@ -1,4 +1,4 @@
-import { msalInstance } from '../auth/msalConfig';
+import { msalInstance, apiScope } from '../auth/msalConfig';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
@@ -21,7 +21,7 @@ export async function getToken(): Promise<string | null> {
 
   try {
     const response = await msalInstance.acquireTokenSilent({
-      scopes: ['openid', 'profile'],
+      scopes: [apiScope],
       account,
     });
     return response.accessToken;
