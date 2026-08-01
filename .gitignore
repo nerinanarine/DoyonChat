@@ -1,4 +1,8 @@
+# Environment files (keep tracked templates)
 .env
+.env.*
+!.env.example
+
 node_modules/
 dist/
 .coverage/

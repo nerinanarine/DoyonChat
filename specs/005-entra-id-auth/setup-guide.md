@@ -9,7 +9,7 @@
 
 ## 1. Entra ID アプリ登録の作成
 
-> この章のアプリ登録は**ユーザー認証専用**です。GitHub Actions からのデプロイ認証には別のアプリ登録を使用します（5.3.2 参照）。
+> この章のアプリ登録は**SPA のユーザー認証専用**です。バックエンド API 用のアプリ登録は2章、GitHub Actions からのデプロイ認証用は5.3.2で別途作成します。
 
 ### 1.1 Azure Portal へアクセス
 
@@ -26,7 +26,7 @@
 | **リダイレクト URI** | **シングルページアプリケーション (SPA)** を選択 |
 | **リダイレクト URI（値）** | `http://localhost:5173`（ローカル開発用） |
 
-> 開発環境（dev）と本番環境（prod）で**別のアプリ登録**を作成します。各登録には、対応する環境の SWA URL をリダイレクト URI として追加登録してください（5章参照）。
+> 開発環境（dev）と本番環境（prod）で、SPA ユーザー認証用のアプリ登録を**別々に**作成します。リダイレクト URI は SPA 認証用アプリ登録にのみ設定します。対応する API 用アプリ登録は2章を参照してください。
 
 4. **登録** をクリック
 
@@ -36,43 +36,85 @@
 
 | 項目 | 値の例 | 用途 |
 |------|--------|------|
-| **アプリケーション (クライアント) ID** | `00000000-0000-0000-0000-000000000000` | `ENTRA_CLIENT_ID` |
+| **アプリケーション (クライアント) ID** | `00000000-0000-0000-0000-000000000000` | `ENTRA_CLIENT_ID`（SPA 認証用） |
 | **ディレクトリ (テナント) ID** | `00000000-0000-0000-0000-000000000000` | `ENTRA_TENANT_ID` |
 
 ---
 
-## 2. API アクセス許可の設定
+## 2. API 用アプリ登録と API アクセス許可の設定
 
-### 2.1 Microsoft Graph のアクセス許可
+> SPA のユーザー認証用アプリ登録と、バックエンド API 用アプリ登録を分離します。API 用アプリ登録にはリダイレクト URI を設定しません。
+>
+> **実装前提:** この構成を使用するには、フロントエンドが `VITE_ENTRA_API_CLIENT_ID`、バックエンドが `ENTRA_API_CLIENT_ID` を参照する実装と、GitHub Actions の環境変数マッピングが必要です。これらの実装変更を反映してからデプロイしてください。
 
-1. アプリ登録の **API のアクセス許可** → **アクセス許可の追加** をクリック
-2. **Microsoft Graph** → **委任されたアクセス許可** を選択
-3. 以下のアクセス許可を追加:
-   - `openid`
-   - `profile`
-   - `User.Read`
+### 2.1 API 用アプリ登録の作成
 
-### 2.2 管理者の同意
+環境ごとに API 用アプリ登録を1つ作成します。
 
-1. **API のアクセス許可** ページで **管理者の同意を与えます** をクリック
-2. **はい** をクリックして同意
+| 環境 | アプリ登録名の例 | 用途 |
+|------|-----------------|------|
+| dev | `DoyonChat-api-dev` | dev のバックエンド API |
+| prod | `DoyonChat-api-prod` | prod のバックエンド API |
 
-> テナント管理者が同意しないと、一般ユーザーはログイン時に同意画面が表示されます。
+1. **アプリの登録** → **新規登録** をクリック
+2. アプリ名を入力（例: `DoyonChat-api-dev`）
+3. シングルテナントを選択
+4. **リダイレクト URI は設定しない**
+5. 登録後、概要ページから API 用のクライアント ID を記録
 
-### 2.3 API の公開（Expose an API）【必須】
+API 用クライアント ID は `ENTRA_API_CLIENT_ID` として使用します。SPA 認証用の `ENTRA_CLIENT_ID` とは異なる値になります。
 
-バックエンド API をトークンで保護するには、アプリ登録自身のスコープを公開する必要があります。**`openid` / `profile` だけではアクセストークンの audience が Microsoft Graph になり、バックエンドの audience 検証が 401 で失敗します。**
+### 2.2 API の公開（Expose an API）
 
-1. アプリ登録の **API の公開** を開く
-2. **アプリケーション ID URI** を設定（既定の `api://<クライアントID>` のままで OK）
-3. **スコープの追加** をクリックし以下を入力:
+各環境の API 用アプリ登録で実施します。
+
+1. **API の公開**を開く
+2. **アプリケーション ID URI** を設定（既定の `api://<API 用クライアントID>` のままで OK）
+3. **スコープの追加**をクリックし、以下を入力:
    - スコープ名: `access_as_user`
    - 同意できるユーザー: **管理者とユーザー**
-   - 管理者の同意の表示名 / 説明: 任意（例: `DoyonChat API へのアクセス`）
+   - 管理者の同意の表示名 / 説明: `DoyonChat API へのアクセス`
    - 状態: **有効**
-4. **追加** をクリック
+4. **追加**をクリック
 
-フロントエンドは `api://<クライアントID>/access_as_user` スコープでトークンを取得し、バックエンドは audience `api://<クライアントID>` を検証します（コードに実装済み）。
+最終的な API スコープは次の形式です。
+
+```text
+api://<API 用クライアントID>/access_as_user
+```
+
+必要に応じて、API 用アプリ登録の **API の公開** → **承認済みクライアント アプリケーション**から、対応する SPA 認証用アプリのクライアント ID を追加し、`access_as_user` を選択します。これによりユーザーごとの追加同意を省略できます。
+
+### 2.3 SPA 認証用アプリに API 権限を追加
+
+対応する環境の SPA 認証用アプリに、同じ環境の API 用アプリへの委任されたアクセス許可を追加します。
+
+| SPA 認証用アプリ | 追加する API |
+|-----------------|-------------|
+| `DoyonChat-dev` | `DoyonChat-api-dev` |
+| `DoyonChat-prod` | `DoyonChat-api-prod` |
+
+1. SPA 認証用アプリを開く
+2. **API のアクセス許可** → **アクセス許可の追加**
+3. **API を使用している組織**を選択
+4. API 用アプリ名または API 用クライアント ID で検索
+5. 対応する API 用アプリを選択
+6. **委任されたアクセス許可** → `access_as_user` を選択
+7. **アクセス許可の追加**をクリック
+
+> **注意:** 「マイ API」に表示されない場合があります。その場合は **API を使用している組織**から検索してください。dev の SPA に prod の API を追加したり、prod の SPA に dev の API を追加したりしないでください。
+
+### 2.4 管理者の同意
+
+各 SPA 認証用アプリの **API のアクセス許可**ページで:
+
+1. **管理者の同意を与えます**をクリック
+2. **はい**をクリック
+3. 対応する API の `access_as_user` の状態が **付与済み**になることを確認
+
+### 2.5 Microsoft Graph のアクセス許可（任意）
+
+現在の DoyonChat は Microsoft Graph を直接呼び出していないため、`User.Read` などの Graph 権限は必須ではありません。ユーザープロフィールを Graph から取得する機能を追加する場合のみ、必要な委任されたアクセス許可を追加してください。
 
 ---
 
@@ -106,7 +148,8 @@
 
 ```env
 VITE_AUTH_ENABLED=true
-VITE_ENTRA_CLIENT_ID=<アプリケーション (クライアント) ID>
+VITE_ENTRA_CLIENT_ID=<dev SPA 認証用アプリのクライアントID>
+VITE_ENTRA_API_CLIENT_ID=<dev API 用アプリのクライアントID>
 VITE_ENTRA_TENANT_ID=<ディレクトリ (テナント) ID>
 VITE_ENTRA_REDIRECT_URI=http://localhost:5173
 VITE_API_URL=http://localhost:3000/api
@@ -120,7 +163,7 @@ VITE_API_URL=http://localhost:3000/api
 PORT=3000
 AUTH_ENABLED=true
 ENTRA_TENANT_ID=<ディレクトリ (テナント) ID>
-ENTRA_CLIENT_ID=<アプリケーション (クライアント) ID>
+ENTRA_API_CLIENT_ID=<dev API 用アプリのクライアントID>
 FRONTEND_URL=http://localhost:5173
 ```
 
@@ -152,7 +195,8 @@ AUTH_ENABLED=false
 
 | 変数 | 値 |
 |------|-----|
-| `ENTRA_CLIENT_ID` | アプリケーション (クライアント) ID |
+| `ENTRA_CLIENT_ID` | 各環境の SPA 認証用アプリのクライアント ID |
+| `ENTRA_API_CLIENT_ID` | 各環境の API 用アプリのクライアント ID |
 | `ENTRA_TENANT_ID` | ディレクトリ (テナント) ID |
 | `AUTH_ENABLED` | `true` |
 | `FRONTEND_URL` | `https://<name>.azurestaticapps.net`（CI/CD で自動設定済み） |
@@ -201,15 +245,18 @@ AUTH_ENABLED=false
 
 #### 5.3.3 環境ごとの Variables の登録
 
-各 Environment の **Environment variables** に以下を登録（認証用アプリ登録は環境ごとに異なるため、環境スコープで設定）:
+各 Environment の **Environment variables** に以下を登録（SPA 認証用と API 用のアプリ登録が環境ごとに異なるため、環境スコープで設定）:
 
 | Variable | dev の値 | prod の値 |
 |----------|---------|----------|
 | `AUTH_ENABLED` | `true` | `true` |
-| `ENTRA_CLIENT_ID` | dev 用アプリ登録のクライアント ID | prod 用アプリ登録のクライアント ID |
+| `ENTRA_CLIENT_ID` | dev SPA 認証用アプリのクライアント ID | prod SPA 認証用アプリのクライアント ID |
+| `ENTRA_API_CLIENT_ID` | dev API 用アプリのクライアント ID | prod API 用アプリのクライアント ID |
 | `ENTRA_TENANT_ID` | テナント ID | テナント ID |
 
 > **注意:** Variables 未登録の場合は `AUTH_ENABLED=false` としてデプロイされ、認証なしで動作します。Variables 登録後に再デプロイすると認証が有効化されます。
+>
+> `ENTRA_CLIENT_ID` は SPA 認証用、`ENTRA_API_CLIENT_ID` は API 用です。同じ値を設定しないでください。
 
 #### 5.3.4 デプロイの流れ
 
@@ -221,8 +268,10 @@ AUTH_ENABLED=false
 デプロイ時の動作:
 
 - **インフラ:** `infra/parameters/<環境>.parameters.json` を使用してデプロイ
-- **フロントエンド:** ビルド時に環境スコープ Variables から `VITE_AUTH_ENABLED` / `VITE_ENTRA_CLIENT_ID` / `VITE_ENTRA_TENANT_ID` を埋め込み。`VITE_ENTRA_REDIRECT_URI` にはインフラ出力の `frontendUrl`（環境ごとの SWA URL）が自動設定されます
-- **バックエンド:** 環境ごとの App Service の App Settings に `AUTH_ENABLED` / `ENTRA_TENANT_ID` / `ENTRA_CLIENT_ID` を設定
+- **フロントエンド:** ビルド時に環境スコープ Variables から `VITE_AUTH_ENABLED` / `VITE_ENTRA_CLIENT_ID` / `VITE_ENTRA_API_CLIENT_ID` / `VITE_ENTRA_TENANT_ID` を埋め込み。`VITE_ENTRA_REDIRECT_URI` にはインフラ出力の `frontendUrl`（環境ごとの SWA URL）が自動設定されます
+- **バックエンド:** 環境ごとの App Service の App Settings に `AUTH_ENABLED` / `ENTRA_TENANT_ID` / `ENTRA_API_CLIENT_ID` を設定
+
+認証が有効な場合、`ENTRA_CLIENT_ID` / `ENTRA_API_CLIENT_ID` / `ENTRA_TENANT_ID` のいずれかが未設定だと deploy.yml がデプロイを失敗させます。未設定のまま起動してから401になることを防ぐためのチェックです。
 
 #### 5.3.5 各環境の URL の確認方法
 
@@ -241,8 +290,8 @@ AUTH_ENABLED=false
 
 ### 401 Unauthorized（バックエンド）
 
-- **原因:** トークンの audience (`aud`) が一致しない
-- **対策:** `ENTRA_CLIENT_ID` がアプリ登録のクライアント ID と一致しているか確認
+- **原因:** トークンの audience (`aud`) が API 用アプリの audience と一致しない
+- **対策:** `ENTRA_API_CLIENT_ID` が API 用アプリのクライアント ID と一致し、トークンの audience が `api://<ENTRA_API_CLIENT_ID>` になっているか確認
 
 ### 401 Unauthorized（issuer 不一致）
 
@@ -256,10 +305,13 @@ AUTH_ENABLED=false
 
 ### トークンの取得に失敗
 
-- **原因:** `acquireTokenSilent` が失敗（アカウントが見つからない、同意されていない）
+- **原因:** API 用アプリのスコープが未公開、SPA 認証用アプリに API 権限が未追加、または同意されていない
 - **対策:**
+  - 対応する環境の API 用アプリに `access_as_user` が公開されているか確認
+  - SPA 認証用アプリの **API を使用している組織**に API 用アプリが表示されるか確認
+  - SPA 認証用アプリに `access_as_user` の委任されたアクセス許可を追加
+  - API のアクセス許可に管理者の同意が与えられているか確認
   - `msalInstance.getAllAccounts()` でアカウントが取得できるか確認
-  - API アクセス許可に管理者の同意が与えられているか確認
 
 ---
 

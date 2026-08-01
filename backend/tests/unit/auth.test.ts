@@ -18,7 +18,7 @@ describe('auth middleware', () => {
   it('should allow /api/health without token', async () => {
     process.env.AUTH_ENABLED = 'true';
     process.env.ENTRA_TENANT_ID = 'test-tenant';
-    process.env.ENTRA_CLIENT_ID = 'test-client';
+    process.env.ENTRA_API_CLIENT_ID = 'test-api-client';
 
     const app = express();
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
@@ -36,7 +36,7 @@ describe('auth middleware', () => {
   it('should reject requests without token when auth is enabled', async () => {
     process.env.AUTH_ENABLED = 'true';
     process.env.ENTRA_TENANT_ID = 'test-tenant';
-    process.env.ENTRA_CLIENT_ID = 'test-client';
+    process.env.ENTRA_API_CLIENT_ID = 'test-api-client';
 
     const app = express();
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
@@ -53,7 +53,7 @@ describe('auth middleware', () => {
   it('should set dev-user when auth is disabled', async () => {
     process.env.AUTH_ENABLED = 'false';
     process.env.ENTRA_TENANT_ID = 'test-tenant';
-    process.env.ENTRA_CLIENT_ID = 'test-client';
+    process.env.ENTRA_API_CLIENT_ID = 'test-api-client';
 
     const app = express();
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
