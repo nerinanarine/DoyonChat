@@ -1,7 +1,6 @@
 param location string
 param tags object
 param staticWebAppName string
-param apiUrl string
 
 resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
   name: staticWebAppName

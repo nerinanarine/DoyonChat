@@ -97,9 +97,7 @@ module appService './modules/appService.bicep' = {
     cosmosDbEndpoint: cosmosdb.outputs.cosmosDbEndpoint
     cosmosDbKey: cosmosDbKey != '' ? cosmosDbKey : cosmosdb.outputs.cosmosDbPrimaryKey
     openCodeGoApiKey: openCodeGoApiKey
-    frontendUrl: environment == 'dev'
-      ? 'http://localhost:5173'
-      : 'https://${staticWebAppName}.azurestaticapps.net'
+    frontendUrl: staticWebApp.outputs.staticWebAppUrl
   }
 }
 
@@ -109,7 +107,6 @@ module staticWebApp './modules/staticWebApp.bicep' = {
     location: 'eastasia'
     tags: tags
     staticWebAppName: staticWebAppName
-    apiUrl: appService.outputs.apiAppUrl
   }
 }
 
