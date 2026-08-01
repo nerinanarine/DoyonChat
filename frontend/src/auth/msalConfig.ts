@@ -19,6 +19,8 @@ const msalConfig: Configuration = {
 
 export const msalInstance = new PublicClientApplication(msalConfig);
 
+export const apiScope = `api://${clientId}/access_as_user`;
+
 export const loginRequest = {
-  scopes: ['openid', 'profile'],
+  scopes: [apiScope],
 };

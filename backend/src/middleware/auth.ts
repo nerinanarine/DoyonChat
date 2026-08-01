@@ -25,7 +25,7 @@ const jwtMiddleware = expressjwt({
   secret: getVerificationKey,
   algorithms: ['RS256'],
   issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
-  audience: clientId,
+  audience: `api://${clientId}`,
 }).unless({
   path: ['/api/health'],
 });
