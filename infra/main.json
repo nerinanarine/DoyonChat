@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "5458700306580239949"
+      "templateHash": "8535122508293315050"
     }
   },
   "parameters": {
@@ -514,7 +514,9 @@
           "openCodeGoApiKey": {
             "value": "[parameters('openCodeGoApiKey')]"
           },
-          "frontendUrl": "[if(equals(parameters('environment'), 'dev'), createObject('value', 'http://localhost:5173'), createObject('value', format('https://{0}.azurestaticapps.net', variables('staticWebAppName'))))]"
+          "frontendUrl": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'staticwebapp-module'), '2025-04-01').outputs.staticWebAppUrl.value]"
+          }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -654,7 +656,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'cosmosdb-module')]"
+        "[resourceId('Microsoft.Resources/deployments', 'cosmosdb-module')]",
+        "[resourceId('Microsoft.Resources/deployments', 'staticwebapp-module')]"
       ]
     },
     {
@@ -675,9 +678,6 @@
           },
           "staticWebAppName": {
             "value": "[variables('staticWebAppName')]"
-          },
-          "apiUrl": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppUrl.value]"
           }
         },
         "template": {
@@ -687,7 +687,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "5315091231889093505"
+              "templateHash": "12232000456200102999"
             }
           },
           "parameters": {
@@ -698,9 +698,6 @@
               "type": "object"
             },
             "staticWebAppName": {
-              "type": "string"
-            },
-            "apiUrl": {
               "type": "string"
             }
           },
@@ -729,10 +726,7 @@
             }
           }
         }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'appservice-module')]"
-      ]
+      }
     }
   ],
   "outputs": {
