@@ -20,6 +20,8 @@ Before implementing:
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
+- Identify the applicable backlog item under `specs/000_backlog/items/` and implement it according to the corresponding feature `specs/*/plan.md`. If the backlog item has no plan, or the requested work conflicts with the plan, stop and clarify before coding.
+- Keep the implementation, tests, and verification steps aligned with that `plan.md`; update the plan or backlog status only when the user requests or the task requires it.
 
 ## 2. Simplicity First
 

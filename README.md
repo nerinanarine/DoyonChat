@@ -30,9 +30,9 @@
 
 | 技術 | 用途 |
 |------|------|
-| Node.js 20 + Express | API サーバー |
+| Node.js 20 + Azure Functions v4 | API サーバー（Flex Consumption） |
 | TypeScript | 型安全な開発 |
-| esbuild | バンドル（`--packages=external`） |
+| @azure/functions | HTTPトリガー・HTTP Streams |
 | @azure/cosmos | CosmosDB 接続 |
 
 ### インフラストラクチャ
@@ -40,7 +40,7 @@
 | サービス | 用途 |
 |---------|------|
 | Azure Static Web Apps | フロントエンドホスティング |
-| Azure App Service（Linux） | バックエンドホスティング |
+| Azure Functions Flex Consumption（Linux） | バックエンドホスティング |
 | Azure CosmosDB | 会話・メッセージの永続化 |
 | Bicep | IaC（インフラ構成のコード化） |
 
@@ -62,12 +62,18 @@
 │   │   └── types/        # TypeScript 型定義
 │   └── package.json
 │
-├── backend/            # Express + TypeScript バックエンド
+├── backend/            # Express + TypeScript（移行中の旧バックエンド）
 │   ├── src/
 │   │   ├── routes/       # API エンドポイント
 │   │   ├── services/     # ビジネスロジック
 │   │   ├── db/           # CosmosDB 接続
 │   │   └── types/        # TypeScript 型定義
+│   └── package.json
+│
+├── functions/          # Azure Functions v4 + TypeScript バックエンド
+│   ├── src/functions/     # HTTPトリガー
+│   ├── src/services/     # ビジネスロジック
+│   ├── tests/            # Functionsテスト
 │   └── package.json
 │
 ├── infra/              # Azure Bicep IaC
@@ -78,6 +84,7 @@
 ├── specs/              # 仕様書・設計書
 │   ├── 000_backlog/      # 未実装機能のバックログ
 │   ├── 001-chat-app/     # Phase 1（MVP）仕様
+│   ├── 006-user-isolation-functions/ # ユーザー分離・Functions移行
 │   └── 002-chat-app-phase2/  # Phase 2 仕様
 │
 └── .github/workflows/  # GitHub Actions CI/CD
@@ -89,6 +96,7 @@
 
 - Node.js 20+
 - npm 10+
+- Azure Functions Core Tools v4
 - Azure CosmosDB アカウント（または CosmosDB Emulator）
 - OpenCode Go API キー
 
@@ -119,7 +127,19 @@ cp .env.example .env
 npm run dev
 ```
 
-### 3. フロントエンドのセットアップ
+### 3. Functions バックエンドのセットアップ
+
+```bash
+cd ../functions
+npm install
+cp local.settings.json.example local.settings.json
+npm run build
+func start
+```
+
+Functionsは http://localhost:7071 で起動します。`local.settings.json` の `AUTH_ENABLED=false` では認証なしの `dev-user` モードで動作します。
+
+### 4. フロントエンドのセットアップ
 
 ```bash
 cd ../frontend
@@ -128,23 +148,31 @@ npm install
 # 環境変数の設定
 cp .env.example .env
 # .env を編集して:
-#   VITE_API_URL=http://localhost:3000/api
+#   VITE_API_URL=http://localhost:7071/api
 
 # 開発サーバー起動
 npm run dev
 ```
 
-フロントエンドは http://localhost:5173 で、バックエンドは http://localhost:3000 で起動します。
+フロントエンドは http://localhost:5173、Functionsバックエンドは http://localhost:7071 で起動します。旧Expressバックエンドを利用する場合は `VITE_API_URL=http://localhost:3000/api` に戻してください。
 
 ## デプロイ
 
-詳細なデプロイ手順は [specs/001-chat-app/quickstart.ja.md](specs/001-chat-app/quickstart.ja.md) を参照してください。
+詳細なFunctions移行・セットアップ手順は [specs/006-user-isolation-functions/setup-guide.md](specs/006-user-isolation-functions/setup-guide.md) を参照してください。MVPの初期手順は [specs/001-chat-app/quickstart.ja.md](specs/001-chat-app/quickstart.ja.md) を参照してください。
 
 ### 簡易デプロイ（Bash）
 
 ```bash
-# バックエンド
-cd backend && npm run build
+# Functions バックエンド（Flex Consumption / One Deploy用パッケージ）
+cd functions
+npm ci
+npm run build
+npm prune --omit=dev
+zip -r functions-deploy.zip host.json package.json package-lock.json dist node_modules
+# GitHub Actionsでは Azure/functions-action@v1 でデプロイします
+
+# 移行前の旧Express/App Serviceへ手動デプロイする場合
+cd ../backend && npm run build
 python3 -c "
 import zipfile, os
 with zipfile.ZipFile('deploy.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -172,8 +200,8 @@ npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token
 
 | ワークフロー | トリガー | 内容 |
 |-------------|---------|------|
-| `ci.yml` | PR（opened, synchronize, reopened） | バックエンドのテスト (`npm test`)、インフラ検証 (`bicep build` + `validate`) |
-| `deploy.yml` | main ブランチへの push / `workflow_dispatch` | テスト → インフラデプロイ → バックエンド + フロントエンドの自動デプロイ |
+| `ci.yml` | PR（opened, synchronize, reopened） | backend / Functionsテスト、インフラ検証 |
+| `deploy.yml` | main ブランチへの push / `workflow_dispatch` | テスト → インフラ → Functions → フロントエンドの自動デプロイ |
 
 ### CI ステータス
 
@@ -197,7 +225,7 @@ npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token
 | Variable | 説明 |
 |----------|------|
 | `AZURE_LOCATION` | Azure リージョン（例: `japaneast`） |
-| `APP_SERVICE_NAME` | App Service 名 |
+| `FUNCTION_APP_NAME` | Function App 名（インフラ出力を利用） |
 | `STATIC_WEB_APP_NAME` | Static Web App 名 |
 
 ### セットアップ手順

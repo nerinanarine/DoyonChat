@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "8535122508293315050"
+      "templateHash": "2692279099585162796"
     }
   },
   "parameters": {
@@ -75,12 +75,38 @@
       "metadata": {
         "description": "Azure AD object ID for Key Vault access"
       }
+    },
+    "authEnabled": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "Enable Entra ID authentication for the Functions app"
+      }
+    },
+    "entraTenantId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Entra ID tenant ID used by the API authentication verifier"
+      }
+    },
+    "entraApiClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Entra ID API application client ID used as the JWT audience"
+      }
     }
   },
   "variables": {
     "cosmosDbAccountName": "[format('cosmos-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "appServicePlanName": "[format('asp-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "apiAppName": "[format('api-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "functionPlanName": "[format('fcp-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "functionAppName": "[format('func-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "functionsStorageAccountName": "[format('st{0}{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "functionsDeploymentContainerName": "function-deploy",
+    "cosmosDbRequired": "[if(equals(parameters('environment'), 'dev'), 'false', 'true')]",
     "staticWebAppName": "[format('swa-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "keyVaultName": "[format('kv-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "appInsightsName": "[format('appi-{0}', parameters('environment'))]",
@@ -727,6 +753,290 @@
           }
         }
       }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "functions-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "functionPlanName": {
+            "value": "[variables('functionPlanName')]"
+          },
+          "functionAppName": {
+            "value": "[variables('functionAppName')]"
+          },
+          "storageAccountName": {
+            "value": "[variables('functionsStorageAccountName')]"
+          },
+          "deploymentContainerName": {
+            "value": "[variables('functionsDeploymentContainerName')]"
+          },
+          "cosmosDbEndpoint": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmosdb-module'), '2025-04-01').outputs.cosmosDbEndpoint.value]"
+          },
+          "cosmosDbKey": "[if(not(equals(parameters('cosmosDbKey'), '')), createObject('value', parameters('cosmosDbKey')), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'cosmosdb-module'), '2025-04-01').outputs.cosmosDbPrimaryKey.value))]",
+          "openCodeGoApiKey": {
+            "value": "[parameters('openCodeGoApiKey')]"
+          },
+          "authEnabled": {
+            "value": "[parameters('authEnabled')]"
+          },
+          "entraTenantId": {
+            "value": "[parameters('entraTenantId')]"
+          },
+          "entraApiClientId": {
+            "value": "[parameters('entraApiClientId')]"
+          },
+          "frontendUrl": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'staticwebapp-module'), '2025-04-01').outputs.staticWebAppUrl.value]"
+          },
+          "cosmosDbRequired": {
+            "value": "[variables('cosmosDbRequired')]"
+          },
+          "appInsightsConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-module'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "11974991562340328266"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "functionPlanName": {
+              "type": "string"
+            },
+            "functionAppName": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "deploymentContainerName": {
+              "type": "string",
+              "defaultValue": "function-deploy"
+            },
+            "nodeVersion": {
+              "type": "string",
+              "defaultValue": "20"
+            },
+            "maximumInstanceCount": {
+              "type": "int",
+              "defaultValue": 100
+            },
+            "instanceMemoryMB": {
+              "type": "int",
+              "defaultValue": 2048
+            },
+            "cosmosDbEndpoint": {
+              "type": "string"
+            },
+            "cosmosDbKey": {
+              "type": "securestring"
+            },
+            "cosmosDbDatabase": {
+              "type": "string",
+              "defaultValue": "chatdb"
+            },
+            "openCodeGoApiKey": {
+              "type": "securestring"
+            },
+            "openCodeGoModel": {
+              "type": "string",
+              "defaultValue": "kimi-k2.6"
+            },
+            "authEnabled": {
+              "type": "string",
+              "defaultValue": "false"
+            },
+            "entraTenantId": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "entraApiClientId": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "frontendUrl": {
+              "type": "string"
+            },
+            "cosmosDbRequired": {
+              "type": "string",
+              "defaultValue": "false"
+            },
+            "appInsightsConnectionString": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "supportsHttpsTrafficOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('deploymentContainerName'))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2024-04-01",
+              "name": "[parameters('functionPlanName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "functionapp",
+              "sku": {
+                "name": "FC1",
+                "tier": "FlexConsumption"
+              },
+              "properties": {
+                "reserved": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2024-04-01",
+              "name": "[parameters('functionAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "functionapp,linux",
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('functionPlanName'))]",
+                "httpsOnly": true,
+                "siteConfig": {
+                  "minTlsVersion": "1.2",
+                  "cors": {
+                    "allowedOrigins": [
+                      "[parameters('frontendUrl')]"
+                    ]
+                  }
+                },
+                "functionAppConfig": {
+                  "deployment": {
+                    "storage": {
+                      "type": "blobContainer",
+                      "value": "[format('{0}{1}', reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').primaryEndpoints.blob, parameters('deploymentContainerName'))]",
+                      "authentication": {
+                        "type": "StorageAccountConnectionString",
+                        "storageAccountConnectionStringName": "AzureWebJobsStorage"
+                      }
+                    }
+                  },
+                  "runtime": {
+                    "name": "node",
+                    "version": "[parameters('nodeVersion')]"
+                  },
+                  "scaleAndConcurrency": {
+                    "maximumInstanceCount": "[parameters('maximumInstanceCount')]",
+                    "instanceMemoryMB": "[parameters('instanceMemoryMB')]",
+                    "alwaysReady": []
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('functionPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2024-04-01",
+              "name": "[format('{0}/{1}', parameters('functionAppName'), 'appsettings')]",
+              "properties": {
+                "AzureWebJobsStorage": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').keys[0].value, environment().suffixes.storage)]",
+                "FUNCTIONS_WORKER_RUNTIME": "node",
+                "FUNCTIONS_EXTENSION_VERSION": "~4",
+                "COSMOSDB_ENDPOINT": "[parameters('cosmosDbEndpoint')]",
+                "COSMOSDB_KEY": "[parameters('cosmosDbKey')]",
+                "COSMOSDB_DATABASE": "[parameters('cosmosDbDatabase')]",
+                "COSMOSDB_REQUIRED": "[parameters('cosmosDbRequired')]",
+                "OPENCODE_GO_API_KEY": "[parameters('openCodeGoApiKey')]",
+                "OPENCODE_GO_MODEL": "[parameters('openCodeGoModel')]",
+                "AUTH_ENABLED": "[parameters('authEnabled')]",
+                "ENTRA_TENANT_ID": "[parameters('entraTenantId')]",
+                "ENTRA_API_CLIENT_ID": "[parameters('entraApiClientId')]",
+                "FRONTEND_URL": "[parameters('frontendUrl')]",
+                "APPLICATIONINSIGHTS_CONNECTION_STRING": "[parameters('appInsightsConnectionString')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "functionAppName": {
+              "type": "string",
+              "value": "[parameters('functionAppName')]"
+            },
+            "functionAppUrl": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2024-04-01').defaultHostName)]"
+            },
+            "functionPlanName": {
+              "type": "string",
+              "value": "[parameters('functionPlanName')]"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'appinsights-module')]",
+        "[resourceId('Microsoft.Resources/deployments', 'cosmosdb-module')]",
+        "[resourceId('Microsoft.Resources/deployments', 'staticwebapp-module')]"
+      ]
     }
   ],
   "outputs": {
@@ -737,6 +1047,26 @@
     "apiUrl": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppUrl.value]"
+    },
+    "functionAppName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-module'), '2025-04-01').outputs.functionAppName.value]"
+    },
+    "functionApiUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-module'), '2025-04-01').outputs.functionAppUrl.value]"
+    },
+    "functionPlanName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-module'), '2025-04-01').outputs.functionPlanName.value]"
+    },
+    "legacyApiAppName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppName.value]"
+    },
+    "legacyAppServicePlanName": {
+      "type": "string",
+      "value": "[variables('appServicePlanName')]"
     },
     "frontendUrl": {
       "type": "string",

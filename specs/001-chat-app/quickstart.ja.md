@@ -66,15 +66,29 @@ FRONTEND_URL=http://localhost:5173
 cp frontend/.env.example frontend/.env
 
 # frontend/.env を編集
-VITE_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:7071/api
 ```
+
+### 3.5 Azure Functions バックエンドの起動
+
+```bash
+cd functions
+npm ci
+cp local.settings.json.example local.settings.json
+npm run build
+func start
+```
+
+- Functions: http://localhost:7071
+- `local.settings.json` はGitへコミットしない
+- `AUTH_ENABLED=false` では `dev-user` の共有モードで動作する
 
 ### 4. 開発サーバーの起動
 
 ```bash
-# ターミナル1 - バックエンド
-cd backend
-npm run dev
+# ターミナル1 - Azure Functions
+cd functions
+func start
 
 # ターミナル2 - フロントエンド
 cd frontend
@@ -82,7 +96,7 @@ npm run dev
 ```
 
 - フロントエンド: http://localhost:5173
-- バックエンド: http://localhost:3000
+- Functionsバックエンド: http://localhost:7071
 
 ### 5. テストの実行
 
@@ -161,7 +175,7 @@ az staticwebapp secrets list \
 
 | 変数名 | 値の例 | 説明 |
 |-------|--------|------|
-| `VITE_API_URL` | `https://api-staging.azurewebsites.net/api` | フロントエンドからの API 呼び出し先 |
+| `VITE_API_URL` | `https://func-staging.azurewebsites.net/api` | フロントエンドからの API 呼び出し先 |
 
 > **注意:** `VITE_API_URL` は各環境ごとに設定してください。ステージング環境の URL はインフラデプロイ後に確定するため、初回デプロイ後に `Settings > Environments > staging > Environment variables` で設定してください。
 
@@ -272,17 +286,34 @@ Bicep でインフラをデプロイした後、バックエンドとフロン�
 インフラデプロイ後、以下の値を確認してください。
 
 ```bash
-# App Service の名前を確認
-az webapp list --resource-group rg-opencode-chat-dev --query [].name -o tsv
+# Function App の名前を確認
+az functionapp list --resource-group rg-opencode-chat-dev --query [].name -o tsv
 
 # Static Web Apps の名前を確認
 az staticwebapp list --resource-group rg-opencode-chat-dev --query [].name -o tsv
 
-# App Service の URL を確認
-az webapp list --resource-group rg-opencode-chat-dev --query [].defaultHostName -o tsv
+# Function App の URL を確認
+az functionapp list --resource-group rg-opencode-chat-dev --query [].defaultHostName -o tsv
 ```
 
-#### バックエンドのビルドとデプロイ
+#### Functions バックエンドのビルドとデプロイ
+
+Flex Consumptionでは、Functions Core ToolsまたはGitHub Actionsの`Azure/functions-action@v1`を使用します。
+
+```bash
+cd functions
+npm ci
+npm run build
+func azure functionapp publish <function-app-name> --no-build
+```
+
+確認:
+
+```bash
+curl https://<function-app-name>.azurewebsites.net/api/health
+```
+
+#### 移行期間中の旧App Serviceのビルドとデプロイ
 
 **1. ビルド（ローカルで実行）**
 

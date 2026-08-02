@@ -1,0 +1,7 @@
+.git*
+.vscode
+local.settings.json
+tests
+coverage
+dist/**/*.map
+*.test.ts

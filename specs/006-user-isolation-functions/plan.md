@@ -103,7 +103,8 @@ Functionsの組み込みFunction Key認証は使用しない。HTTPトリガー�
 ```text
 specs/006-user-isolation-functions/
 ├── spec.md
-└── plan.md
+├── plan.md
+└── setup-guide.md
 ```
 
 ### Target Source Code
@@ -114,12 +115,15 @@ functions/
 ├── package.json
 ├── package-lock.json
 ├── tsconfig.json
+├── jest.config.js
 ├── .funcignore
+├── .gitignore
 ├── local.settings.json.example
 ├── src/
 │   ├── index.ts
 │   ├── functions/
 │   │   ├── health.ts
+│   │   ├── request.ts
 │   │   ├── models.ts
 │   │   ├── conversations.ts
 │   │   ├── messages.ts
@@ -214,28 +218,33 @@ npm test -- --runInBand
 
 ### Phase 2: Functionsプロジェクトの作成
 
+**Status**: 完了（`func start` によるhealth確認済み）
+
 **Files**:
 
 - `functions/package.json`
 - `functions/tsconfig.json`
+- `functions/jest.config.js`
 - `functions/host.json`
 - `functions/.funcignore`
+- `functions/.gitignore`
 - `functions/local.settings.json.example`
 - `functions/src/index.ts`
 - `functions/src/functions/health.ts`
+- `functions/src/functions/request.ts`
 - `functions/src/types/index.ts`
 - `functions/src/db/index.ts`
 
 **Tasks**:
 
-- [ ] `@azure/functions` v4とNode.js 20用の依存関係を定義
-- [ ] TypeScriptの`rootDir`/`outDir`とFunctions v4のentry pointを定義
-- [ ] `host.json`の`routePrefix: "api"`を設定
-- [ ] `local.settings.json`からCosmos、OpenCode、Entra、CORS設定を読み込めるようにする
-- [ ] `local.settings.json`本体をGit対象外にする
-- [ ] 最小の`health.ts`を実装し、Functionsが起動直後からhealthを提供できるようにする
-- [ ] `src/index.ts`で全Function登録と`app.setup({ enableHttpStream: true })`を行う
-- [ ] Functions用DBクライアントを既存設定と同じ接続情報で実装
+- [x] `@azure/functions` v4とNode.js 20用の依存関係を定義
+- [x] TypeScriptの`rootDir`/`outDir`とFunctions v4のentry pointを定義
+- [x] `host.json`の`routePrefix: "api"`を設定
+- [x] `local.settings.json`からCosmos、OpenCode、Entra、CORS設定を読み込めるようにする
+- [x] `local.settings.json`本体をGit対象外にする
+- [x] 最小の`health.ts`を実装し、Functionsが起動直後からhealthを提供できるようにする
+- [x] `src/index.ts`で全Function登録と`app.setup({ enableHttpStream: true })`を行う
+- [x] Functions用DBクライアントを既存設定と同じ接続情報で実装
 
 **Verification**:
 
@@ -249,6 +258,8 @@ curl http://localhost:7071/api/health
 
 ### Phase 3: Functionsサービス・認証の移植
 
+**Status**: 完了（ローカルテスト済み、staging実トークン検証待ち）
+
 **Files**:
 
 - `functions/src/services/conversationService.ts`
@@ -259,16 +270,16 @@ curl http://localhost:7071/api/health
 
 **Tasks**:
 
-- [ ] Express非依存のConversationサービスを移植
-- [ ] `userId`スコープと旧匿名データ除外を移植
-- [ ] `addMessage`時の会話所有権チェックを移植
-- [ ] OpenCode Go上流SSEの読み取りを移植
-- [ ] `HttpRequest`からBearer Tokenを抽出
-- [ ] 既存と同じissuer、audience、JWKS、RS256ルールでJWTを検証
-- [ ] `AUTH_ENABLED=false`の`dev-user`分岐を実装
-- [ ] `COSMOSDB_REQUIRED=true`時はCosmos DB接続失敗でin-memory fallbackせず、会話系APIをエラーにする
-- [ ] `COSMOSDB_REQUIRED=false`時だけローカル開発用in-memory fallbackを許可する
-- [ ] 401、404、400、500のエラー形式を既存と合わせる
+- [x] Express非依存のConversationサービスを移植
+- [x] `userId`スコープと旧匿名データ除外を移植
+- [x] `addMessage`時の会話所有権チェックを移植
+- [x] OpenCode Go上流SSEの読み取りを移植
+- [x] `HttpRequest`からBearer Tokenを抽出
+- [x] 既存と同じissuer、audience、JWKS、RS256ルールでJWTを検証
+- [x] `AUTH_ENABLED=false`の`dev-user`分岐を実装
+- [x] `COSMOSDB_REQUIRED=true`時はCosmos DB接続失敗でin-memory fallbackせず、会話系APIをエラーにする
+- [x] `COSMOSDB_REQUIRED=false`時だけローカル開発用in-memory fallbackを許可する
+- [x] 401、404、400、500のエラー形式を既存と合わせる
 
 **Verification**:
 
@@ -280,6 +291,8 @@ curl http://localhost:7071/api/health
 
 ### Phase 4: Functions HTTPハンドラーの実装
 
+**Status**: 完了（直接ハンドラー契約テストと`func start`実API確認済み）
+
 **Files**:
 
 - `functions/src/functions/health.ts`
@@ -290,14 +303,14 @@ curl http://localhost:7071/api/health
 
 **Tasks**:
 
-- [ ] Phase 2の最小health Functionを正式なAPI契約・認証除外ルールとして検証する
-- [ ] `GET /api/models`を認証付きFunctionとして登録
-- [ ] 会話一覧・作成・詳細・削除・モデル変更を登録
-- [ ] `GET /api/conversations/:id/messages`を登録
-- [ ] `POST /api/chat`を登録
-- [ ] すべての会話ID操作でuserIdをサービスへ渡す
-- [ ] ルートパラメーター `{id}`を既存APIの`:id`と対応させる
-- [ ] HTTPレスポンスのステータス・JSON形式を既存と合わせる
+- [x] Phase 2の最小health Functionを正式なAPI契約・認証除外ルールとして検証する
+- [x] `GET /api/models`を認証付きFunctionとして登録
+- [x] 会話一覧・作成・詳細・削除・モデル変更を登録
+- [x] `GET /api/conversations/:id/messages`を登録
+- [x] `POST /api/chat`を登録
+- [x] すべての会話ID操作でuserIdをサービスへ渡す
+- [x] ルートパラメーター `{id}`を既存APIの`:id`と対応させる
+- [x] HTTPレスポンスのステータス・JSON形式を既存と合わせる
 
 **Verification**:
 
@@ -308,37 +321,41 @@ curl http://localhost:7071/api/health
 
 ### Phase 5: Functions SSE実装
 
+**Status**: ローカル完了、stagingでの230秒計測待ち
+
 **Files**:
 
 - `functions/src/functions/chat.ts`
 - `functions/src/services/opencodeGo.ts`
-- `functions/tests/unit/chat.test.ts`
+- `functions/tests/integration/api.test.ts`
 - `functions/tests/integration/sse.test.ts`
 
 **Tasks**:
 
-- [ ] `app.setup({ enableHttpStream: true })`を有効化
-- [ ] Functionsの`ReadableStream`へSSEイベントを書き込む
-- [ ] `Content-Type`、`Cache-Control`、`Connection`を設定
-- [ ] OpenCode Goのchunkを既存`content`イベントへ変換
-- [ ] 完了時に`done:true`を送信
-- [ ] ストリーム完了後にassistantメッセージを所有ユーザーとして保存
-- [ ] OpenCode Goエラー時の既存エラーイベントを維持
-- [ ] 最初のチャンク受信時刻、最終イベント受信時刻、総応答時間を計測できるようにする
+- [x] `app.setup({ enableHttpStream: true })`を有効化
+- [x] Functionsの`AsyncIterable<Uint8Array>`へSSEイベントを書き込む
+- [x] `Content-Type`、`Cache-Control`、`Connection`を設定
+- [x] OpenCode Goのchunkを既存`content`イベントへ変換
+- [x] 完了時に`done:true`を送信
+- [x] ストリーム完了後にassistantメッセージを所有ユーザーとして保存
+- [x] OpenCode Goエラー時の既存エラーイベントを維持
+- [x] 最初のチャンク受信時刻、最終イベント受信時刻、総応答時間を計測できるようにする
 - [ ] 230秒以内の応答をステージングで確認する
 - [ ] heartbeatで230秒の総応答時間制約を回避しようとしない。必要性が判明した場合は、プロキシのアイドル対策として別途検証する
 
 **Verification**:
 
-- [ ] 最初のSSEチャンクを受信できる
-- [ ] 最初のチャンク受信時刻（TTFT）を記録できる
-- [ ] 複数chunkが順番どおり届く
-- [ ] `done:true`が1回送信される
-- [ ] 最終イベントと総応答時間を記録できる
-- [ ] assistantメッセージがCosmos DBへ保存される
-- [ ] frontend `chatApi.ts`を変更せずに受信できる
+- [x] 最初のSSEチャンクを受信できる
+- [x] 最初のチャンク受信時刻（TTFT）を記録できる
+- [x] 複数chunkが順番どおり届く
+- [x] `done:true`が1回送信される
+- [x] 最終イベントと総応答時間を記録できる
+- [x] assistantメッセージがCosmos DBへ保存される
+- [x] frontend `chatApi.ts`を変更せずに受信できる
 
 ### Phase 6: Functionsテストとローカル契約テスト
+
+**Status**: ローカル完了。Express/Functions自動差分比較は未実施
 
 **Files**:
 
@@ -349,12 +366,12 @@ curl http://localhost:7071/api/health
 
 **Tasks**:
 
-- [ ] ハンドラー単体テストを追加
-- [ ] 認証・所有権・旧匿名データのテストを追加
-- [ ] 全APIのHTTP契約テストを追加
-- [ ] SSEストリームの契約テストを追加
-- [ ] Cosmos DBとOpenCode Goをモック化
-- [ ] `func start`を使ったローカルスモーク手順を整備
+- [x] ハンドラー単体テストを追加
+- [x] 認証・所有権・旧匿名データのテストを追加
+- [x] 全APIのHTTP契約テストを追加
+- [x] SSEストリームの契約テストを追加
+- [x] Cosmos DBとOpenCode Goをモック化
+- [x] `func start`を使ったローカルスモーク手順を整備
 - [ ] 既存ExpressとFunctionsのレスポンス差分を確認
 
 **Verification**:
@@ -368,6 +385,8 @@ func start
 
 ### Phase 7: Flex Consumptionインフラ
 
+**Status**: Bicep構文検証完了、Azureデプロイ検証待ち
+
 **Files**:
 
 - `infra/modules/functions.bicep`
@@ -379,19 +398,19 @@ func start
 
 **Tasks**:
 
-- [ ] Flex Consumption用サーバーファーム（FC1）を定義
-- [ ] Functions用Storage Accountを定義
-- [ ] Node.js 20のFunction Appを定義
-- [ ] Function Appのsystem settingsとアプリ設定を定義
-- [ ] `COSMOSDB_REQUIRED`をFunctionsの環境別設定として定義し、staging/本番では`true`にする
-- [ ] `entraTenantId`、`entraApiClientId`、`authEnabled`を安全なデプロイパラメーターまたはEnvironment Variablesから渡す
-- [ ] Cosmos DBモジュールのendpoint/keyをFunctionsへ渡す
-- [ ] App Insights接続を設定
-- [ ] Static Web App URLをCORS許可する
-- [ ] Function App URLと名前をdeployment outputに追加する
-- [ ] 切替完了まで参照するlegacy App Service名とApp Service Plan名も出力または安全に取得できるようにする
-- [ ] App ServiceとFunctionsを移行期間中は共存させる
-- [ ] `az bicep build`で`main.json`を更新する
+- [x] Flex Consumption用サーバーファーム（FC1）を定義
+- [x] Functions用Storage Accountを定義
+- [x] Node.js 20のFunction Appを定義
+- [x] Function Appのsystem settingsとアプリ設定を定義
+- [x] `COSMOSDB_REQUIRED`をFunctionsの環境別設定として定義し、staging/本番では`true`にする
+- [x] `entraTenantId`、`entraApiClientId`、`authEnabled`を安全なデプロイパラメーターまたはEnvironment Variablesから渡す
+- [x] Cosmos DBモジュールのendpoint/keyをFunctionsへ渡す
+- [x] App Insights接続を設定
+- [x] Static Web App URLをCORS許可する
+- [x] Function App URLと名前をdeployment outputに追加する
+- [x] 切替完了まで参照するlegacy App Service名とApp Service Plan名も出力または安全に取得できるようにする
+- [x] App ServiceとFunctionsを移行期間中は共存させる
+- [x] `az bicep build`で`main.json`を更新する
 
 **Verification**:
 
@@ -403,7 +422,11 @@ az deployment group validate \
   --parameters infra/parameters/staging.parameters.json
 ```
 
+**Verification status**: `az bicep build`は成功。Azureサブスクリプションへの実デプロイ検証は未実施。
+
 ### Phase 8: CI/CD更新
+
+**Status**: ワークフロー更新済み、GitHub上の実行検証待ち
 
 **Files**:
 
@@ -411,28 +434,28 @@ az deployment group validate \
 - `.github/workflows/deploy.yml`
 - `README.md`
 - `specs/001-chat-app/quickstart.ja.md`
-- `specs/005-entra-id-auth/setup-guide.md`
+- `specs/006-user-isolation-functions/setup-guide.md`
 - `frontend/.env.example`
 
 **Tasks**:
 
-- [ ] `functions/**`変更をCIの変更検知に追加
-- [ ] FunctionsのNode.jsセットアップ、npm cache、npm ci、build、testを追加
-- [ ] Functions用Bicep変更の検証を追加
-- [ ] deploy-infraのoutputsからFunction App名・URLを取得
-- [ ] Functions用パッケージをビルドしてFlex対応方式でデプロイ
-- [ ] Functionsデプロイ方式は`Azure/functions-action@v1`に統一し、Flex ConsumptionのOne Deployを使用する
-- [ ] Functions用のビルド済みパッケージ（`host.json`、コンパイル済み`dist`、本番依存関係、`package.json`）を作成する
-- [ ] 現行の`azure/login@v2` + `AZURE_CREDENTIALS`を当面継続し、publish profileを新たに導入しない
+- [x] `functions/**`変更をCIの変更検知に追加
+- [x] FunctionsのNode.jsセットアップ、npm cache、npm ci、build、testを追加
+- [x] Functions用Bicep変更の検証を追加
+- [x] deploy-infraのoutputsからFunction App名・URLを取得
+- [x] Functions用パッケージをビルドしてFlex対応方式でデプロイ
+- [x] Functionsデプロイ方式は`Azure/functions-action@v1`に統一し、Flex ConsumptionのOne Deployを使用する
+- [x] Functions用のビルド済みパッケージ（`host.json`、コンパイル済み`dist`、本番依存関係、`package.json`）を作成する
+- [x] 現行の`azure/login@v2` + `AZURE_CREDENTIALS`を当面継続し、publish profileを新たに導入しない
 - [ ] stagingでActionのFlex用パラメーター、パッケージ構成、認証コンテキストを検証する
-- [ ] フロントエンドビルドの`VITE_API_URL`をFunctions URLに変更
-- [ ] App Serviceデプロイを切替完了まで保持
-- [ ] Functionsヘルスチェックまたはスモークテストを追加
-- [ ] ローカルFunctions起動・環境変数・本番切替手順をドキュメント化
+- [x] フロントエンドビルドの`VITE_API_URL`をFunctions URLに変更
+- [x] App Serviceデプロイを切替完了まで保持
+- [x] Functionsヘルスチェックまたはスモークテストを追加
+- [x] ローカルFunctions起動・環境変数・本番切替手順をドキュメント化
 
 **Verification**:
 
-- [ ] YAML構文検証が通る
+- [x] YAML構文検証が通る（`js-yaml`で解析確認）
 - [ ] Functions変更PRでFunctionsテストが実行される
 - [ ] staging環境へFunctionsをデプロイできる
 - [ ] SWAのビルド成果物にFunctions URLが埋め込まれる
@@ -618,4 +641,4 @@ App Service削除後は旧ホストへの即時ロールバックを行わない
 - [ ] 手動承認付きlegacy cleanup工程
 - [ ] ローカル・ステージング・本番切替手順
 - [ ] App Service / App Service Plan削除
-- [ ] 関連README・セットアップガイド更新
+- [x] 関連README・セットアップガイド更新
