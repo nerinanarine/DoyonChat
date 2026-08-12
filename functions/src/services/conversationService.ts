@@ -1,5 +1,6 @@
 import { Conversation, Message } from '../types';
-import { getConversationsContainer, getMessagesContainer } from '../db/index';
+import { getConversationsContainer, getMessagesContainer } from '../db';
+import { AppError } from '../middleware/errorHandler';
 
 let useMemory = false;
 const memoryConversations: Map<string, Conversation> = new Map();
@@ -9,27 +10,40 @@ function isAuthenticationEnabled(): boolean {
   return process.env.AUTH_ENABLED !== 'false';
 }
 
+function isCosmosRequired(): boolean {
+  return process.env.COSMOSDB_REQUIRED === 'true';
+}
+
 function canAccessConversation(conversation: Conversation | null, userId?: string): boolean {
   if (!conversation) return false;
   if (!isAuthenticationEnabled()) return true;
   return Boolean(userId) && conversation.userId === userId;
 }
 
-async function ensureConversationContainer() {
+function databaseUnavailable(error: unknown): never {
+  if (isCosmosRequired()) {
+    throw new AppError(503, 'Database unavailable');
+  }
+  throw error;
+}
+
+async function ensureConversationContainer(): Promise<void> {
   if (useMemory) return;
   try {
     await getConversationsContainer().read();
-  } catch {
+  } catch (error) {
+    if (isCosmosRequired()) databaseUnavailable(error);
     useMemory = true;
     console.warn('[conversationService] CosmosDB unavailable, falling back to in-memory store');
   }
 }
 
-async function ensureMessageContainer() {
+async function ensureMessageContainer(): Promise<void> {
   if (useMemory) return;
   try {
     await getMessagesContainer().read();
-  } catch {
+  } catch (error) {
+    if (isCosmosRequired()) databaseUnavailable(error);
     useMemory = true;
     console.warn('[conversationService] CosmosDB unavailable, falling back to in-memory store');
   }
@@ -47,21 +61,25 @@ export async function listConversations(userId?: string): Promise<Conversation[]
       );
   }
 
-  if (!isAuthenticationEnabled()) {
+  try {
+    if (!isAuthenticationEnabled()) {
+      const { resources } = await getConversationsContainer().items
+        .query({ query: 'SELECT * FROM c ORDER BY c.updatedAt DESC' })
+        .fetchAll();
+      return resources;
+    }
+
     const { resources } = await getConversationsContainer().items
-      .query({ query: 'SELECT * FROM c ORDER BY c.updatedAt DESC' })
+      .query({
+        query:
+          'SELECT * FROM c WHERE IS_DEFINED(c.userId) AND c.userId = @userId ORDER BY c.updatedAt DESC',
+        parameters: [{ name: '@userId', value: userId! }],
+      })
       .fetchAll();
     return resources;
+  } catch (error) {
+    return databaseUnavailable(error);
   }
-
-  const { resources } = await getConversationsContainer().items
-    .query({
-      query:
-        'SELECT * FROM c WHERE IS_DEFINED(c.userId) AND c.userId = @userId ORDER BY c.updatedAt DESC',
-      parameters: [{ name: '@userId', value: userId! }],
-    })
-    .fetchAll();
-  return resources;
 }
 
 export async function getConversation(
@@ -75,11 +93,13 @@ export async function getConversation(
     const conversation = memoryConversations.get(id) || null;
     return canAccessConversation(conversation, userId) ? conversation : null;
   }
+
   try {
     const { resource } = await getConversationsContainer().item(id, id).read();
     const conversation = (resource as Conversation | undefined) || null;
     return canAccessConversation(conversation, userId) ? conversation : null;
-  } catch {
+  } catch (error) {
+    if (isCosmosRequired()) return databaseUnavailable(error);
     return null;
   }
 }
@@ -90,7 +110,7 @@ export async function createConversation(
   userId?: string,
 ): Promise<Conversation> {
   if (isAuthenticationEnabled() && !userId) {
-    throw new Error('userId is required when authentication is enabled');
+    throw new AppError(401, 'Unauthorized: user identifier not found');
   }
 
   await ensureConversationContainer();
@@ -107,8 +127,13 @@ export async function createConversation(
     memoryConversations.set(conversation.id, conversation);
     return conversation;
   }
-  const { resource } = await getConversationsContainer().items.create(conversation);
-  return resource as Conversation;
+
+  try {
+    const { resource } = await getConversationsContainer().items.create(conversation);
+    return resource as Conversation;
+  } catch (error) {
+    return databaseUnavailable(error);
+  }
 }
 
 export async function updateConversationModel(
@@ -125,8 +150,13 @@ export async function updateConversationModel(
     memoryConversations.set(id, updated);
     return updated;
   }
-  const { resource } = await getConversationsContainer().item(id, id).replace(updated);
-  return resource as Conversation;
+
+  try {
+    const { resource } = await getConversationsContainer().item(id, id).replace(updated);
+    return resource as Conversation;
+  } catch (error) {
+    return databaseUnavailable(error);
+  }
 }
 
 export async function deleteConversation(id: string, userId?: string): Promise<boolean> {
@@ -157,8 +187,8 @@ export async function deleteConversation(id: string, userId?: string): Promise<b
       await getMessagesContainer().item(msg.id, id).delete();
     }
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    return databaseUnavailable(error);
   }
 }
 
@@ -172,19 +202,26 @@ export async function listMessages(
   await ensureMessageContainer();
   if (useMemory) {
     return Array.from(memoryMessages.values())
-      .filter((m) => m.conversationId === conversationId)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      .filter((message) => message.conversationId === conversationId)
+      .sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
   }
-  const { resources } = await getMessagesContainer().items
-    .query(
-      {
-        query: 'SELECT * FROM c WHERE c.conversationId = @conversationId ORDER BY c.createdAt ASC',
-        parameters: [{ name: '@conversationId', value: conversationId }],
-      },
-      { partitionKey: conversationId },
-    )
-    .fetchAll();
-  return resources;
+
+  try {
+    const { resources } = await getMessagesContainer().items
+      .query(
+        {
+          query: 'SELECT * FROM c WHERE c.conversationId = @conversationId ORDER BY c.createdAt ASC',
+          parameters: [{ name: '@conversationId', value: conversationId }],
+        },
+        { partitionKey: conversationId },
+      )
+      .fetchAll();
+    return resources;
+  } catch (error) {
+    return databaseUnavailable(error);
+  }
 }
 
 export async function addMessage(
@@ -193,7 +230,7 @@ export async function addMessage(
 ): Promise<Message> {
   const conversation = await getConversation(message.conversationId, userId);
   if (!conversation) {
-    throw new Error('Conversation not found');
+    throw new AppError(404, 'Conversation not found');
   }
 
   await ensureMessageContainer();
@@ -209,8 +246,13 @@ export async function addMessage(
     memoryConversations.set(conversation.id, conversation);
     return fullMessage;
   }
-  const { resource } = await getMessagesContainer().items.create(fullMessage);
-  conversation.updatedAt = now;
-  await getConversationsContainer().item(conversation.id, conversation.id).replace(conversation);
-  return resource as Message;
+
+  try {
+    const { resource } = await getMessagesContainer().items.create(fullMessage);
+    conversation.updatedAt = now;
+    await getConversationsContainer().item(conversation.id, conversation.id).replace(conversation);
+    return resource as Message;
+  } catch (error) {
+    return databaseUnavailable(error);
+  }
 }

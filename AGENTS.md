@@ -20,6 +20,8 @@ Before implementing:
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
+- Identify the applicable backlog item under `specs/000_backlog/items/` and implement it according to the corresponding feature `specs/*/plan.md`. If the backlog item has no plan, or the requested work conflicts with the plan, stop and clarify before coding.
+- Keep the implementation, tests, and verification steps aligned with that `plan.md`; update the plan or backlog status only when the user requests or the task requires it.
 
 ## 2. Simplicity First
 
@@ -69,28 +71,14 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ---
 
-## 5. Docker Environment Awareness
-
-This agent runs inside a Docker container. Always account for container-specific constraints when diagnosing issues or proposing solutions:
-
-- The filesystem is isolated from the host; paths and mounted volumes may behave differently than on the host OS.
-- Network services may require port mappings or may be unreachable from outside the container.
-- Container restarts destroy in-memory state; persist critical data to mounted volumes.
-- User/permission mapping between container and host can cause file ownership issues.
-- Resource limits (CPU, memory, disk I/O) may affect performance or cause unexpected failures.
-
-When troubleshooting bugs or unexpected behavior, consider whether the root cause might be Docker-specific before assuming an application-level issue.
-
----
-
-## 6. Language Guidelines
+## 5. Language Guidelines
 
 - **User communication:** Japanese (日本語).
 - **Documentation and code comments:** Preserve the existing language; do not translate them.
 
 ---
 
-## 7. Version Control Discipline
+## 6. Version Control Discipline
 
 **Keep all code changes under Git so they can be rolled back.**
 

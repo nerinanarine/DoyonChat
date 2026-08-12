@@ -23,21 +23,28 @@ router.post('/', async (req, res, next) => {
       throw new AppError(400, 'conversationId and message are required');
     }
 
-    const conversation = await service.getConversation(conversationId);
+    if (!req.userId) {
+      throw new AppError(401, 'Unauthorized: user identifier not found');
+    }
+    const userId = req.userId;
+    const conversation = await service.getConversation(conversationId, userId);
     if (!conversation) {
       throw new AppError(404, 'Conversation not found');
     }
 
     // Save user message
-    await service.addMessage({
-      conversationId,
-      role: 'user',
-      content: message,
-      imageUrl: imageBase64 || undefined,
-    });
+    await service.addMessage(
+      {
+        conversationId,
+        role: 'user',
+        content: message,
+        imageUrl: imageBase64 || undefined,
+      },
+      userId,
+    );
 
     // Update title on first message
-    const messages = await service.listMessages(conversationId);
+    const messages = await service.listMessages(conversationId, userId);
     if (messages.length <= 2 && conversation.title === 'New Chat') {
       conversation.title = message.slice(0, 30) || 'New Chat';
       conversation.updatedAt = new Date().toISOString();
@@ -92,11 +99,14 @@ router.post('/', async (req, res, next) => {
     }
 
     // Save assistant message
-    await service.addMessage({
-      conversationId,
-      role: 'assistant',
-      content: fullContent || '(No response)',
-    });
+    await service.addMessage(
+      {
+        conversationId,
+        role: 'assistant',
+        content: fullContent || '(No response)',
+      },
+      userId,
+    );
 
     res.write(`data: ${JSON.stringify({ content: '', done: true })}\n\n`);
     res.end();

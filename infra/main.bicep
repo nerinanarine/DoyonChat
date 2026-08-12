@@ -37,10 +37,24 @@ param tenantId string
 @description('Azure AD object ID for Key Vault access')
 param objectId string
 
+@description('Enable Entra ID authentication for the Functions app')
+param authEnabled string = 'false'
+
+@description('Entra ID tenant ID used by the API authentication verifier')
+param entraTenantId string = ''
+
+@description('Entra ID API application client ID used as the JWT audience')
+param entraApiClientId string = ''
+
 // Resource names with environment suffix
 var cosmosDbAccountName = 'cosmos-${environment}-${uniqueString(resourceGroup().id)}'
 var appServicePlanName = 'asp-${environment}-${uniqueString(resourceGroup().id)}'
 var apiAppName = 'api-${environment}-${uniqueString(resourceGroup().id)}'
+var functionPlanName = 'fcp-${environment}-${uniqueString(resourceGroup().id)}'
+var functionAppName = 'func-${environment}-${uniqueString(resourceGroup().id)}'
+var functionsStorageAccountName = 'st${environment}${uniqueString(resourceGroup().id)}'
+var functionsDeploymentContainerName = 'function-deploy'
+var cosmosDbRequired = environment == 'dev' ? 'false' : 'true'
 var staticWebAppName = 'swa-${environment}-${uniqueString(resourceGroup().id)}'
 var keyVaultName = 'kv-${environment}-${uniqueString(resourceGroup().id)}'
 var appInsightsName = 'appi-${environment}'
@@ -110,8 +124,34 @@ module staticWebApp './modules/staticWebApp.bicep' = {
   }
 }
 
+module functions './modules/functions.bicep' = {
+  name: 'functions-module'
+  params: {
+    location: location
+    tags: tags
+    functionPlanName: functionPlanName
+    functionAppName: functionAppName
+    storageAccountName: functionsStorageAccountName
+    deploymentContainerName: functionsDeploymentContainerName
+    cosmosDbEndpoint: cosmosdb.outputs.cosmosDbEndpoint
+    cosmosDbKey: cosmosDbKey != '' ? cosmosDbKey : cosmosdb.outputs.cosmosDbPrimaryKey
+    openCodeGoApiKey: openCodeGoApiKey
+    authEnabled: authEnabled
+    entraTenantId: entraTenantId
+    entraApiClientId: entraApiClientId
+    frontendUrl: staticWebApp.outputs.staticWebAppUrl
+    cosmosDbRequired: cosmosDbRequired
+    appInsightsConnectionString: appInsights.outputs.appInsightsConnectionString
+  }
+}
+
 output apiAppName string = appService.outputs.apiAppName
 output apiUrl string = appService.outputs.apiAppUrl
+output functionAppName string = functions.outputs.functionAppName
+output functionApiUrl string = functions.outputs.functionAppUrl
+output functionPlanName string = functions.outputs.functionPlanName
+output legacyApiAppName string = appService.outputs.apiAppName
+output legacyAppServicePlanName string = appServicePlanName
 output frontendUrl string = staticWebApp.outputs.staticWebAppUrl
 output cosmosDbEndpoint string = cosmosdb.outputs.cosmosDbEndpoint
 output appInsightsConnectionString string = appInsights.outputs.appInsightsConnectionString

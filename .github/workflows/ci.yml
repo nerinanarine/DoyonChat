@@ -21,6 +21,7 @@ jobs:
       pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      functions: ${{ steps.filter.outputs.functions }}
       infra: ${{ steps.filter.outputs.infra }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
@@ -31,6 +32,8 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+            functions:
+              - 'functions/**'
             infra:
               - 'infra/**'
             workflows:
@@ -57,6 +60,26 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+
+  test-functions:
+    needs: changes
+    if: needs.changes.outputs.functions == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    env:
+      COSMOSDB_REQUIRED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test -- --runInBand
 
   validate-infra:
     needs: changes

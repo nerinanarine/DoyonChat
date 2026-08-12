@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "COSMOSDB_ENDPOINT": "https://<account>.documents.azure.com:443/",
+    "COSMOSDB_KEY": "<primary-key>",
+    "COSMOSDB_DATABASE": "chatdb",
+    "COSMOSDB_REQUIRED": "false",
+    "OPENCODE_GO_API_KEY": "sk-opencode-your-key-here",
+    "OPENCODE_GO_MODEL": "kimi-k2.6",
+    "AUTH_ENABLED": "false",
+    "ENTRA_TENANT_ID": "<tenant-id>",
+    "ENTRA_API_CLIENT_ID": "<api-client-id>",
+    "FRONTEND_URL": "http://localhost:5173"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "http://localhost:5173"
+  }
+}

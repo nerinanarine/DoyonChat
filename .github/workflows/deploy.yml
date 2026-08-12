@@ -12,9 +12,15 @@ on:
         type: choice
         options:
           - dev
+          - staging
           - prod
       skip-tests:
         description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+      delete-legacy-appservice:
+        description: 'Delete the legacy App Service and App Service Plan after an approved production cutover'
         required: false
         default: false
         type: boolean
@@ -48,14 +54,36 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  test-functions:
+    if: github.event_name == 'push' || github.event.inputs.skip-tests != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    env:
+      COSMOSDB_REQUIRED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test -- --runInBand
+
   deploy-infra:
-    needs: test
-    if: always() && !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    needs: [test, test-functions]
+    if: always() && !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.test-functions.result == 'success' || needs.test-functions.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
     outputs:
       apiAppName: ${{ steps.infra-deploy.outputs.apiAppName }}
       apiUrl: ${{ steps.infra-deploy.outputs.apiUrl }}
+      functionAppName: ${{ steps.infra-deploy.outputs.functionAppName }}
+      functionApiUrl: ${{ steps.infra-deploy.outputs.functionApiUrl }}
+      legacyAppServicePlanName: ${{ steps.infra-deploy.outputs.legacyAppServicePlanName }}
       frontendUrl: ${{ steps.infra-deploy.outputs.frontendUrl }}
     steps:
       - uses: actions/checkout@v4
@@ -69,21 +97,78 @@ jobs:
         id: infra-deploy
         env:
           TARGET_ENV: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+          AUTH_ENABLED: ${{ vars.AUTH_ENABLED || 'false' }}
+          ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID || '' }}
+          ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID || '' }}
         run: |
+          if [ "$AUTH_ENABLED" = "true" ]; then
+            test -n "$ENTRA_TENANT_ID" || { echo "::error::ENTRA_TENANT_ID is required when authentication is enabled"; exit 1; }
+            test -n "$ENTRA_API_CLIENT_ID" || { echo "::error::ENTRA_API_CLIENT_ID is required when authentication is enabled"; exit 1; }
+          fi
+
           OUTPUTS=$(az deployment group create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/${TARGET_ENV}.parameters.json \
             openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
             cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
+            authEnabled="$AUTH_ENABLED" \
+            entraTenantId="$ENTRA_TENANT_ID" \
+            entraApiClientId="$ENTRA_API_CLIENT_ID" \
             --query 'properties.outputs' \
             -o json)
           API_APP_NAME=$(echo "$OUTPUTS" | jq -r '.apiAppName.value')
           API_URL=$(echo "$OUTPUTS" | jq -r '.apiUrl.value')
+          FUNCTION_APP_NAME=$(echo "$OUTPUTS" | jq -r '.functionAppName.value')
+          FUNCTION_API_URL=$(echo "$OUTPUTS" | jq -r '.functionApiUrl.value')
+          LEGACY_PLAN_NAME=$(echo "$OUTPUTS" | jq -r '.legacyAppServicePlanName.value')
           FRONTEND_URL=$(echo "$OUTPUTS" | jq -r '.frontendUrl.value')
           echo "apiAppName=${API_APP_NAME}" >> $GITHUB_OUTPUT
           echo "apiUrl=${API_URL}" >> $GITHUB_OUTPUT
+          echo "functionAppName=${FUNCTION_APP_NAME}" >> $GITHUB_OUTPUT
+          echo "functionApiUrl=${FUNCTION_API_URL}" >> $GITHUB_OUTPUT
+          echo "legacyAppServicePlanName=${LEGACY_PLAN_NAME}" >> $GITHUB_OUTPUT
           echo "frontendUrl=${FRONTEND_URL}" >> $GITHUB_OUTPUT
+
+  deploy-functions:
+    needs: deploy-infra
+    if: always() && !cancelled() && needs.deploy-infra.result == 'success'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Build Functions
+        run: |
+          npm ci
+          npm run build
+          npm prune --omit=dev
+
+      - name: Prepare Functions Deployment Package
+        run: |
+          zip -r functions-deploy.zip host.json package.json package-lock.json dist node_modules
+
+      - name: Deploy to Flex Consumption
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ needs.deploy-infra.outputs.functionAppName }}
+          package: functions/functions-deploy.zip
+          sku: flexconsumption
+          remote-build: false
 
   deploy-backend:
     needs: deploy-infra
@@ -146,8 +231,8 @@ jobs:
               ENTRA_API_CLIENT_ID=$ENTRA_API_CLIENT_ID
 
   deploy-frontend:
-    needs: deploy-infra
-    if: always() && !cancelled() && needs.deploy-infra.result == 'success'
+    needs: [deploy-infra, deploy-functions]
+    if: always() && !cancelled() && needs.deploy-infra.result == 'success' && needs.deploy-functions.result == 'success'
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
     steps:
@@ -162,7 +247,7 @@ jobs:
       - name: Build Frontend
         working-directory: frontend
         env:
-          VITE_API_URL: ${{ needs.deploy-infra.outputs.apiUrl }}/api
+          VITE_API_URL: ${{ needs.deploy-infra.outputs.functionApiUrl }}/api
           VITE_AUTH_ENABLED: ${{ vars.AUTH_ENABLED || 'false' }}
           VITE_ENTRA_CLIENT_ID: ${{ vars.ENTRA_CLIENT_ID }}
           VITE_ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID }}
@@ -189,3 +274,53 @@ jobs:
           action: upload
           app_location: frontend/dist
           skip_app_build: true
+
+  cleanup-legacy-appservice:
+    needs: [deploy-infra, deploy-functions, deploy-backend, deploy-frontend]
+    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && inputs.delete-legacy-appservice == true && needs.deploy-infra.result == 'success' && needs.deploy-functions.result == 'success' && needs.deploy-backend.result == 'success' && needs.deploy-frontend.result == 'success'
+    runs-on: ubuntu-latest
+    environment: prod-cleanup
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Preflight legacy resource cleanup
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          LEGACY_APP_NAME: ${{ needs.deploy-infra.outputs.apiAppName }}
+          LEGACY_PLAN_NAME: ${{ needs.deploy-infra.outputs.legacyAppServicePlanName }}
+        run: |
+          test -n "$LEGACY_APP_NAME" || { echo "::error::Legacy App Service name is missing"; exit 1; }
+          test -n "$LEGACY_PLAN_NAME" || { echo "::error::Legacy App Service Plan name is missing"; exit 1; }
+          az webapp show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME" -o json > legacy-app.json
+          az appservice plan show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" -o json > legacy-plan.json
+          az deployment group what-if \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/prod.parameters.json \
+            openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
+            authEnabled=${{ vars.AUTH_ENABLED || 'false' }} \
+            entraTenantId=${{ vars.ENTRA_TENANT_ID || '' }} \
+            entraApiClientId=${{ vars.ENTRA_API_CLIENT_ID || '' }} \
+            --no-pretty-print
+
+      - name: Delete legacy App Service
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          LEGACY_APP_NAME: ${{ needs.deploy-infra.outputs.apiAppName }}
+        run: az webapp delete --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME"
+
+      - name: Delete legacy App Service Plan
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          LEGACY_PLAN_NAME: ${{ needs.deploy-infra.outputs.legacyAppServicePlanName }}
+        run: |
+          PLAN_ID=$(az appservice plan show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" --query id -o tsv)
+          APP_COUNT=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?serverFarmId=='$PLAN_ID'] | length(@)" -o tsv)
+          test "$APP_COUNT" = "0" || { echo "::error::App Service Plan still has $APP_COUNT app(s)"; exit 1; }
+          az appservice plan delete --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" --yes
