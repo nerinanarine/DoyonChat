@@ -451,6 +451,7 @@ az deployment group validate \
 - [x] フロントエンドビルドの`VITE_API_URL`をFunctions URLに変更
 - [x] App Serviceデプロイを切替完了まで保持
 - [x] Functionsヘルスチェックまたはスモークテストを追加
+- [x] Flex非対応の旧アプリ設定（`FUNCTIONS_WORKER_RUNTIME` / `FUNCTIONS_EXTENSION_VERSION`）を再デプロイ時に削除する
 - [x] ローカルFunctions起動・環境変数・本番切替手順をドキュメント化
 
 **Verification**:

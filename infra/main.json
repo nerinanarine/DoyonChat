@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "2692279099585162796"
+      "templateHash": "5953931665048242873"
     }
   },
   "parameters": {
@@ -815,7 +815,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "11974991562340328266"
+              "templateHash": "13458400672630645273"
             }
           },
           "parameters": {
@@ -992,8 +992,6 @@
               "name": "[format('{0}/{1}', parameters('functionAppName'), 'appsettings')]",
               "properties": {
                 "AzureWebJobsStorage": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').keys[0].value, environment().suffixes.storage)]",
-                "FUNCTIONS_WORKER_RUNTIME": "node",
-                "FUNCTIONS_EXTENSION_VERSION": "~4",
                 "COSMOSDB_ENDPOINT": "[parameters('cosmosDbEndpoint')]",
                 "COSMOSDB_KEY": "[parameters('cosmosDbKey')]",
                 "COSMOSDB_DATABASE": "[parameters('cosmosDbDatabase')]",

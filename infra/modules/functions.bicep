@@ -106,8 +106,6 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2024-04-01' = {
   name: 'appsettings'
   properties: {
     AzureWebJobsStorage: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
-    FUNCTIONS_WORKER_RUNTIME: 'node'
-    FUNCTIONS_EXTENSION_VERSION: '~4'
     COSMOSDB_ENDPOINT: cosmosDbEndpoint
     COSMOSDB_KEY: cosmosDbKey
     COSMOSDB_DATABASE: cosmosDbDatabase

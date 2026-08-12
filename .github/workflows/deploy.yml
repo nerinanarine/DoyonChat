@@ -130,6 +130,18 @@ jobs:
           echo "legacyAppServicePlanName=${LEGACY_PLAN_NAME}" >> $GITHUB_OUTPUT
           echo "frontendUrl=${FRONTEND_URL}" >> $GITHUB_OUTPUT
 
+      - name: Remove legacy Flex-incompatible app settings
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          FUNCTION_APP_NAME: ${{ steps.infra-deploy.outputs.functionAppName }}
+        run: |
+          if az functionapp show --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP_NAME" >/dev/null 2>&1; then
+            az functionapp config appsettings delete \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$FUNCTION_APP_NAME" \
+              --setting-names FUNCTIONS_WORKER_RUNTIME FUNCTIONS_EXTENSION_VERSION
+          fi
+
   deploy-functions:
     needs: deploy-infra
     if: always() && !cancelled() && needs.deploy-infra.result == 'success'
