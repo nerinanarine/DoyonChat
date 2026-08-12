@@ -32,6 +32,7 @@
 
 - [バックログ一覧](backlog.md)
 - [MVP 仕様書（Phase 1）](../001-chat-app/spec.md)
-- [Phase 2 仕様書](../002-chat-app-phase2/spec.md)
+- [P1-006/P2-006統合仕様](../006-user-isolation-functions/spec.md)
+- [P1-006/P2-006セットアップガイド](../006-user-isolation-functions/setup-guide.md)
 - [データモデル](../001-chat-app/data-model.md)
 - [クイックスタート](../001-chat-app/quickstart.ja.md)

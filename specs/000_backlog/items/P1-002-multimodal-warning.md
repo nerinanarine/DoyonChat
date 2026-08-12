@@ -12,7 +12,7 @@ OpenCode Go API でマルチモーダル対応なのは `glm-5.2` と `glm-5.1` 
 
 ## 関連仕様
 
-- [Phase 2 仕様 §1](../002-chat-app-phase2/spec.md#1-マルチモーダル非対応モデル警告)
+- [バックログ一覧](../backlog.md)
 - FR-014
 
 ## 関連ファイル

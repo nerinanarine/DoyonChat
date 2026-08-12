@@ -78,6 +78,7 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
+    expect(models.jsonBody).toHaveLength(18);
   });
 
   it('requires authentication when enabled', async () => {

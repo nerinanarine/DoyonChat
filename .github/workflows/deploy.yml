@@ -295,6 +295,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate cleanup credentials
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          test -n "$AZURE_CREDENTIALS" || { echo "::error::AZURE_CREDENTIALS is not configured in the prod-cleanup Environment"; exit 1; }
+          test -n "$RESOURCE_GROUP" || { echo "::error::AZURE_RESOURCE_GROUP is not configured in the prod-cleanup Environment"; exit 1; }
+          az group show --name "$RESOURCE_GROUP" >/dev/null || { echo "::error::Azure Resource Group does not exist or is not accessible: $RESOURCE_GROUP"; exit 1; }
+          echo "$AZURE_CREDENTIALS" | jq -e \
+            '(.clientId | type == "string" and length > 0) and
+             (.clientSecret | type == "string" and length > 0) and
+             (.subscriptionId | type == "string" and length > 0) and
+             (.tenantId | type == "string" and length > 0)' >/dev/null \
+            || { echo "::error::AZURE_CREDENTIALS must contain clientId, clientSecret, subscriptionId, and tenantId"; exit 1; }
+
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -308,8 +323,22 @@ jobs:
         run: |
           test -n "$LEGACY_APP_NAME" || { echo "::error::Legacy App Service name is missing"; exit 1; }
           test -n "$LEGACY_PLAN_NAME" || { echo "::error::Legacy App Service Plan name is missing"; exit 1; }
-          az webapp show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME" -o json > legacy-app.json
-          az appservice plan show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" -o json > legacy-plan.json
+
+          APP_EXISTS=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_APP_NAME'] | length(@)" -o tsv)
+          PLAN_EXISTS=$(az appservice plan list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_PLAN_NAME'] | length(@)" -o tsv)
+
+          if [ "$APP_EXISTS" != "0" ]; then
+            az webapp show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME" -o json > legacy-app.json
+          else
+            echo "Legacy App Service is already absent; cleanup will skip it."
+          fi
+
+          if [ "$PLAN_EXISTS" != "0" ]; then
+            az appservice plan show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" -o json > legacy-plan.json
+          else
+            echo "Legacy App Service Plan is already absent; cleanup will skip it."
+          fi
+
           az deployment group what-if \
             --resource-group "$RESOURCE_GROUP" \
             --template-file infra/main.bicep \
@@ -325,13 +354,25 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           LEGACY_APP_NAME: ${{ needs.deploy-infra.outputs.apiAppName }}
-        run: az webapp delete --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME"
+        run: |
+          APP_EXISTS=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_APP_NAME'] | length(@)" -o tsv)
+          if [ "$APP_EXISTS" != "0" ]; then
+            az webapp delete --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME"
+          else
+            echo "Legacy App Service is already absent; skipping deletion."
+          fi
 
       - name: Delete legacy App Service Plan
         env:
           RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           LEGACY_PLAN_NAME: ${{ needs.deploy-infra.outputs.legacyAppServicePlanName }}
         run: |
+          PLAN_EXISTS=$(az appservice plan list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_PLAN_NAME'] | length(@)" -o tsv)
+          if [ "$PLAN_EXISTS" = "0" ]; then
+            echo "Legacy App Service Plan is already absent; skipping deletion."
+            exit 0
+          fi
+
           PLAN_ID=$(az appservice plan show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" --query id -o tsv)
           APP_COUNT=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?serverFarmId=='$PLAN_ID'] | length(@)" -o tsv)
           test "$APP_COUNT" = "0" || { echo "::error::App Service Plan still has $APP_COUNT app(s)"; exit 1; }

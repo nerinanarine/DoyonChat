@@ -8,6 +8,8 @@
 
 **Input**: User description: "生成AIと対話型でチャットできるWebアプリ。OpenCode Goを使用。Reactフロントエンド。Azureデプロイ。MVP: テキストチャット、ストリーミング応答、会話履歴保持、複数会話管理、Markdown/コードブロックレンダリング、画像入力、レスポンシブデザイン。"
 
+> **現行構成に関する注記:** 本書はMVP時点の仕様です。現行のユーザー分離、Azure Functions、Flex Consumption、SSE移行、本番切替手順は [006-user-isolation-functions](../006-user-isolation-functions/spec.md) を参照してください。
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - テキストチャットとストリーミング応答 (Priority: P1)

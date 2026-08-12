@@ -1,5 +1,7 @@
 # クイックスタート：OpenCode Go チャット Web アプリ
 
+> **現行構成に関する注記:** このMVPクイックスタートには移行前のApp Service手順が含まれます。現在のFunctions・Flex Consumption・本番切替手順は [006-user-isolation-functions/setup-guide.md](../006-user-isolation-functions/setup-guide.md) を使用してください。
+
 ## 前提条件
 
 - Node.js 20+（LTS）

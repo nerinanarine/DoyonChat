@@ -1,5 +1,7 @@
 # Phase 3: Azure 認証設定 セットアップガイド
 
+> **現行構成に関する注記:** このガイドは初期CI/CDの認証設定を扱います。現行のFunctionsデプロイ、Entra Environment設定、staging/prod切替、legacy cleanupは [006-user-isolation-functions/setup-guide.md](../006-user-isolation-functions/setup-guide.md) を参照してください。
+
 ## 概要
 
 このガイドでは、GitHub Actions から Azure へ安全に認証するためのセットアップ手順を説明します。

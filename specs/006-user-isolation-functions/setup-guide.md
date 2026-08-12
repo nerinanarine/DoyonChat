@@ -466,6 +466,25 @@ az deployment group validate \
 }
 ```
 
+#### `prod-cleanup` Environmentの注意
+
+`cleanup-legacy-appservice` ジョブは `prod-cleanup` Environmentで実行されます。GitHub EnvironmentのSecretsは他のEnvironmentから自動継承されないため、以下を `prod-cleanup` にも登録してください。
+
+| Secret | 用途 |
+|--------|------|
+| `AZURE_CREDENTIALS` | `azure/login@v2`用Service Principal JSON |
+| `AZURE_RESOURCE_GROUP` | 削除対象リソースグループ |
+| `OPENCODE_GO_API_KEY` | cleanup前のBicep what-if用 |
+| `COSMOSDB_KEY` | cleanup前のBicep what-if用 |
+
+また、what-ifで認証設定を再現するため、以下のVariablesも `prod-cleanup` に登録します。
+
+- `AUTH_ENABLED`
+- `ENTRA_TENANT_ID`
+- `ENTRA_API_CLIENT_ID`
+
+`prod-cleanup` には `Required reviewers` を設定し、Secret登録後にcleanup workflowを再実行してください。
+
 ### 8.3 Environment Variables
 
 | Variable | 用途 |
@@ -628,7 +647,7 @@ Environment: prod
 delete-legacy-appservice: true
 ```
 
-このジョブは `prod-cleanup` Environmentの承認後に以下を実行します。
+このジョブは `prod-cleanup` Environmentの承認後に以下を実行します。旧App Serviceまたは旧App Service Planがすでに削除済みの場合は、ジョブがその削除をスキップして成功扱いにします。
 
 ```bash
 az webapp delete \
@@ -654,6 +673,10 @@ App Service削除後は旧ホストへ即時ロールバックできません。
 ---
 
 ## 12. トラブルシューティング
+
+### Node 20 deprecation warningが表示される
+
+GitHub Actionsのアクション実行ランタイムに関する警告であり、Azureログイン失敗の原因ではありません。`ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true` は設定せず、アクション側のNode.js更新を待ちます。
 
 ### `func: command not found`
 

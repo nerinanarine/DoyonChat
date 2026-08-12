@@ -4,6 +4,8 @@
 
 **Input**: Feature specification from `/specs/003-setup-ci-cd-pipeline/spec.md`
 
+> **現行構成に関する注記:** 本書はApp Serviceを前提にした初期CI/CD計画です。現行のFunctionsジョブ、Flexデプロイ、staging/prod切替、legacy cleanupは [006-user-isolation-functions/plan.md](../006-user-isolation-functions/plan.md) を正とします。
+
 ## Summary
 
 GitHub Actionsを使用したCI/CDパイプラインの構築。個人プロジェクトのため、本番環境のみを対象とし、ステージング環境は持たない。PR作成時に自動テスト・インフラ検証を実行し、mainブランチへのマージ時に本番環境へ自動デプロイする。

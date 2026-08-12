@@ -8,6 +8,8 @@
 
 **Input**: User description: "CICDのセットアップ。GitHub Actionsでバックエンドのビルド・テスト、インフラの検証、PR時の自動チェック、mainブランチへのマージ時のデプロイフローを構築する。"
 
+> **現行構成に関する注記:** 本書はApp Serviceを前提にしたCI/CDベースラインです。Functionsのテスト、Flex Consumptionデプロイ、API URL切替、legacy cleanupは [006-user-isolation-functions/spec.md](../006-user-isolation-functions/spec.md) を参照してください。
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Pull Request時の自動テスト (Priority: P1)

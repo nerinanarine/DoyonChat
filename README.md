@@ -84,8 +84,7 @@
 ├── specs/              # 仕様書・設計書
 │   ├── 000_backlog/      # 未実装機能のバックログ
 │   ├── 001-chat-app/     # Phase 1（MVP）仕様
-│   ├── 006-user-isolation-functions/ # ユーザー分離・Functions移行
-│   └── 002-chat-app-phase2/  # Phase 2 仕様
+│   └── 006-user-isolation-functions/ # ユーザー分離・Functions移行
 │
 └── .github/workflows/  # GitHub Actions CI/CD
 ```
@@ -236,17 +235,27 @@ npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token
 
 | モデル | マルチモーダル | 備考 |
 |--------|-------------|------|
-| `kimi-k2.6` | ❌ | 高品質、長文対応 |
-| `kimi-k2.7-code` | ❌ | コーディング特化 |
+| `grok-4.5` | ❌ | 一般推論・汎用タスク |
+| `gpt-5.6-luna` | ❌ | 一般推論・コーディング |
 | `glm-5.2` | ✅ | 高品質、画像入力対応 |
 | `glm-5.1` | ✅ | 高品質、画像入力対応 |
-| `deepseek-v4-pro` | ❌ | 推論能力重視 |
-| `qwen3.7-max` | ❌ | バランス型 |
-| `minimax-m3` | ❌ | 日本語対応良好 |
-| `mimo-v2.5-pro` | ❌ | 高速応答 |
-| `mimo-v2.5` | ❌ | 高速応答 |
-| `hy3-preview` | ❌ | 実験的モデル |
+| `kimi-k3` | ❌ | 高度な推論・コーディング |
+| `kimi-k2.7-code` | ❌ | コーディング特化 |
+| `kimi-k2.6` | ❌ | 高品質、長文対応 |
+| `mimo-v2.5` | ❌ | 高速・大量処理 |
+| `mimo-v2.5-pro` | ❌ | 高品質、汎用タスク |
+| `minimax-m3` | ❌ | 長文・汎用タスク |
+| `minimax-m2.7` | ❌ | 品質とコストのバランス |
+| `qwen3.8-max` | ❌ | 高品質、汎用タスク |
+| `qwen3.7-max` | ❌ | 高品質、汎用タスク |
+| `qwen3.7-plus` | ❌ | 汎用コーディング |
+| `qwen3.6-plus` | ❌ | 汎用タスク |
+| `deepseek-v4-pro` | ❌ | エージェント・コーディング |
+| `deepseek-v4-flash` | ❌ | 高速処理・大量処理 |
+| `hy3` | ❌ | 実験的モデル |
 
+> モデルIDと提供状況は [OpenCode Go公式モデル一覧](https://opencode.ai/docs/go) を基準にしています。提供モデルは変更される可能性があります。
+>
 > **注意:** マルチモーダル（画像入力）は現在フロントエンド未実装です。対応予定は [バックログ](specs/000_backlog/backlog.md) を参照。
 
 ## バックログ（未実装機能）
