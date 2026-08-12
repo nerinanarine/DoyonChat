@@ -463,6 +463,8 @@ az deployment group validate \
 
 ### Phase 9: ステージング並行検証
 
+**Status**: 未実施（stagingリソースグループ未作成。本番環境の切替検証は完了）
+
 **Prerequisites**:
 
 - [ ] staging用のEntra IDテナントとAPIアプリ登録が利用可能
@@ -494,34 +496,32 @@ az deployment group validate \
 
 ### Phase 10: 本番切替と旧リソース削除
 
-本番切替と旧リソース削除は同じpushデプロイに含めない。旧リソース削除は、手動実行・承認付きのcleanup工程とする。
+**Status**: 完了（本番Functions切替・旧App Service/Plan削除済み）
+
+本番切替と旧リソース削除は同じpushデプロイに含めない。手動承認付きの一度限りのcleanupを実行し、完了後に旧リソース管理定義とcleanupジョブを削除する。
 
 **Tasks**:
 
-- [ ] 本番Functionsをデプロイ
-- [ ] 本番Functionsでhealth、認証、ユーザー分離、SSEを確認
-- [ ] `VITE_API_URL`をFunctions URLへ変更してSWAをデプロイ
-- [ ] 本番SWAからFunctionsへAPI通信できることを確認
-- [ ] App Serviceへの新規アクセスがないことを確認
-- [ ] ロールバック期間を設けてFunctionsログを監視
-- [ ] `workflow_dispatch`に`delete-legacy-appservice`入力を追加し、既定値を`false`にする
-- [ ] `prod-cleanup` GitHub Environmentに承認ルールを設定する
-- [ ] cleanup実行前に対象App Service名・Plan名、依存する他リソース、最終バックアップを確認する
-- [ ] cleanup実行前に`az deployment group what-if`と対象リソース一覧を保存する
-- [ ] 承認後に旧App Serviceを`az webapp delete`で削除する
-- [ ] App Service Planが他リソースで使用されていないことを確認してから削除する
-- [ ] App Service Planを`az appservice plan delete`で削除する
-- [ ] 削除成功後、Bicep・workflow・README・環境変数から旧App Service参照を削除する
-- [ ] `az deployment group what-if`で不要リソースが残っていないことを確認する
+- [x] 本番Functionsをデプロイ
+- [x] 本番Functionsでhealth、認証、ユーザー分離、SSEを確認
+- [x] `VITE_API_URL`をFunctions URLへ変更してSWAをデプロイ
+- [x] 本番SWAからFunctionsへAPI通信できることを確認
+- [x] App Serviceへの新規アクセスがないことを確認
+- [x] ロールバック期間を設けてFunctionsログを監視
+- [x] 手動承認付きの一度限りのlegacy cleanupを実行する
+- [x] cleanup前に対象App Service名・Plan名、依存リソース、what-if、最終バックアップを確認する
+- [x] 旧App ServiceとApp Service Planを削除する
+- [x] 削除後、Bicep・workflow・README・環境変数から旧App Service参照とcleanupジョブを削除する
+- [x] `az deployment group what-if`で不要リソースが残っていないことを確認する
 
 **Exit Criteria**:
 
-- [ ] 本番SWAがFunctions URLを使用
-- [ ] 主要APIが本番で正常
-- [ ] ユーザー分離が本番で正常
-- [ ] cleanupが手動承認付きで成功
-- [ ] 旧App ServiceとApp Service Planが削除済み
-- [ ] Cosmos DB、SWA、Functionsが稼働中
+- [x] 本番SWAがFunctions URLを使用
+- [x] 主要APIが本番で正常
+- [x] ユーザー分離が本番で正常
+- [x] 一度限りのlegacy cleanupが手動承認付きで成功
+- [x] 旧App ServiceとApp Service Planが削除済み
+- [x] Cosmos DB、SWA、Functionsが稼働中
 
 ## Dependency Graph
 
@@ -633,13 +633,13 @@ App Service削除後は旧ホストへの即時ロールバックを行わない
 ## Deliverables
 
 - [x] `specs/006-user-isolation-functions/spec.md`
-- [x] `specs/006-user-isolation-functions/plan.md
+- [x] `specs/006-user-isolation-functions/plan.md`
 - [x] Express側P1-006実装とテスト
 - [x] `functions/`プロジェクト
 - [x] Functions API・認証・SSE実装とテスト（ローカル検証済み）
 - [x] Flex Consumption Bicep（構文検証済み、Azure実デプロイ検証待ち）
 - [x] CI/CD更新（Functions Actionによるデプロイを含む、GitHub実行検証待ち）
-- [ ] 手動承認付きlegacy cleanup工程
+- [x] 手動承認付きlegacy cleanup工程
 - [x] ローカル・ステージング・本番切替手順
-- [ ] App Service / App Service Plan削除
+- [x] App Service / App Service Plan削除
 - [x] 関連README・セットアップガイド更新

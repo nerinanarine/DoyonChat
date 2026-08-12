@@ -170,20 +170,7 @@ npm prune --omit=dev
 zip -r functions-deploy.zip host.json package.json package-lock.json dist node_modules
 # GitHub Actionsでは Azure/functions-action@v1 でデプロイします
 
-# 移行前の旧Express/App Serviceへ手動デプロイする場合
-cd ../backend && npm run build
-python3 -c "
-import zipfile, os
-with zipfile.ZipFile('deploy.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
-    for root, dirs, files in os.walk('dist'):
-        for f in files: zf.write(os.path.join(root, f), os.path.join(root, f).replace('\\\\', '/'))
-    for root, dirs, files in os.walk('node_modules'):
-        for f in files:
-            fp = os.path.join(root, f)
-            if os.path.isfile(fp): zf.write(fp, fp.replace('\\\\', '/'))
-    zf.write('package.json', 'package.json')
-"
-az webapp deploy --resource-group <rg-name> --name <app-name> --src-path deploy.zip --type zip
+# 旧App Serviceの手動デプロイ手順は移行完了により廃止しました。
 
 # フロントエンド
 cd ../frontend
@@ -223,9 +210,12 @@ npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token
 
 | Variable | 説明 |
 |----------|------|
-| `AZURE_LOCATION` | Azure リージョン（例: `japaneast`） |
-| `FUNCTION_APP_NAME` | Function App 名（インフラ出力を利用） |
-| `STATIC_WEB_APP_NAME` | Static Web App 名 |
+| `AUTH_ENABLED` | Entra ID認証の有効化（`true` / `false`） |
+| `ENTRA_TENANT_ID` | Entra IDテナントID |
+| `ENTRA_API_CLIENT_ID` | APIアプリ登録のクライアントID |
+| `ENTRA_CLIENT_ID` | SPAアプリ登録のクライアントID |
+
+Function App名、API URL、Static Web App URLはBicepのdeployment outputsから取得します。
 
 ### セットアップ手順
 
@@ -266,8 +256,8 @@ npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token
 
 - **P1** 画像アップロード UI、マルチモーダル警告、ストリーミング中断保存、自動タイトル生成、**Reasoning 表示改善**、Entra ID 認証、ユーザー分離
 - **P2** コンテキスト長警告、複数タブ同期、エラー UX 改善、Azure Functions 移行
-- **P3** ダークモード、検索、エクスポート、キーボードショートカット、アクセシビリティ、仮想スクロール、テスト強化
-- **P4** PWA、プロンプトテンプレート、コード実行、音声入力、会話共有
+- **P3** ダークモード、検索、エクスポート、キーボードショートカット、アクセシビリティ、仮想スクロール、テスト強化、**PWA（Android/iPhone）**
+- **P4** プロンプトテンプレート、コード実行、音声入力、会話共有
 
 ## ライセンス
 

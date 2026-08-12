@@ -8,13 +8,6 @@
     "location": {
       "value": "japaneast"
     },
-    "appServiceSku": {
-      "value": {
-        "name": "P1v2",
-        "tier": "PremiumV2",
-        "capacity": 1
-      }
-    },
     "tenantId": {
       "value": "b91df9ef-b924-4976-b777-2a5609007dc0"
     },

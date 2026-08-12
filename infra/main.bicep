@@ -16,13 +16,6 @@ param tags object = {
 @description('CosmosDB database name')
 param cosmosDbDatabaseName string = 'chatdb'
 
-@description('App Service Plan SKU')
-param appServiceSku object = {
-  name: 'P1v2'
-  tier: 'PremiumV2'
-  capacity: 1
-}
-
 @description('OpenCode Go API key')
 @secure()
 param openCodeGoApiKey string
@@ -48,8 +41,6 @@ param entraApiClientId string = ''
 
 // Resource names with environment suffix
 var cosmosDbAccountName = 'cosmos-${environment}-${uniqueString(resourceGroup().id)}'
-var appServicePlanName = 'asp-${environment}-${uniqueString(resourceGroup().id)}'
-var apiAppName = 'api-${environment}-${uniqueString(resourceGroup().id)}'
 var functionPlanName = 'fcp-${environment}-${uniqueString(resourceGroup().id)}'
 var functionAppName = 'func-${environment}-${uniqueString(resourceGroup().id)}'
 var functionsStorageAccountName = 'st${environment}${uniqueString(resourceGroup().id)}'
@@ -100,21 +91,6 @@ module keyVault './modules/keyVault.bicep' = {
   }
 }
 
-module appService './modules/appService.bicep' = {
-  name: 'appservice-module'
-  params: {
-    location: location
-    tags: tags
-    appServicePlanName: appServicePlanName
-    apiAppName: apiAppName
-    sku: appServiceSku
-    cosmosDbEndpoint: cosmosdb.outputs.cosmosDbEndpoint
-    cosmosDbKey: cosmosDbKey != '' ? cosmosDbKey : cosmosdb.outputs.cosmosDbPrimaryKey
-    openCodeGoApiKey: openCodeGoApiKey
-    frontendUrl: staticWebApp.outputs.staticWebAppUrl
-  }
-}
-
 module staticWebApp './modules/staticWebApp.bicep' = {
   name: 'staticwebapp-module'
   params: {
@@ -145,13 +121,9 @@ module functions './modules/functions.bicep' = {
   }
 }
 
-output apiAppName string = appService.outputs.apiAppName
-output apiUrl string = appService.outputs.apiAppUrl
 output functionAppName string = functions.outputs.functionAppName
 output functionApiUrl string = functions.outputs.functionAppUrl
 output functionPlanName string = functions.outputs.functionPlanName
-output legacyApiAppName string = appService.outputs.apiAppName
-output legacyAppServicePlanName string = appServicePlanName
 output frontendUrl string = staticWebApp.outputs.staticWebAppUrl
 output cosmosDbEndpoint string = cosmosdb.outputs.cosmosDbEndpoint
 output appInsightsConnectionString string = appInsights.outputs.appInsightsConnectionString

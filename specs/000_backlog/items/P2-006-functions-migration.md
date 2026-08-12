@@ -362,7 +362,17 @@ App Service 用のデプロイジョブは、Functions 本番切替が完了す�
 
 ## 実装メモ
 
-> 対応後に実装内容・マージコミット・注意点を記載する。
+- Azure Functions Node.js v4 + Flex Consumptionへ移行
+- Functions用Storage Account、デプロイ用Blob Container、Application InsightsをBicepで追加
+- 全APIエンドポイントとSSEをFunctionsへ移植
+- CI/CDにFunctions build/test/deployとFunction URL切替を追加
+- Flex非対応の`FUNCTIONS_WORKER_RUNTIME` / `FUNCTIONS_EXTENSION_VERSION`をAzureアプリ設定から除外
+- 本番SWAをFunctions URLへ切替
+- 旧App Service `api-prod-ybx4bcrxobh7u` と旧App Service Plan `asp-prod-ybx4bcrxobh7u` を削除
+- Functions Flex Plan `fcp-prod-ybx4bcrxobh7u` は維持
+- 関連実装コミット: `9bb222d`, `f30f105`, `4b3c7a8`, `3301c7d`
+
+**注意:** staging環境は未作成のため、staging専用の実デプロイ検証は未実施。本番環境での切替・旧リソース削除は完了。
 
 ---
 
@@ -372,3 +382,4 @@ App Service 用のデプロイジョブは、Functions 本番切替が完了す�
 |------|-----------|------|
 | 2026-06-28 | 🔴 未対応 | 初期作成 |
 | — | 🟡 仕様確定 | Flex Consumption、本番切替、App Service／Plan削除、P1-006同時実装、230秒制約を確定 |
+| — | 🟢 対応済み | Functions本番切替、SSE動作確認、旧App Service/Plan削除を完了 |

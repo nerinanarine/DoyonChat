@@ -20,7 +20,6 @@
 #     --cosmosdb-key "..." \
 #     --swa-deployment-token "..." \
 #     --location "japaneast" \
-#     --app-service-name "api-prod" \
 #     --static-web-app-name "opencode-chat"
 #
 # Usage (interactive):
@@ -45,7 +44,6 @@ Options:
   --cosmosdb-key <key>        CosmosDB access key
   --swa-deployment-token <token> Azure Static Web Apps deployment token
   --location <region>         Azure region (default: japaneast)
-  --app-service-name <name>   App Service name
   --static-web-app-name <name> Static Web App name
 
 If any value is omitted, you will be prompted interactively.
@@ -65,7 +63,6 @@ OPENCODE_API_KEY=""
 COSMOSDB_KEY=""
 SWA_DEPLOYMENT_TOKEN=""
 LOCATION=""
-APP_SERVICE_NAME=""
 SWA_NAME=""
 
 while [[ $# -gt 0 ]]; do
@@ -80,7 +77,6 @@ while [[ $# -gt 0 ]]; do
     --cosmosdb-key)         COSMOSDB_KEY="$2"; shift 2 ;;
     --swa-deployment-token) SWA_DEPLOYMENT_TOKEN="$2"; shift 2 ;;
     --location)             LOCATION="$2"; shift 2 ;;
-    --app-service-name)     APP_SERVICE_NAME="$2"; shift 2 ;;
     --static-web-app-name)  SWA_NAME="$2"; shift 2 ;;
     *) echo "❌ Unknown option: $1"; echo "Use --help for usage."; exit 1 ;;
   esac
@@ -187,7 +183,6 @@ echo "────────────────────────�
 echo ""
 
 set_variable "AZURE_LOCATION"       "$LOCATION"          "Azure region"           "japaneast"
-set_variable "APP_SERVICE_NAME"     "$APP_SERVICE_NAME"  "App Service name"       ""
 set_variable "STATIC_WEB_APP_NAME"  "$SWA_NAME"          "Static Web App name"    ""
 
 echo ""
