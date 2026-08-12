@@ -47,7 +47,7 @@
 | [P3-004](items/P3-004-shortcuts.md) | キーボードショートカット | P3 | 🔴 未対応 | 利便性 | — | パワーユーザー向け |
 | [P3-005](items/P3-005-a11y.md) | アクセシビリティ対応 | P3 | 🔴 未対応 | 品質 | — | WCAG AA 準拠 |
 | [P3-006](items/P3-006-virtual-scroll.md) | 長い会話の仮想スクロール | P3 | 🔴 未対応 | パフォーマンス | — | 100件以上のメッセージ |
-| [P3-007](items/P3-007-tests.md) | ユニットテスト強化 | P3 | 🔴 未対応 | 品質 | — | カバレッジ 80% 目標 |
+| [P3-007](items/P3-007-tests.md) | ユニットテスト強化 | P3 | 🔴 未対応 | 品質 | — | カバレッジ 80% 目標、LLM各モデルの実API疎通テストは別途実施 |
 | [P3-008](items/P3-008-cicd-docs-fix.md) | CI/CD 関連ドキュメントの誤記修正 | P3 | 🔴 未対応 | ドキュメント | — | spec.md FR-003、setup-guide 手順3.1 |
 | [P3-009](items/P3-009-cicd-security-hardening.md) | CI/CD セキュリティハードニング | P3 | 🔴 未対応 | セキュリティ | — | SHA ピン化、permissions 宣言の一貫化 |
 | [P3-010](items/P3-010-ai-agent.md) | AIのエージェント化 | P3 | 🔴 未対応 | 機能追加 | — | Function Calling・ツール連携検討 |
