@@ -211,8 +211,8 @@ data: {"content":"","done":true}
 
 ### Required Settings
 
-- `FUNCTIONS_WORKER_RUNTIME=node`
-- `FUNCTIONS_EXTENSION_VERSION=~4`
+Flex ConsumptionではランタイムをBicepの`functionAppConfig.runtime`で指定する。`FUNCTIONS_WORKER_RUNTIME`と`FUNCTIONS_EXTENSION_VERSION`はローカルの`local.settings.json`ではCore Tools用に使用するが、Azure Function Appのアプリ設定には登録しない。
+
 - `COSMOSDB_ENDPOINT`
 - `COSMOSDB_KEY`
 - `COSMOSDB_DATABASE`

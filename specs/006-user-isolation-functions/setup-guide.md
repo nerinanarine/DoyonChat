@@ -712,6 +712,19 @@ func --version
 - BicepのFunction App CORS設定を確認
 - `Authorization`ヘッダーがプリフライトで許可されているか
 
+### Flexデプロイ時に `FUNCTIONS_WORKER_RUNTIME` がinvalidになる
+
+Flex Consumptionでは、ランタイムを`functionAppConfig.runtime`で指定します。Azure側に残った旧アプリ設定を一度削除してから再デプロイします。
+
+```bash
+az functionapp config appsettings delete \
+  --resource-group <resource-group> \
+  --name <function-app-name> \
+  --setting-names FUNCTIONS_WORKER_RUNTIME FUNCTIONS_EXTENSION_VERSION
+```
+
+`functions/local.settings.json` の同名設定はCore Tools用なので削除しません。Flex用BicepではこれらをAzureアプリ設定に登録しません。
+
 ### Flexデプロイ後にFunctionが表示されない
 
 - `Azure/functions-action@v1`でデプロイしているか
