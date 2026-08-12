@@ -19,11 +19,6 @@ on:
         required: false
         default: false
         type: boolean
-      delete-legacy-appservice:
-        description: 'Delete the legacy App Service and App Service Plan after an approved production cutover'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -79,11 +74,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
     outputs:
-      apiAppName: ${{ steps.infra-deploy.outputs.apiAppName }}
-      apiUrl: ${{ steps.infra-deploy.outputs.apiUrl }}
       functionAppName: ${{ steps.infra-deploy.outputs.functionAppName }}
       functionApiUrl: ${{ steps.infra-deploy.outputs.functionApiUrl }}
-      legacyAppServicePlanName: ${{ steps.infra-deploy.outputs.legacyAppServicePlanName }}
       frontendUrl: ${{ steps.infra-deploy.outputs.frontendUrl }}
     steps:
       - uses: actions/checkout@v4
@@ -117,20 +109,14 @@ jobs:
             entraApiClientId="$ENTRA_API_CLIENT_ID" \
             --query 'properties.outputs' \
             -o json)
-          API_APP_NAME=$(echo "$OUTPUTS" | jq -r '.apiAppName.value')
-          API_URL=$(echo "$OUTPUTS" | jq -r '.apiUrl.value')
           FUNCTION_APP_NAME=$(echo "$OUTPUTS" | jq -r '.functionAppName.value')
           FUNCTION_API_URL=$(echo "$OUTPUTS" | jq -r '.functionApiUrl.value')
-          LEGACY_PLAN_NAME=$(echo "$OUTPUTS" | jq -r '.legacyAppServicePlanName.value')
           FRONTEND_URL=$(echo "$OUTPUTS" | jq -r '.frontendUrl.value')
-          echo "apiAppName=${API_APP_NAME}" >> $GITHUB_OUTPUT
-          echo "apiUrl=${API_URL}" >> $GITHUB_OUTPUT
           echo "functionAppName=${FUNCTION_APP_NAME}" >> $GITHUB_OUTPUT
           echo "functionApiUrl=${FUNCTION_API_URL}" >> $GITHUB_OUTPUT
-          echo "legacyAppServicePlanName=${LEGACY_PLAN_NAME}" >> $GITHUB_OUTPUT
           echo "frontendUrl=${FRONTEND_URL}" >> $GITHUB_OUTPUT
 
-      - name: Remove legacy Flex-incompatible app settings
+      - name: Remove invalid Flex runtime app settings
         env:
           RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
           FUNCTION_APP_NAME: ${{ steps.infra-deploy.outputs.functionAppName }}
@@ -182,66 +168,6 @@ jobs:
           sku: flexconsumption
           remote-build: false
 
-  deploy-backend:
-    needs: deploy-infra
-    if: always() && !cancelled() && needs.deploy-infra.result == 'success'
-    runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Build Backend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Prepare Deployment Package
-        run: |
-          npm prune --omit=dev
-          zip -r backend-deploy.zip dist package.json node_modules
-
-      - name: Deploy to App Service
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ needs.deploy-infra.outputs.apiAppName }}
-          package: backend/backend-deploy.zip
-
-      - name: Update App Settings
-        env:
-          AUTH_ENABLED: ${{ vars.AUTH_ENABLED || 'false' }}
-          ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
-          ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID }}
-        run: |
-          if [ "$AUTH_ENABLED" = "true" ]; then
-            test -n "$ENTRA_TENANT_ID" || { echo "::error::ENTRA_TENANT_ID is required when authentication is enabled"; exit 1; }
-            test -n "$ENTRA_API_CLIENT_ID" || { echo "::error::ENTRA_API_CLIENT_ID is required when authentication is enabled"; exit 1; }
-          fi
-
-          az webapp config appsettings set \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ needs.deploy-infra.outputs.apiAppName }} \
-            --settings \
-              OPENCODE_GO_API_KEY=${{ secrets.OPENCODE_GO_API_KEY }} \
-              COSMOSDB_KEY=${{ secrets.COSMOSDB_KEY }} \
-              FRONTEND_URL=${{ needs.deploy-infra.outputs.frontendUrl }} \
-              AUTH_ENABLED=$AUTH_ENABLED \
-              ENTRA_TENANT_ID=$ENTRA_TENANT_ID \
-              ENTRA_API_CLIENT_ID=$ENTRA_API_CLIENT_ID
-
   deploy-frontend:
     needs: [deploy-infra, deploy-functions]
     if: always() && !cancelled() && needs.deploy-infra.result == 'success' && needs.deploy-functions.result == 'success'
@@ -286,99 +212,3 @@ jobs:
           action: upload
           app_location: frontend/dist
           skip_app_build: true
-
-  cleanup-legacy-appservice:
-    needs: [deploy-infra, deploy-functions, deploy-backend, deploy-frontend]
-    if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && inputs.delete-legacy-appservice == true && needs.deploy-infra.result == 'success' && needs.deploy-functions.result == 'success' && needs.deploy-backend.result == 'success' && needs.deploy-frontend.result == 'success'
-    runs-on: ubuntu-latest
-    environment: prod-cleanup
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate cleanup credentials
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        run: |
-          test -n "$AZURE_CREDENTIALS" || { echo "::error::AZURE_CREDENTIALS is not configured in the prod-cleanup Environment"; exit 1; }
-          test -n "$RESOURCE_GROUP" || { echo "::error::AZURE_RESOURCE_GROUP is not configured in the prod-cleanup Environment"; exit 1; }
-          echo "$AZURE_CREDENTIALS" | jq -e \
-            '(.clientId | type == "string" and length > 0) and
-             (.clientSecret | type == "string" and length > 0) and
-             (.subscriptionId | type == "string" and length > 0) and
-             (.tenantId | type == "string" and length > 0)' >/dev/null \
-            || { echo "::error::AZURE_CREDENTIALS must contain clientId, clientSecret, subscriptionId, and tenantId"; exit 1; }
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Validate Azure Resource Group access
-        env:
-          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        run: |
-          az group show --name "$RESOURCE_GROUP" >/dev/null || { echo "::error::Azure Resource Group does not exist or is not accessible: $RESOURCE_GROUP"; exit 1; }
-
-      - name: Preflight legacy resource cleanup
-        env:
-          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          LEGACY_APP_NAME: ${{ needs.deploy-infra.outputs.apiAppName }}
-          LEGACY_PLAN_NAME: ${{ needs.deploy-infra.outputs.legacyAppServicePlanName }}
-        run: |
-          test -n "$LEGACY_APP_NAME" || { echo "::error::Legacy App Service name is missing"; exit 1; }
-          test -n "$LEGACY_PLAN_NAME" || { echo "::error::Legacy App Service Plan name is missing"; exit 1; }
-
-          APP_EXISTS=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_APP_NAME'] | length(@)" -o tsv)
-          PLAN_EXISTS=$(az appservice plan list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_PLAN_NAME'] | length(@)" -o tsv)
-
-          if [ "$APP_EXISTS" != "0" ]; then
-            az webapp show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME" -o json > legacy-app.json
-          else
-            echo "Legacy App Service is already absent; cleanup will skip it."
-          fi
-
-          if [ "$PLAN_EXISTS" != "0" ]; then
-            az appservice plan show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" -o json > legacy-plan.json
-          else
-            echo "Legacy App Service Plan is already absent; cleanup will skip it."
-          fi
-
-          az deployment group what-if \
-            --resource-group "$RESOURCE_GROUP" \
-            --template-file infra/main.bicep \
-            --parameters infra/parameters/prod.parameters.json \
-            openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
-            cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
-            authEnabled=${{ vars.AUTH_ENABLED || 'false' }} \
-            entraTenantId=${{ vars.ENTRA_TENANT_ID || '' }} \
-            entraApiClientId=${{ vars.ENTRA_API_CLIENT_ID || '' }} \
-            --no-pretty-print
-
-      - name: Delete legacy App Service
-        env:
-          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          LEGACY_APP_NAME: ${{ needs.deploy-infra.outputs.apiAppName }}
-        run: |
-          APP_EXISTS=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_APP_NAME'] | length(@)" -o tsv)
-          if [ "$APP_EXISTS" != "0" ]; then
-            az webapp delete --resource-group "$RESOURCE_GROUP" --name "$LEGACY_APP_NAME"
-          else
-            echo "Legacy App Service is already absent; skipping deletion."
-          fi
-
-      - name: Delete legacy App Service Plan
-        env:
-          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          LEGACY_PLAN_NAME: ${{ needs.deploy-infra.outputs.legacyAppServicePlanName }}
-        run: |
-          PLAN_EXISTS=$(az appservice plan list --resource-group "$RESOURCE_GROUP" --query "[?name=='$LEGACY_PLAN_NAME'] | length(@)" -o tsv)
-          if [ "$PLAN_EXISTS" = "0" ]; then
-            echo "Legacy App Service Plan is already absent; skipping deletion."
-            exit 0
-          fi
-
-          PLAN_ID=$(az appservice plan show --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" --query id -o tsv)
-          APP_COUNT=$(az webapp list --resource-group "$RESOURCE_GROUP" --query "[?serverFarmId=='$PLAN_ID'] | length(@)" -o tsv)
-          test "$APP_COUNT" = "0" || { echo "::error::App Service Plan still has $APP_COUNT app(s)"; exit 1; }
-          az appservice plan delete --resource-group "$RESOURCE_GROUP" --name "$LEGACY_PLAN_NAME" --yes

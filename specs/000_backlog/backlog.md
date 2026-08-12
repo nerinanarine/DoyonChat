@@ -30,14 +30,14 @@
 | [P1-003](items/P1-003-partial-save-on-stop.md) | ストリーミング中断時の中間保存 | P1 | 🔴 未対応 | データ保全 | — | データ損失防止 |
 | [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🔴 未対応 | UX改善 | — | 現在は固定「New Chat」 |
 | [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🟢 対応済み | セキュリティ | — | P1-006 の前提条件を完了 |
-| [P1-006](items/P1-006-user-separated-chats.md) | ユーザーごとにチャットを分ける | P1 | 🟡 進行中 | セキュリティ | [統合仕様](../006-user-isolation-functions/spec.md) | P2-006 と同時実装 |
+| [P1-006](items/P1-006-user-separated-chats.md) | ユーザーごとにチャットを分ける | P1 | 🟢 対応済み | セキュリティ | [統合仕様](../006-user-isolation-functions/spec.md) | P2-006 と同時実装、本番切替完了 |
 | [P1-007](items/P1-007-reasoning-display.md) | Reasoning モデルの Thinking コンテンツをわかりやすく表示 | P1 | 🔴 未対応 | UX改善 | — | 思考と回答を視覚的に分離 |
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
 | [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🔴 未対応 | UX改善 | — | 種別ごとにメッセージ変更 |
 | [P2-004](items/P2-004-image-validation.md) | 画像サイズ制限のフロントエンドバリデーション | P2 | 🔴 未対応 | 機能追加 | — | P1-001 と同時実装推奨 |
 | [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🔴 未対応 | UX改善 | — | インライン編集 |
-| [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🟡 進行中 | コスト・スケーリング | [統合仕様](../006-user-isolation-functions/spec.md) | P1-006 と同時実装、Flex/SSE検証 |
+| [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🟢 対応済み | コスト・スケーリング | [統合仕様](../006-user-isolation-functions/spec.md) | Functions本番切替・旧App Service/Plan削除完了 |
 | [P2-007](items/P2-007-cicd-cleanup.md) | CI/CD ワークフロー重複・クリーンアップ | P2 | 🔴 未対応 | 運用改善 | — | 未使用 Secret/Var 整理、Bicep 重複排除、ビルド二重実行回避 |
 | [P2-008](items/P2-008-user-settings.md) | ユーザーごとに設定を保存できる機能 | P2 | 🔴 未対応 | 利便性 | — | P1-005 完了後に実装 |
 | [P2-009](items/P2-009-playwright-ci-e2e.md) | Playwright による CI/CD ブラウザテスト導入 | P2 | 🔴 未対応 | 品質・運用 | P1-005 | PR smoke、デプロイ後検証、実 Entra E2E の段階導入 |
@@ -47,11 +47,11 @@
 | [P3-004](items/P3-004-shortcuts.md) | キーボードショートカット | P3 | 🔴 未対応 | 利便性 | — | パワーユーザー向け |
 | [P3-005](items/P3-005-a11y.md) | アクセシビリティ対応 | P3 | 🔴 未対応 | 品質 | — | WCAG AA 準拠 |
 | [P3-006](items/P3-006-virtual-scroll.md) | 長い会話の仮想スクロール | P3 | 🔴 未対応 | パフォーマンス | — | 100件以上のメッセージ |
-| [P3-007](items/P3-007-tests.md) | ユニットテスト強化 | P3 | 🔴 未対応 | 品質 | — | カバレッジ 80% 目標 |
+| [P3-007](items/P3-007-tests.md) | ユニットテスト強化 | P3 | 🔴 未対応 | 品質 | — | カバレッジ 80% 目標、LLM各モデルの実API疎通テストは別途実施 |
 | [P3-008](items/P3-008-cicd-docs-fix.md) | CI/CD 関連ドキュメントの誤記修正 | P3 | 🔴 未対応 | ドキュメント | — | spec.md FR-003、setup-guide 手順3.1 |
 | [P3-009](items/P3-009-cicd-security-hardening.md) | CI/CD セキュリティハードニング | P3 | 🔴 未対応 | セキュリティ | — | SHA ピン化、permissions 宣言の一貫化 |
 | [P3-010](items/P3-010-ai-agent.md) | AIのエージェント化 | P3 | 🔴 未対応 | 機能追加 | — | Function Calling・ツール連携検討 |
-| [P4-001](items/P4-001-pwa.md) | PWA（Progressive Web App）対応 | P4 | 🔴 未対応 | 機能追加 | — | vite-plugin-pwa |
+| [P3-011](items/P3-011-pwa-android-ios.md) | PWA対応（AndroidとiPhone両方） | P3 | 🔴 未対応 | 利便性 | — | vite-plugin-pwa、実機確認 |
 | [P4-002](items/P4-002-templates.md) | プロンプトテンプレート | P4 | 🔴 未対応 | 機能追加 | — | localStorage 保存 |
 | [P4-003](items/P4-003-code-exec.md) | コードブロックの実行機能 | P4 | 🔴 未対応 | 機能追加 | — | Sandpack 検討 |
 | [P4-004](items/P4-004-voice.md) | 音声入力（Web Speech API） | P4 | 🔴 未対応 | 機能追加 | — | ブラウザ対応状況依存 |

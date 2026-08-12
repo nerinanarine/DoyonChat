@@ -55,7 +55,6 @@ CI/CDを設定する場合は、以下が必要です。
 
 - GitHubリポジトリのActions実行権限
 - GitHub EnvironmentsのSecrets / Variables編集権限
-- `prod-cleanup` EnvironmentのRequired reviewers設定権限
 
 ---
 
@@ -441,9 +440,8 @@ az deployment group validate \
 - `dev`
 - `staging`
 - `prod`
-- `prod-cleanup`
 
-`prod` と `prod-cleanup` にはRequired reviewersを設定してください。特に `prod-cleanup` は旧App Service削除の承認に使用します。
+`prod` にはRequired reviewersを設定してください。
 
 ### 8.2 Environment Secrets
 
@@ -465,25 +463,6 @@ az deployment group validate \
   "tenantId": "<tenant-id>"
 }
 ```
-
-#### `prod-cleanup` Environmentの注意
-
-`cleanup-legacy-appservice` ジョブは `prod-cleanup` Environmentで実行されます。GitHub EnvironmentのSecretsは他のEnvironmentから自動継承されないため、以下を `prod-cleanup` にも登録してください。
-
-| Secret | 用途 |
-|--------|------|
-| `AZURE_CREDENTIALS` | `azure/login@v2`用Service Principal JSON |
-| `AZURE_RESOURCE_GROUP` | 削除対象リソースグループ |
-| `OPENCODE_GO_API_KEY` | cleanup前のBicep what-if用 |
-| `COSMOSDB_KEY` | cleanup前のBicep what-if用 |
-
-また、what-ifで認証設定を再現するため、以下のVariablesも `prod-cleanup` に登録します。
-
-- `AUTH_ENABLED`
-- `ENTRA_TENANT_ID`
-- `ENTRA_API_CLIENT_ID`
-
-`prod-cleanup` には `Required reviewers` を設定し、Secret登録後にcleanup workflowを再実行してください。
 
 ### 8.3 Environment Variables
 
@@ -624,51 +603,36 @@ App Service削除前であれば:
 
 ---
 
-## 11. 旧App Service削除
+## 11. 旧App Service削除（完了）
 
-旧リソース削除は通常のpushデプロイに含めません。必ず手動承認付きで実行します。
+本番切替後、手動承認付きのcleanupで旧App ServiceとApp Service Planを削除しました。
 
-### 事前確認
+確認済みの状態:
 
-- 本番SWAがFunctions URLを利用している
-- Functionsの主要APIが正常
-- FunctionsのSSEが正常
-- App Serviceへの新規アクセスがない
-- App Service Planを利用する他のWeb Appがない
-- what-ifと対象リソース情報を保存済み
-- `prod-cleanup` Environmentの承認者が確認済み
+- 旧App Service `api-prod-*`: 削除済み
+- 旧App Service Plan `asp-prod-*`: 削除済み
+- Functions App `func-prod-*`: 稼働中
+- Functions Flex Plan `fcp-prod-*`: 稼働中
+- 本番SWA: Functions URLを使用
+- Bicepとdeploy workflow: 旧App Serviceの作成・デプロイ処理を削除済み
 
-### 実行
-
-GitHub ActionsのDeploy workflowを以下で実行します。
-
-```text
-Environment: prod
-delete-legacy-appservice: true
-```
-
-このジョブは `prod-cleanup` Environmentの承認後に以下を実行します。旧App Serviceまたは旧App Service Planがすでに削除済みの場合は、ジョブがその削除をスキップして成功扱いにします。
+確認コマンド:
 
 ```bash
-az webapp delete \
+az webapp list \
   --resource-group <resource-group> \
-  --name <legacy-api-app-name>
+  --query "[?contains(name, 'api-')].name" -o tsv
 
-az appservice plan delete \
+az appservice plan list \
   --resource-group <resource-group> \
-  --name <legacy-app-service-plan-name> \
-  --yes
+  --query "[?contains(name, 'asp-')].name" -o tsv
+
+az functionapp list \
+  --resource-group <resource-group> \
+  --query "[].{name:name,state:state,plan:serverFarmId}" -o table
 ```
 
-### 削除後
-
-- `az webapp show` が404になることを確認
-- `az appservice plan show` が404になることを確認
-- Functions、Cosmos DB、SWAが稼働していることを確認
-- Bicepから旧App Serviceモジュール・出力を削除する後続変更を作成
-- workflow、README、環境設定に旧App Service URLが残っていないことを確認
-
-App Service削除後は旧ホストへ即時ロールバックできません。削除前に必ずFunctionsの安定稼働を確認してください。
+App Service削除後は旧ホストへ即時ロールバックできません。今後はFunctionsの修正デプロイを行います。
 
 ---
 
@@ -768,5 +732,5 @@ az functionapp config appsettings delete \
 | `infra/modules/functions.bicep` | Flex Consumptionリソース定義 |
 | `infra/main.bicep` | 全体インフラ定義 |
 | `.github/workflows/ci.yml` | PR時のFunctions・backend・Bicep検証 |
-| `.github/workflows/deploy.yml` | Functions・SWAデプロイとlegacy cleanup |
+| `.github/workflows/deploy.yml` | Functions・SWAデプロイ |
 | `frontend/.env.example` | Functions API URLを含むフロントエンド設定 |

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "5953931665048242873"
+      "templateHash": "10245103985083079095"
     }
   },
   "parameters": {
@@ -38,17 +38,6 @@
       "defaultValue": "chatdb",
       "metadata": {
         "description": "CosmosDB database name"
-      }
-    },
-    "appServiceSku": {
-      "type": "object",
-      "defaultValue": {
-        "name": "P1v2",
-        "tier": "PremiumV2",
-        "capacity": 1
-      },
-      "metadata": {
-        "description": "App Service Plan SKU"
       }
     },
     "openCodeGoApiKey": {
@@ -100,8 +89,6 @@
   },
   "variables": {
     "cosmosDbAccountName": "[format('cosmos-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
-    "appServicePlanName": "[format('asp-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
-    "apiAppName": "[format('api-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "functionPlanName": "[format('fcp-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "functionAppName": "[format('func-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "functionsStorageAccountName": "[format('st{0}{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
@@ -511,184 +498,6 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "appservice-module",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[parameters('tags')]"
-          },
-          "appServicePlanName": {
-            "value": "[variables('appServicePlanName')]"
-          },
-          "apiAppName": {
-            "value": "[variables('apiAppName')]"
-          },
-          "sku": {
-            "value": "[parameters('appServiceSku')]"
-          },
-          "cosmosDbEndpoint": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmosdb-module'), '2025-04-01').outputs.cosmosDbEndpoint.value]"
-          },
-          "cosmosDbKey": "[if(not(equals(parameters('cosmosDbKey'), '')), createObject('value', parameters('cosmosDbKey')), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'cosmosdb-module'), '2025-04-01').outputs.cosmosDbPrimaryKey.value))]",
-          "openCodeGoApiKey": {
-            "value": "[parameters('openCodeGoApiKey')]"
-          },
-          "frontendUrl": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'staticwebapp-module'), '2025-04-01').outputs.staticWebAppUrl.value]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "1882053312722483698"
-            }
-          },
-          "parameters": {
-            "location": {
-              "type": "string"
-            },
-            "tags": {
-              "type": "object"
-            },
-            "appServicePlanName": {
-              "type": "string"
-            },
-            "apiAppName": {
-              "type": "string"
-            },
-            "sku": {
-              "type": "object",
-              "defaultValue": {
-                "name": "P1v2",
-                "tier": "PremiumV2",
-                "capacity": 1
-              }
-            },
-            "nodeVersion": {
-              "type": "string",
-              "defaultValue": "20-lts"
-            },
-            "cosmosDbEndpoint": {
-              "type": "string"
-            },
-            "cosmosDbKey": {
-              "type": "string"
-            },
-            "openCodeGoApiKey": {
-              "type": "string"
-            },
-            "frontendUrl": {
-              "type": "string"
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Web/serverfarms",
-              "apiVersion": "2022-09-01",
-              "name": "[parameters('appServicePlanName')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "kind": "linux",
-              "properties": {
-                "reserved": true
-              },
-              "sku": "[parameters('sku')]"
-            },
-            {
-              "type": "Microsoft.Web/sites",
-              "apiVersion": "2022-09-01",
-              "name": "[parameters('apiAppName')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "kind": "app,linux",
-              "properties": {
-                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
-                "siteConfig": {
-                  "linuxFxVersion": "[format('NODE|{0}', parameters('nodeVersion'))]",
-                  "appSettings": [
-                    {
-                      "name": "PORT",
-                      "value": "3000"
-                    },
-                    {
-                      "name": "COSMOSDB_ENDPOINT",
-                      "value": "[parameters('cosmosDbEndpoint')]"
-                    },
-                    {
-                      "name": "COSMOSDB_KEY",
-                      "value": "[parameters('cosmosDbKey')]"
-                    },
-                    {
-                      "name": "COSMOSDB_DATABASE",
-                      "value": "chatdb"
-                    },
-                    {
-                      "name": "OPENCODE_GO_API_KEY",
-                      "value": "[parameters('openCodeGoApiKey')]"
-                    },
-                    {
-                      "name": "OPENCODE_GO_MODEL",
-                      "value": "kimi-k2.6"
-                    },
-                    {
-                      "name": "FRONTEND_URL",
-                      "value": "[parameters('frontendUrl')]"
-                    },
-                    {
-                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
-                      "value": "[parameters('nodeVersion')]"
-                    },
-                    {
-                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
-                      "value": "false"
-                    }
-                  ],
-                  "alwaysOn": true,
-                  "http20Enabled": true,
-                  "cors": {
-                    "allowedOrigins": [
-                      "[parameters('frontendUrl')]"
-                    ]
-                  }
-                },
-                "httpsOnly": true
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
-              ]
-            }
-          ],
-          "outputs": {
-            "apiAppUrl": {
-              "type": "string",
-              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('apiAppName')), '2022-09-01').defaultHostName)]"
-            },
-            "apiAppName": {
-              "type": "string",
-              "value": "[parameters('apiAppName')]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'cosmosdb-module')]",
-        "[resourceId('Microsoft.Resources/deployments', 'staticwebapp-module')]"
-      ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
       "name": "staticwebapp-module",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1038,14 +847,6 @@
     }
   ],
   "outputs": {
-    "apiAppName": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppName.value]"
-    },
-    "apiUrl": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppUrl.value]"
-    },
     "functionAppName": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-module'), '2025-04-01').outputs.functionAppName.value]"
@@ -1057,14 +858,6 @@
     "functionPlanName": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functions-module'), '2025-04-01').outputs.functionPlanName.value]"
-    },
-    "legacyApiAppName": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appservice-module'), '2025-04-01').outputs.apiAppName.value]"
-    },
-    "legacyAppServicePlanName": {
-      "type": "string",
-      "value": "[variables('appServicePlanName')]"
     },
     "frontendUrl": {
       "type": "string",
