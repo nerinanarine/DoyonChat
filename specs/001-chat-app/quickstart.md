@@ -1,5 +1,7 @@
 # Quickstart: OpenCode Go Chat Web App
 
+> **Current architecture note:** This MVP quickstart contains pre-migration App Service instructions. Use [006-user-isolation-functions/setup-guide.md](../006-user-isolation-functions/setup-guide.md) for the current Azure Functions, Flex Consumption, and production cutover procedures.
+
 ## Prerequisites
 
 - Node.js 20+ (LTS)

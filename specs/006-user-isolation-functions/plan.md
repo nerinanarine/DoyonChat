@@ -632,14 +632,14 @@ App Service削除後は旧ホストへの即時ロールバックを行わない
 
 ## Deliverables
 
-- [ ] `specs/006-user-isolation-functions/spec.md`
-- [ ] `specs/006-user-isolation-functions/plan.md`
-- [ ] Express側P1-006実装とテスト
-- [ ] `functions/`プロジェクト
-- [ ] Functions API・認証・SSE実装とテスト
-- [ ] Flex Consumption Bicep
-- [ ] CI/CD更新（Functions Actionによるデプロイを含む）
+- [x] `specs/006-user-isolation-functions/spec.md`
+- [x] `specs/006-user-isolation-functions/plan.md
+- [x] Express側P1-006実装とテスト
+- [x] `functions/`プロジェクト
+- [x] Functions API・認証・SSE実装とテスト（ローカル検証済み）
+- [x] Flex Consumption Bicep（構文検証済み、Azure実デプロイ検証待ち）
+- [x] CI/CD更新（Functions Actionによるデプロイを含む、GitHub実行検証待ち）
 - [ ] 手動承認付きlegacy cleanup工程
-- [ ] ローカル・ステージング・本番切替手順
+- [x] ローカル・ステージング・本番切替手順
 - [ ] App Service / App Service Plan削除
 - [x] 関連README・セットアップガイド更新

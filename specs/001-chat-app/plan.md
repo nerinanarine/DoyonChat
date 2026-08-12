@@ -4,6 +4,8 @@
 
 **Input**: Feature specification from `/specs/001-chat-app/spec.md`
 
+> **現行構成に関する注記:** 本書はMVP時点の実装計画です。現行バックエンドのホスティング、ユーザー分離、Functions移行、CI/CD、切替手順は [006-user-isolation-functions/plan.md](../006-user-isolation-functions/plan.md) を正とします。
+
 ## Summary
 
 OpenCode Go APIを利用した対話型チャットWebアプリ。React（Vite）フロントエンド + Node.js/Expressバックエンド + Azure CosmosDBの構成。Azure上にデプロイ。MVPではテキストチャット、ストリーミング応答、複数会話管理、Markdownレンダリング、画像入力、レスポンシブデザインを実装する。

@@ -84,8 +84,7 @@
 ├── specs/              # 仕様書・設計書
 │   ├── 000_backlog/      # 未実装機能のバックログ
 │   ├── 001-chat-app/     # Phase 1（MVP）仕様
-│   ├── 006-user-isolation-functions/ # ユーザー分離・Functions移行
-│   └── 002-chat-app-phase2/  # Phase 2 仕様
+│   └── 006-user-isolation-functions/ # ユーザー分離・Functions移行
 │
 └── .github/workflows/  # GitHub Actions CI/CD
 ```
