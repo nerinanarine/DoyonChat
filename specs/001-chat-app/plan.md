@@ -184,24 +184,26 @@ data: [DONE]
 
 | Model ID | Display Name | Quality | Speed | Cost | Multimodal | Context | Best For |
 |----------|-------------|---------|-------|------|------------|---------|----------|
-| `kimi-k2.6` | Kimi K2.6 | ★★★★★ | Fast | ★★☆ | No | 256K | Complex coding, general tasks |
+| `grok-4.5` | Grok 4.5 | ★★★★★ | Medium | ★☆☆ | No | 256K | Reasoning, general tasks |
+| `gpt-5.6-luna` | GPT-5.6 Luna | ★★★★★ | Fast | ★★★★☆ | No | 272K | General reasoning, coding |
+| `glm-5.2` | GLM-5.2 | ★★★★★ | Medium | ★★☆ | Yes | ~128K | Quality, vision |
+| `glm-5.1` | GLM-5.1 | ★★★★★ | Medium | ★★☆ | Yes | ~128K | Quality, vision |
+| `kimi-k3` | Kimi K3 | ★★★★★ | Medium | ★☆☆ | No | 256K | Advanced coding, reasoning |
 | `kimi-k2.7-code` | Kimi K2.7 Code | ★★★★★ | Fast | ★★☆ | No | 256K | Advanced coding assistant |
-| `kimi-k2.5` | Kimi K2.5 | ★★★★☆ | Fast | ★★☆ | No | 256K | Balanced performance |
-| `glm-5.2` | GLM-5.2 | ★★★★★ | Medium | ★☆☆ | Yes | ~128K | Latest GLM with image analysis |
-| `glm-5.1` | GLM-5.1 | ★★★★★ | Medium | ★☆☆ | Yes | ~128K | Best quality, image analysis |
-| `glm-5` | GLM-5 | ★★★★☆ | Medium | ★☆☆ | No | ~128K | Reasoning, planning |
-| `deepseek-v4-pro` | DeepSeek V4 Pro | ★★★★★ | Medium | ★☆☆ | No | 1M | Coding, agent workflows, max thinking |
-| `deepseek-v4-flash` | DeepSeek V4 Flash | ★★★★☆ | Fast | ★★☆ | No | 1M | Fast coding, background tasks |
-| `qwen3.7-max` | Qwen 3.7 Max | ★★★★☆ | Medium | ★★☆ | No | ~128K | Best Qwen model |
-| `qwen3.7-plus` | Qwen 3.7 Plus | ★★★★☆ | Fast | ★★☆ | No | ~128K | Enhanced general coding |
-| `qwen3.6-plus` | Qwen 3.6 Plus | ★★★☆☆ | Fast | ★★★☆ | No | ~128K | General coding |
-| `qwen3.5-plus` | Qwen 3.5 Plus | ★★☆☆☆ | Very Fast | ★★★★★ | No | ~128K | Simple tasks, bulk operations |
-| `minimax-m3` | MiniMax M3 | ★★★☆☆ | Medium | ★★★☆ | No | 1M | Latest MiniMax model |
-| `minimax-m2.7` | MiniMax M2.7 | ★★★☆☆ | Medium | ★★★☆ | No | ~128K | Balanced quality/cost |
-| `minimax-m2.5` | MiniMax M2.5 | ★★☆☆☆ | Fast | ★★★★☆ | No | 1M | Long context on budget |
-| `mimo-v2.5-pro` | MiMo-V2.5 Pro | ★★★★☆ | Medium | ★★☆ | No | ~128K | High quality general |
-| `mimo-v2.5` | MiMo-V2.5 | ★★★☆☆ | Medium | ★★★☆ | No | ~128K | Balanced performance |
-| `hy3-preview` | Hy3 Preview | ★★★☆☆ | Medium | ★★★☆ | No | ~128K | Experimental model |
+| `kimi-k2.6` | Kimi K2.6 | ★★★★★ | Fast | ★★☆ | No | 256K | Complex coding, general tasks |
+| `mimo-v2.5` | MiMo-V2.5 | ★★★☆☆ | Fast | ★★★★★ | No | 1M | Fast tasks, high volume |
+| `mimo-v2.5-pro` | MiMo-V2.5 Pro | ★★★★☆ | Medium | ★★★★☆ | No | 1M | General quality |
+| `minimax-m3` | MiniMax M3 | ★★★★☆ | Medium | ★★★★☆ | No | 1M | Long context, general tasks |
+| `minimax-m2.7` | MiniMax M2.7 | ★★★☆☆ | Medium | ★★★★☆ | No | ~128K | Balanced tasks |
+| `qwen3.8-max` | Qwen 3.8 Max | ★★★★★ | Medium | ★☆☆ | No | ~128K | General quality |
+| `qwen3.7-max` | Qwen 3.7 Max | ★★★★☆ | Medium | ★☆☆ | No | ~128K | General quality |
+| `qwen3.7-plus` | Qwen 3.7 Plus | ★★★★☆ | Fast | ★★★★☆ | No | ~128K | General coding |
+| `qwen3.6-plus` | Qwen 3.6 Plus | ★★★☆☆ | Fast | ★★★★☆ | No | ~128K | General tasks |
+| `deepseek-v4-pro` | DeepSeek V4 Pro | ★★★★★ | Medium | ★☆☆ | No | 1M | Agents, coding |
+| `deepseek-v4-flash` | DeepSeek V4 Flash | ★★★★☆ | Fast | ★★★★★ | No | 1M | Fast tasks, high volume |
+| `hy3` | Hy3 | ★★★☆☆ | Medium | ★★★★☆ | No | ~128K | Experimental tasks |
+
+> モデルIDと提供状況は [OpenCode Go公式モデル一覧](https://opencode.ai/docs/go) を基準にする。提供モデルは変更される可能性がある。
 
 ### Model Selection Rules
 
