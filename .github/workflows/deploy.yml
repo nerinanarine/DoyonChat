@@ -302,7 +302,6 @@ jobs:
         run: |
           test -n "$AZURE_CREDENTIALS" || { echo "::error::AZURE_CREDENTIALS is not configured in the prod-cleanup Environment"; exit 1; }
           test -n "$RESOURCE_GROUP" || { echo "::error::AZURE_RESOURCE_GROUP is not configured in the prod-cleanup Environment"; exit 1; }
-          az group show --name "$RESOURCE_GROUP" >/dev/null || { echo "::error::Azure Resource Group does not exist or is not accessible: $RESOURCE_GROUP"; exit 1; }
           echo "$AZURE_CREDENTIALS" | jq -e \
             '(.clientId | type == "string" and length > 0) and
              (.clientSecret | type == "string" and length > 0) and
@@ -314,6 +313,12 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Validate Azure Resource Group access
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          az group show --name "$RESOURCE_GROUP" >/dev/null || { echo "::error::Azure Resource Group does not exist or is not accessible: $RESOURCE_GROUP"; exit 1; }
 
       - name: Preflight legacy resource cleanup
         env:
