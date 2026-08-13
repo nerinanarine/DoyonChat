@@ -24,6 +24,7 @@ export interface Message {
   conversationId: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
   imageUrl?: string;
   createdAt: string;
 }

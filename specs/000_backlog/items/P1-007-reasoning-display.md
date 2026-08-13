@@ -66,25 +66,14 @@
 
 ### 1. バックエンド側の SSE レスポンス変更
 
-`backend/src/services/opencodeGo.ts` の `parseSSELine` で、既に `reasoning_content` と `content` を別々に抽出している。SSE イベントの種別を付与して送信する：
+`functions/src/services/opencodeGo.ts` と `functions/src/services/reasoningNormalizer.ts` で、OpenCode Goのプロトコル・フィールド差異を正規化する。`reasoning_content`、`reasoning`、その他の登録済みフィールド、Responses APIイベント、`<think>`系マーカーをReasoningとして抽出し、既存の`content`と`done`を維持したSSEへ変換する：
 
-```typescript
-// 現在
-event: message
-data: {"type":"content","text":"..."}
+```text
+data: {"content":"","reasoning":"思考プロセスの一部...","done":false}
 
-// 変更後
-event: message
-data: {"type":"reasoning","text":"思考プロセスの一部..."}
+data: {"content":"最終回答の一部...","done":false}
 
-event: message
-data: {"type":"content","text":"最終回答の一部..."}
-```
-
-または、同一イベント内に両方を含める：
-
-```typescript
-data: {"reasoning":"思考...","content":"回答..."}
+data: {"content":"","done":true}
 ```
 
 ### 2. フロントエンド側の状態管理
@@ -96,7 +85,7 @@ const [streamingReasoning, setStreamingReasoning] = useState('');
 const [streamingContent, setStreamingContent] = useState('');
 ```
 
-SSE パース時に `type` フィールドを見て、適切な状態に蓄積する。
+SSE パース時に`content`と任意の`reasoning`フィールドを読み取り、適切な状態に蓄積する。
 
 ### 3. フロントエンド側の表示コンポーネント
 
@@ -105,8 +94,6 @@ SSE パース時に `type` フィールドを見て、適切な状態に蓄積�
 ```typescript
 interface ChatMessageProps {
   message: Message;
-  reasoning?: string;  // 追加
-  isStreaming?: boolean;
 }
 ```
 
@@ -133,16 +120,24 @@ AI メッセージ（`role === 'assistant'`）で `reasoning` が存在する場
 
 ## 関連ファイル
 
-- `backend/src/services/opencodeGo.ts`（SSE パース、reasoning/content 分離）
-- `backend/src/routes/chat.ts`（SSE イベント形式変更）
+- `functions/src/services/opencodeGo.ts`（OpenCode Go SSE読み取り）
+- `functions/src/services/reasoningNormalizer.ts`（Reasoning形式の正規化）
+- `functions/src/functions/chat.ts`（下流SSE・Message保存）
+- `functions/src/types/index.ts`（Message型にreasoning追加）
+- `frontend/src/services/chatApi.ts`（Reasoning付きSSE解析）
 - `frontend/src/hooks/useChat.ts`（ストリーミング状態分離）
-- `frontend/src/components/Chat/ChatMessage.tsx`（UI 表示変更）
+- `frontend/src/components/Chat/ChatMessage.tsx`（UI表示変更）
 - `frontend/src/components/Chat/CollapsibleReasoning.tsx`（新規）
-- `backend/src/types/index.ts`（Message 型に reasoning 追加）
 
 ## 実装メモ
 
-> 対応後にここに実装内容・マージコミット・注意点を記載してください。
+- Functions側にReasoning正規化層を追加し、Chat Completions、Responses API、`<think>`系マーカーを処理する
+- SSEは既存の`content` / `done`形式を維持し、任意の`reasoning`フィールドを追加した
+- assistant MessageへReasoning全文を保存し、次回のOpenCode Goリクエストには再送しない
+- FrontendにReasoningのストリーミング分離と折りたたみ表示を追加した
+- 旧Expressバックエンドと関連する現行CI・セットアップ手順を削除した
+- 実装ブランチ: `feat/007-reasoning-display`
+- PR番号・マージコミット: 未作成（本番デプロイ前）
 
 ---
 
@@ -151,3 +146,4 @@ AI メッセージ（`role === 'assistant'`）で `reasoning` が存在する場
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-06-28 | 🔴 未対応 | 初期作成 |
+| 2026-08-13 | 🟡 進行中 | Spec/Plan確定、実装開始 |

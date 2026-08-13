@@ -5,7 +5,7 @@
 このガイドでは、以下の統合機能をローカル・staging・本番で利用するための設定手順を説明します。
 
 - P1-006: Entra IDユーザーごとの会話分離
-- P2-006: Express / App ServiceからAzure Functions Flex Consumptionへの移行
+- P2-006: Azure Functions Flex Consumptionへの移行
 - `POST /api/chat` のSSEストリーミング
 - 本番切替後の旧App Service / App Service Plan削除
 
@@ -66,11 +66,6 @@ cd DoyonChat
 
 # Functions
 cd functions
-npm ci
-cd ..
-
-# 既存Expressバックエンド（互換検証用）
-cd backend
 npm ci
 cd ..
 
@@ -220,22 +215,13 @@ npm run dev
 http://localhost:5173
 ```
 
-### 4.3 旧Expressバックエンドとの切替
+### 4.3 API接続先
 
-旧Expressバックエンドを比較用に起動する場合:
-
-```bash
-cd backend
-npm run dev
-```
-
-その場合、フロントエンドの `VITE_API_URL` を以下に変更します。
+現行のバックエンドはAzure Functionsのみです。フロントエンドの `VITE_API_URL` は、ローカルでは次を使用します。
 
 ```env
-VITE_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:7071/api
 ```
-
-通常のFunctions移行検証では、`http://localhost:7071/api` を使用します。
 
 ---
 
@@ -360,14 +346,6 @@ npm test -- --runInBand
 - `COSMOSDB_REQUIRED` のエラー動作
 - 全HTTPハンドラーの契約
 - SSEイベントとassistant保存
-
-### Backend
-
-```bash
-cd backend
-npm run build
-npm test -- --runInBand
-```
 
 ### Frontend
 
@@ -500,12 +478,11 @@ staging または prod を選択
 
 デプロイ順序:
 
-1. backend / Functionsテスト
+1. Functionsテスト
 2. インフラデプロイ
 3. Functionsビルド・Flex One Deploy
-4. 旧Expressバックエンドの並行デプロイ
-5. フロントエンドをFunctions URLでビルド
-6. Static Web Appsデプロイ
+4. フロントエンドをFunctions URLでビルド
+5. Static Web Appsデプロイ
 
 ### 8.6 Functionsデプロイ成果物
 

@@ -20,7 +20,6 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
       functions: ${{ steps.filter.outputs.functions }}
       infra: ${{ steps.filter.outputs.infra }}
       workflows: ${{ steps.filter.outputs.workflows }}
@@ -30,36 +29,12 @@ jobs:
         id: filter
         with:
           filters: |
-            backend:
-              - 'backend/**'
             functions:
               - 'functions/**'
             infra:
               - 'infra/**'
             workflows:
               - '.github/workflows/**'
-
-  test-backend:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    env:
-      COSMOSDB_ENDPOINT: https://localhost:8081/
-      COSMOSDB_KEY: C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
-      COSMOSDB_DATABASE: chatdb
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
 
   test-functions:
     needs: changes

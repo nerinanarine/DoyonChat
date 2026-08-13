@@ -48,7 +48,7 @@
 
 | API | 用途 |
 |-----|------|
-| OpenCode Go API | AI モデルへのリクエスト（OpenAI 互換 Chat Completions） |
+| OpenCode Go API | AI モデルへのリクエスト（Chat Completions / Responses SSE） |
 
 ## ディレクトリ構成
 
@@ -59,14 +59,6 @@
 │   │   ├── components/   # UI コンポーネント
 │   │   ├── hooks/        # カスタム React Hooks
 │   │   ├── services/     # API クライアント
-│   │   └── types/        # TypeScript 型定義
-│   └── package.json
-│
-├── backend/            # Express + TypeScript（移行中の旧バックエンド）
-│   ├── src/
-│   │   ├── routes/       # API エンドポイント
-│   │   ├── services/     # ビジネスロジック
-│   │   ├── db/           # CosmosDB 接続
 │   │   └── types/        # TypeScript 型定義
 │   └── package.json
 │
@@ -84,7 +76,8 @@
 ├── specs/              # 仕様書・設計書
 │   ├── 000_backlog/      # 未実装機能のバックログ
 │   ├── 001-chat-app/     # Phase 1（MVP）仕様
-│   └── 006-user-isolation-functions/ # ユーザー分離・Functions移行
+│   ├── 006-user-isolation-functions/ # ユーザー分離・Functions移行
+│   └── 007-reasoning-display/        # Reasoning表示
 │
 └── .github/workflows/  # GitHub Actions CI/CD
 ```
@@ -106,30 +99,10 @@ git clone https://github.com/nerinanarine/DoyonChat.git
 cd DoyonChat
 ```
 
-### 2. バックエンドのセットアップ
+### 2. Functions バックエンドのセットアップ
 
 ```bash
-cd backend
-npm install
-
-# 環境変数の設定
-cp .env.example .env
-# .env を編集して以下を設定:
-#   PORT=3000
-#   COSMOSDB_ENDPOINT=...
-#   COSMOSDB_KEY=...
-#   COSMOSDB_DATABASE=chatdb
-#   OPENCODE_GO_API_KEY=sk-...
-#   FRONTEND_URL=http://localhost:5173
-
-# 開発サーバー起動
-npm run dev
-```
-
-### 3. Functions バックエンドのセットアップ
-
-```bash
-cd ../functions
+cd functions
 npm install
 cp local.settings.json.example local.settings.json
 npm run build
@@ -138,7 +111,7 @@ func start
 
 Functionsは http://localhost:7071 で起動します。`local.settings.json` の `AUTH_ENABLED=false` では認証なしの `dev-user` モードで動作します。
 
-### 4. フロントエンドのセットアップ
+### 3. フロントエンドのセットアップ
 
 ```bash
 cd ../frontend
@@ -153,11 +126,11 @@ cp .env.example .env
 npm run dev
 ```
 
-フロントエンドは http://localhost:5173、Functionsバックエンドは http://localhost:7071 で起動します。旧Expressバックエンドを利用する場合は `VITE_API_URL=http://localhost:3000/api` に戻してください。
+フロントエンドは http://localhost:5173、Functionsバックエンドは http://localhost:7071 で起動します。
 
 ## デプロイ
 
-詳細なFunctions移行・セットアップ手順は [specs/006-user-isolation-functions/setup-guide.md](specs/006-user-isolation-functions/setup-guide.md) を参照してください。MVPの初期手順は [specs/001-chat-app/quickstart.ja.md](specs/001-chat-app/quickstart.ja.md) を参照してください。
+詳細なFunctions移行・セットアップ手順は [specs/006-user-isolation-functions/setup-guide.md](specs/006-user-isolation-functions/setup-guide.md) を参照してください。MVPの初期手順は履歴資料のため、現行環境のセットアップには使用しないでください。
 
 ### 簡易デプロイ（Bash）
 
@@ -186,7 +159,7 @@ npx @azure/static-web-apps-cli deploy ./dist --env production --deployment-token
 
 | ワークフロー | トリガー | 内容 |
 |-------------|---------|------|
-| `ci.yml` | PR（opened, synchronize, reopened） | backend / Functionsテスト、インフラ検証 |
+| `ci.yml` | PR（opened, synchronize, reopened） | Functionsテスト、インフラ検証 |
 | `deploy.yml` | main ブランチへの push / `workflow_dispatch` | テスト → インフラ → Functions → フロントエンドの自動デプロイ |
 
 ### CI ステータス
