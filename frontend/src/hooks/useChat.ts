@@ -5,6 +5,7 @@ import * as api from '../services/chatApi';
 export function useChat(conversationId: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState('');
+  const [streamingReasoning, setStreamingReasoning] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -28,8 +29,8 @@ export function useChat(conversationId: string | null) {
       setError(null);
       setIsStreaming(true);
       setStreamingText('');
+      setStreamingReasoning('');
 
-      // Optimistically add user message
       const userMsg: Message = {
         id: `temp-${Date.now()}`,
         conversationId,
@@ -41,23 +42,27 @@ export function useChat(conversationId: string | null) {
       setMessages((prev) => [...prev, userMsg]);
 
       let assistantText = '';
+      let assistantReasoning = '';
       abortRef.current = api.streamChat(
         conversationId,
         text,
         imageBase64,
         (chunk) => {
-          assistantText += chunk;
+          assistantText += chunk.content || '';
+          assistantReasoning += chunk.reasoning || '';
           setStreamingText(assistantText);
+          setStreamingReasoning(assistantReasoning);
         },
         () => {
           setIsStreaming(false);
           setStreamingText('');
-          // Refresh messages from server
+          setStreamingReasoning('');
           loadMessages(conversationId);
         },
         (err) => {
           setIsStreaming(false);
           setStreamingText('');
+          setStreamingReasoning('');
           setError(err.message);
           setMessages((prev) => [
             ...prev,
@@ -82,7 +87,17 @@ export function useChat(conversationId: string | null) {
     }
     setIsStreaming(false);
     setStreamingText('');
+    setStreamingReasoning('');
   }, []);
 
-  return { messages, streamingText, isStreaming, error, loadMessages, sendMessage, stop };
+  return {
+    messages,
+    streamingText,
+    streamingReasoning,
+    isStreaming,
+    error,
+    loadMessages,
+    sendMessage,
+    stop,
+  };
 }

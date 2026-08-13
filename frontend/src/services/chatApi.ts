@@ -13,7 +13,9 @@ export async function createConversation(title?: string, model?: string): Promis
   return post<Conversation>('/conversations', { title, model });
 }
 
-export async function fetchConversationWithMessages(id: string): Promise<{ conversation: Conversation; messages: Message[] }> {
+export async function fetchConversationWithMessages(
+  id: string,
+): Promise<{ conversation: Conversation; messages: Message[] }> {
   return get<{ conversation: Conversation; messages: Message[] }>(`/conversations/${id}`);
 }
 
@@ -25,11 +27,16 @@ export async function updateConversationModel(id: string, model: string): Promis
   return put<Conversation>(`/conversations/${id}/model`, { model });
 }
 
+export interface ChatStreamChunk {
+  content?: string;
+  reasoning?: string;
+}
+
 export function streamChat(
   conversationId: string,
   message: string,
   imageBase64?: string,
-  onChunk: (text: string) => void = () => {},
+  onChunk: (chunk: ChatStreamChunk) => void = () => {},
   onDone: () => void = () => {},
   onError: (err: Error) => void = () => {},
 ): AbortController {
@@ -37,6 +44,14 @@ export function streamChat(
   const API_URL = import.meta.env.VITE_API_URL || '/api';
 
   (async () => {
+    let completed = false;
+
+    const complete = () => {
+      if (completed) return;
+      completed = true;
+      onDone();
+    };
+
     try {
       const token = await getToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -61,31 +76,48 @@ export function streamChat(
       const decoder = new TextDecoder();
       let buffer = '';
 
-      while (true) {
+      const handleLine = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) return;
+        const jsonStr = trimmed.slice(6);
+        if (jsonStr === '[DONE]') return;
+
+        try {
+          const parsed = JSON.parse(jsonStr) as {
+            content?: unknown;
+            reasoning?: unknown;
+            done?: unknown;
+          };
+          if (parsed.done === true) {
+            complete();
+            return;
+          }
+
+          const content = typeof parsed.content === 'string' ? parsed.content : '';
+          const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning : '';
+          if (content || reasoning) onChunk({ content, reasoning });
+        } catch {
+          // Ignore malformed SSE data and continue reading the stream.
+        }
+      };
+
+      let reading = true;
+      while (reading) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          reading = false;
+          continue;
+        }
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data: ')) continue;
-          const jsonStr = trimmed.slice(6);
-          if (jsonStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.done) {
-              onDone();
-            } else if (parsed.content) {
-              onChunk(parsed.content);
-            }
-          } catch {
-            // ignore parse errors
-          }
-        }
+        for (const line of lines) handleLine(line);
       }
-      onDone();
+
+      buffer += decoder.decode();
+      if (buffer.trim()) handleLine(buffer);
+      complete();
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
         onError(err as Error);

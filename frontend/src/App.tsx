@@ -14,12 +14,25 @@ const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 function App() {
   const isAuthenticated = useIsAuthenticated();
   const dataEnabled = !authEnabled || isAuthenticated;
-  const { conversations, loading: convLoading, create, remove, load } = useConversations(dataEnabled);
+  const {
+    conversations,
+    loading: convLoading,
+    create,
+    remove,
+    load,
+  } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
 
-  const { messages, streamingText, isStreaming, loadMessages, sendMessage, stop } =
-    useChat(activeConversationId);
+  const {
+    messages,
+    streamingText,
+    streamingReasoning,
+    isStreaming,
+    loadMessages,
+    sendMessage,
+    stop,
+  } = useChat(activeConversationId);
 
   // Load models once authenticated
   useEffect(() => {
@@ -98,6 +111,7 @@ function App() {
       <ChatMessageList
         messages={messages}
         streamingText={streamingText}
+        streamingReasoning={streamingReasoning}
         isStreaming={isStreaming}
       />
       <ChatInput

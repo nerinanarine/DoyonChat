@@ -1,4 +1,7 @@
-import { streamChat } from '../../src/services/opencodeGo';
+import {
+  formatMessagesForApi,
+  streamChat,
+} from '../../src/services/opencodeGo';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -61,7 +64,9 @@ describe('Functions OpenCode Go API Service', () => {
     const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
     expect(requestBody).toEqual({
       model: 'grok-4.5',
-      input: [{ role: 'user', content: [{ type: 'input_text', text: 'ping' }] }],
+      input: [
+        { role: 'user', content: [{ type: 'input_text', text: 'ping' }] },
+      ],
       stream: true,
       max_output_tokens: 4096,
     });
@@ -72,9 +77,29 @@ describe('Functions OpenCode Go API Service', () => {
     ]);
   });
 
+  it('separates Responses API reasoning from output text', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"type":"response.reasoning_summary_text.delta","delta":"考察"}\n\n' +
+          'data: {"type":"response.output_text.delta","delta":"回答"}\n\n' +
+          'data: {"type":"response.completed"}\n\n',
+      ),
+    );
+
+    const chunks = await collectStream('grok-4.5');
+
+    expect(chunks).toEqual([
+      { content: '', reasoning: '考察', done: false },
+      { content: '回答', done: false },
+      { content: '', done: true },
+    ]);
+  });
+
   it('keeps Chat Completions for non-Grok models', async () => {
     mockFetch.mockResolvedValueOnce(
-      streamingResponse('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n'),
+      streamingResponse(
+        'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n',
+      ),
     );
 
     const chunks = await collectStream('kimi-k2.6');
@@ -93,6 +118,38 @@ describe('Functions OpenCode Go API Service', () => {
     ]);
   });
 
+  it('separates Chat Completions reasoning from content', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"choices":[{"delta":{"reasoning_content":"考察"}}]}\n\n' +
+          'data: {"choices":[{"delta":{"content":"回答"}}]}\n\n',
+      ),
+    );
+
+    const chunks = await collectStream('kimi-k2.6');
+
+    expect(chunks).toEqual([
+      { content: '', reasoning: '考察', done: false },
+      { content: '回答', done: false },
+      { content: '', done: true },
+    ]);
+  });
+
+  it('does not include saved reasoning in API history', () => {
+    expect(
+      formatMessagesForApi([
+        {
+          id: 'message-1',
+          conversationId: 'conversation-1',
+          role: 'assistant',
+          content: '回答',
+          reasoning: '考察',
+          createdAt: '2026-08-13T00:00:00.000Z',
+        },
+      ]),
+    ).toEqual([{ role: 'assistant', content: '回答' }]);
+  });
+
   it('surfaces Responses API failure events', async () => {
     mockFetch.mockResolvedValueOnce(
       streamingResponse(
@@ -100,6 +157,8 @@ describe('Functions OpenCode Go API Service', () => {
       ),
     );
 
-    await expect(collectStream('grok-4.5')).rejects.toThrow('model unavailable');
+    await expect(collectStream('grok-4.5')).rejects.toThrow(
+      'model unavailable',
+    );
   });
 });

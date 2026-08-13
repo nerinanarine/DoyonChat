@@ -9,6 +9,4 @@ dist/
 test-results/
 playwright-report/
 *.log
-backend/deploy*.zip
-backend/deploy.tar.gz
 functions/local.settings.json

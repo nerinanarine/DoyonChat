@@ -1,21 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 import { Message } from '../../types';
 import ChatMessage from './ChatMessage';
+import CollapsibleReasoning from './CollapsibleReasoning';
 import MarkdownRenderer from '../Markdown/MarkdownRenderer';
 import { Bot } from 'lucide-react';
 
 interface ChatMessageListProps {
   messages: Message[];
   streamingText: string;
+  streamingReasoning: string;
   isStreaming: boolean;
 }
 
-const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, streamingText, isStreaming }) => {
+const ChatMessageList: React.FC<ChatMessageListProps> = ({
+  messages,
+  streamingText,
+  streamingReasoning,
+  isStreaming,
+}) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingText]);
+  }, [messages, streamingText, streamingReasoning]);
 
   if (messages.length === 0 && !isStreaming) {
     return (
@@ -43,10 +50,16 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, streamingTe
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold mb-1 text-gray-900">AI</div>
-            <div className="text-gray-800 text-[15px] leading-relaxed">
-              <MarkdownRenderer content={streamingText} />
+            <CollapsibleReasoning reasoning={streamingReasoning} />
+            {streamingText && (
+              <div className="text-gray-800 text-[15px] leading-relaxed">
+                <MarkdownRenderer content={streamingText} />
+                <span className="inline-block w-2 h-4 bg-blue-500 ml-0.5 animate-pulse align-middle" />
+              </div>
+            )}
+            {!streamingText && (
               <span className="inline-block w-2 h-4 bg-blue-500 ml-0.5 animate-pulse align-middle" />
-            </div>
+            )}
           </div>
         </div>
       )}

@@ -21,10 +21,18 @@ const MOCK_RESPONSE = [
   '何かお話ししましょう！',
 ];
 
-function sseEvent(content: string, done: boolean): Uint8Array {
-  return new TextEncoder().encode(
-    `data: ${JSON.stringify({ content, done })}\n\n`,
-  );
+function sseEvent(
+  content: string,
+  done: boolean,
+  reasoning?: string,
+): Uint8Array {
+  const event: { content: string; reasoning?: string; done: boolean } = {
+    content,
+    done,
+  };
+  if (reasoning) event.reasoning = reasoning;
+
+  return new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
 }
 
 async function* createResponseStream(
@@ -34,21 +42,28 @@ async function* createResponseStream(
   userId: string,
 ): AsyncGenerator<Uint8Array> {
   let fullContent = '';
+  let fullReasoning = '';
   const startedAt = Date.now();
   let firstChunkAt: number | null = null;
 
-  const emit = (content: string, done: boolean): Uint8Array => {
+  const emit = (
+    content: string,
+    done: boolean,
+    reasoning?: string,
+  ): Uint8Array => {
     if (firstChunkAt === null) {
       firstChunkAt = Date.now();
       console.info(`[functions/chat] TTFT=${firstChunkAt - startedAt}ms`);
     }
-    return sseEvent(content, done);
+    return sseEvent(content, done, reasoning);
   };
 
   try {
     const apiKey = process.env.OPENCODE_GO_API_KEY || '';
     const useMock =
-      !apiKey || apiKey === 'sk-opencode-test-key' || apiKey.startsWith('sk-test');
+      !apiKey ||
+      apiKey === 'sk-opencode-test-key' ||
+      apiKey.startsWith('sk-test');
 
     if (useMock) {
       for (const chunk of MOCK_RESPONSE) {
@@ -60,7 +75,8 @@ async function* createResponseStream(
       for await (const chunk of streamChat(history, { model })) {
         if (chunk.done) break;
         fullContent += chunk.content;
-        yield emit(chunk.content, false);
+        fullReasoning += chunk.reasoning || '';
+        yield emit(chunk.content, false, chunk.reasoning);
       }
     }
   } catch (error) {
@@ -68,16 +84,18 @@ async function* createResponseStream(
     yield emit('\n\n(エラーが発生しました)', false);
   }
 
-  await service.addMessage(
-    {
-      conversationId,
-      role: 'assistant',
-      content: fullContent || '(No response)',
-    },
-    userId,
-  );
+  const assistantMessage: Parameters<typeof service.addMessage>[0] = {
+    conversationId,
+    role: 'assistant',
+    content: fullContent || '(No response)',
+  };
+  if (fullReasoning) assistantMessage.reasoning = fullReasoning;
+
+  await service.addMessage(assistantMessage, userId);
   yield emit('', true);
-  console.info(`[functions/chat] stream completed in ${Date.now() - startedAt}ms`);
+  console.info(
+    `[functions/chat] stream completed in ${Date.now() - startedAt}ms`,
+  );
 }
 
 export async function chatHandler(
@@ -127,7 +145,12 @@ export async function chatHandler(
         'Cache-Control': 'no-cache',
         Connection: 'keep-alive',
       },
-      body: createResponseStream(history, conversation.model, conversationId, userId),
+      body: createResponseStream(
+        history,
+        conversation.model,
+        conversationId,
+        userId,
+      ),
     };
   } catch (error) {
     return toHttpResponse(error);

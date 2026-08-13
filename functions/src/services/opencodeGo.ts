@@ -1,11 +1,17 @@
 import { Message, OpenCodeGoMessage } from '../types';
+import {
+  createReasoningMarkupParser,
+  normalizeChatCompletionDelta,
+  normalizeResponsesEvent,
+  ReasoningMarkupParser,
+} from './reasoningNormalizer';
 
 const API_BASE = 'https://opencode.ai/zen/go/v1';
 // OpenCode Go exposes Grok 4.5 through the OpenAI Responses API.
 const RESPONSES_API_MODELS = new Set(['grok-4.5']);
 
 type ResponsesEvent =
-  | { kind: 'delta'; content: string }
+  | { kind: 'delta'; content: string; reasoning: string }
   | { kind: 'completed' }
   | { kind: 'error'; message: string };
 
@@ -13,13 +19,26 @@ type ResponsesInputPart =
   | { type: 'input_text' | 'output_text'; text: string }
   | { type: 'input_image'; image_url: string };
 
+export interface StreamChunk {
+  content: string;
+  reasoning?: string;
+  done: boolean;
+}
+
+interface OpenCodeGoOptions {
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
 function usesResponsesApi(model: string): boolean {
   return RESPONSES_API_MODELS.has(model);
 }
 
 function toResponsesInput(messages: OpenCodeGoMessage[]) {
   return messages.map((message) => {
-    const contentType = message.role === 'assistant' ? 'output_text' : 'input_text';
+    const contentType =
+      message.role === 'assistant' ? 'output_text' : 'input_text';
     const content: ResponsesInputPart[] = [];
 
     if (typeof message.content === 'string') {
@@ -38,17 +57,6 @@ function toResponsesInput(messages: OpenCodeGoMessage[]) {
   });
 }
 
-interface OpenCodeGoOptions {
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
-interface StreamChunk {
-  content: string;
-  done: boolean;
-}
-
 async function getApiKey(): Promise<string> {
   const key = process.env.OPENCODE_GO_API_KEY;
   if (!key) {
@@ -60,6 +68,61 @@ async function getApiKey(): Promise<string> {
 function getDefaultTemperature(model: string): number {
   if (model === 'kimi-k2.7-code') return 1;
   return 0.7;
+}
+
+function createStreamChunk(
+  content = '',
+  reasoning = '',
+  done = false,
+): StreamChunk | null {
+  if (!done && !content && !reasoning) return null;
+  if (reasoning) return { content, reasoning, done };
+  return { content, done };
+}
+
+function chunkFromParts(parts: {
+  content: string;
+  reasoning: string;
+}): StreamChunk | null {
+  return createStreamChunk(parts.content, parts.reasoning);
+}
+
+function flushMarkupParser(parser: ReasoningMarkupParser): StreamChunk | null {
+  return chunkFromParts(parser.flush());
+}
+
+export async function healthCheck(): Promise<boolean> {
+  try {
+    const apiKey = await getApiKey();
+    const model = process.env.OPENCODE_GO_MODEL || 'kimi-k2.6';
+    const useResponsesApi = usesResponsesApi(model);
+    const response = await fetch(
+      `${API_BASE}/${useResponsesApi ? 'responses' : 'chat/completions'}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(
+          useResponsesApi
+            ? {
+                model,
+                input: toResponsesInput([{ role: 'user', content: 'ping' }]),
+                max_output_tokens: 1,
+              }
+            : {
+                model,
+                messages: [{ role: 'user', content: 'ping' }],
+                max_tokens: 1,
+              },
+        ),
+      },
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function* streamChat(
@@ -100,17 +163,20 @@ export async function* streamChat(
   }
 
   const decoder = new TextDecoder();
+  const markupParser = createReasoningMarkupParser();
   let buffer = '';
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        const lines = buffer.split('\n').filter((line) => line.trim());
-        for (const line of lines) {
-          const chunk = parseSSELine(line);
+        buffer += decoder.decode();
+        for (const line of buffer.split('\n').filter((item) => item.trim())) {
+          const chunk = parseSSELine(line, markupParser);
           if (chunk) yield chunk;
         }
+        const flushed = flushMarkupParser(markupParser);
+        if (flushed) yield flushed;
         yield { content: '', done: true };
         break;
       }
@@ -120,7 +186,7 @@ export async function* streamChat(
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        const chunk = parseSSELine(line);
+        const chunk = parseSSELine(line, markupParser);
         if (chunk) yield chunk;
       }
     }
@@ -160,23 +226,31 @@ async function* streamResponses(
   }
 
   const decoder = new TextDecoder();
+  const markupParser = createReasoningMarkupParser();
   let buffer = '';
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        const lines = buffer.split('\n').filter((line) => line.trim());
-        for (const line of lines) {
-          const event = parseResponsesSSELine(line);
+        buffer += decoder.decode();
+        for (const line of buffer.split('\n').filter((item) => item.trim())) {
+          const event = parseResponsesSSELine(line, markupParser);
           if (!event) continue;
           if (event.kind === 'error') throw new Error(event.message);
-          if (event.kind === 'delta') yield { content: event.content, done: false };
+          if (event.kind === 'delta') {
+            const chunk = createStreamChunk(event.content, event.reasoning);
+            if (chunk) yield chunk;
+          }
           if (event.kind === 'completed') {
+            const flushed = flushMarkupParser(markupParser);
+            if (flushed) yield flushed;
             yield { content: '', done: true };
             return;
           }
         }
+        const flushed = flushMarkupParser(markupParser);
+        if (flushed) yield flushed;
         yield { content: '', done: true };
         break;
       }
@@ -186,11 +260,16 @@ async function* streamResponses(
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        const event = parseResponsesSSELine(line);
+        const event = parseResponsesSSELine(line, markupParser);
         if (!event) continue;
         if (event.kind === 'error') throw new Error(event.message);
-        if (event.kind === 'delta') yield { content: event.content, done: false };
+        if (event.kind === 'delta') {
+          const chunk = createStreamChunk(event.content, event.reasoning);
+          if (chunk) yield chunk;
+        }
         if (event.kind === 'completed') {
+          const flushed = flushMarkupParser(markupParser);
+          if (flushed) yield flushed;
           yield { content: '', done: true };
           return;
         }
@@ -201,42 +280,62 @@ async function* streamResponses(
   }
 }
 
-function parseResponsesSSELine(line: string): ResponsesEvent | null {
+function parseResponsesSSELine(
+  line: string,
+  markupParser: ReasoningMarkupParser,
+): ResponsesEvent | null {
   const trimmed = line.trim();
   if (!trimmed || trimmed === 'data: [DONE]' || !trimmed.startsWith('data: ')) {
     return null;
   }
 
   try {
-    const event = JSON.parse(trimmed.slice(6));
-    if (event.type === 'response.output_text.delta' && typeof event.delta === 'string') {
-      return { kind: 'delta', content: event.delta };
-    }
-    if (event.type === 'response.completed') return { kind: 'completed' };
+    const event = JSON.parse(trimmed.slice(6)) as Record<string, unknown>;
     if (event.type === 'error' || event.type === 'response.failed') {
-      const error = event.error || event.response?.error || event.message;
+      const error =
+        event.error ||
+        (event.response && (event.response as Record<string, unknown>).error) ||
+        event.message;
       return {
         kind: 'error',
-        message: typeof error === 'string' ? error : JSON.stringify(error || event.type),
+        message:
+          typeof error === 'string'
+            ? error
+            : JSON.stringify(error || event.type),
       };
     }
+
+    const normalized = normalizeResponsesEvent(event, markupParser);
+    if (!normalized) return null;
+    if (normalized.done) return { kind: 'completed' };
+    return {
+      kind: 'delta',
+      content: normalized.content,
+      reasoning: normalized.reasoning,
+    };
   } catch {
     return null;
   }
-
-  return null;
 }
 
-function parseSSELine(line: string): StreamChunk | null {
+function parseSSELine(
+  line: string,
+  markupParser: ReasoningMarkupParser,
+): StreamChunk | null {
   const trimmed = line.trim();
-  if (!trimmed || trimmed === 'data: [DONE]') return null;
-  if (!trimmed.startsWith('data: ')) return null;
+  if (!trimmed || trimmed === 'data: [DONE]' || !trimmed.startsWith('data: ')) {
+    return null;
+  }
 
   try {
-    const json = JSON.parse(trimmed.slice(6));
-    const delta = json.choices?.[0]?.delta;
-    const content = delta?.content || delta?.reasoning_content || delta?.reasoning || '';
-    return { content, done: false };
+    const json = JSON.parse(trimmed.slice(6)) as Record<string, unknown>;
+    const choices = Array.isArray(json.choices) ? json.choices : [];
+    const firstChoice = choices[0];
+    const delta =
+      firstChoice && typeof firstChoice === 'object'
+        ? (firstChoice as Record<string, unknown>).delta
+        : undefined;
+    return chunkFromParts(normalizeChatCompletionDelta(delta, markupParser));
   } catch {
     return null;
   }
