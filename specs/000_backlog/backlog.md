@@ -31,7 +31,7 @@
 | [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🔴 未対応 | UX改善 | — | 現在は固定「New Chat」 |
 | [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🟢 対応済み | セキュリティ | — | P1-006 の前提条件を完了 |
 | [P1-006](items/P1-006-user-separated-chats.md) | ユーザーごとにチャットを分ける | P1 | 🟢 対応済み | セキュリティ | [統合仕様](../006-user-isolation-functions/spec.md) | P2-006 と同時実装、本番切替完了 |
-| [P1-007](items/P1-007-reasoning-display.md) | Reasoning モデルの Thinking コンテンツをわかりやすく表示 | P1 | 🟡 進行中 | UX改善 | — | 思考と回答を視覚的に分離 |
+| [P1-007](items/P1-007-reasoning-display.md) | Reasoning モデルの Thinking コンテンツをわかりやすく表示 | P1 | 🟢 対応済み | UX改善 | — | 思考と回答を視覚的に分離、開発環境反映済み |
 | [P1-008](items/P1-008-doyonhub-home.md) | DoyonHubトップページ・ツールランチャー | P1 | 🔴 未対応 | 機能追加 | — | DoyonChatなどの各種ツールへの入口 |
 | [P1-009](items/P1-009-admin-menu.md) | Adminメニュー | P1 | 🔴 未対応 | 管理機能 | P1-008 | DoyonHubのトップメニューに管理機能への入口を追加 |
 | [P1-010](items/P1-010-user-management.md) | ユーザー管理 | P1 | 🔴 未対応 | 管理機能 | P1-009 | 管理対象・操作範囲は後で決定 |
