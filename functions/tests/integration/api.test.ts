@@ -8,10 +8,13 @@ import {
   conversationHandler,
   conversationsHandler,
   modelHandler,
+  titleHandler,
 } from '../../src/functions/conversations';
 import { messagesHandler } from '../../src/functions/messages';
 import { chatHandler } from '../../src/functions/chat';
 import { AppError, toHttpResponse } from '../../src/middleware/errorHandler';
+import * as auth from '../../src/middleware/auth';
+import * as conversationService from '../../src/services/conversationService';
 
 jest.mock('../../src/db', () => {
   const unavailableContainer = {
@@ -84,13 +87,18 @@ describe('Functions API contract', () => {
   it('requires authentication when enabled', async () => {
     process.env.AUTH_ENABLED = 'true';
 
-    const response = await modelsHandler(request('GET', '/api/models'), {} as never);
+    const modelsResponse = await modelsHandler(request('GET', '/api/models'), {} as never);
+    const titleResponse = await titleHandler(
+      request('PUT', '/api/conversations/conversation-id/title', { title: 'Renamed' }),
+      {} as never,
+    );
 
-    expect(response.status).toBe(401);
+    expect(modelsResponse.status).toBe(401);
+    expect(titleResponse.status).toBe(401);
     process.env.AUTH_ENABLED = 'false';
   });
 
-  it('supports conversation CRUD and model updates', async () => {
+  it('supports conversation CRUD, model updates, and title updates', async () => {
     const created = await conversationsHandler(
       request('POST', '/api/conversations', {
         title: 'Functions chat',
@@ -123,11 +131,114 @@ describe('Functions API contract', () => {
     expect(updated.status).toBe(200);
     expect((updated.jsonBody as { model: string }).model).toBe('glm-5.1');
 
+    const beforeRename = updated.jsonBody as Record<string, unknown>;
+    const renamed = await titleHandler(
+      request('PUT', `/api/conversations/${id}/title`, { title: '  Renamed chat  ' }),
+      {} as never,
+    );
+    expect(renamed.status).toBe(200);
+    expect(renamed.jsonBody).toEqual({ ...beforeRename, title: 'Renamed chat' });
+
+    const detailAfterRename = await conversationHandler(
+      request('GET', `/api/conversations/${id}`),
+      {} as never,
+    );
+    expect(detailAfterRename.jsonBody).toEqual(
+      expect.objectContaining({ conversation: renamed.jsonBody }),
+    );
+
     const deleted = await conversationHandler(
       request('DELETE', `/api/conversations/${id}`),
       {} as never,
     );
     expect(deleted.status).toBe(204);
+  });
+
+  it.each([
+    ['missing title', {}],
+    ['non-string title', { title: 123 }],
+    ['blank title', { title: '   ' }],
+    ['title longer than 100 characters', { title: 'a'.repeat(101) }],
+  ])('rejects %s', async (_case, body) => {
+    const response = await titleHandler(
+      request('PUT', '/api/conversations/conversation-id/title', body),
+      {} as never,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('accepts a 100-character title and returns 404 for an unknown conversation', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Boundary' }),
+      {} as never,
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    const boundary = await titleHandler(
+      request('PUT', `/api/conversations/${id}/title`, { title: 'a'.repeat(100) }),
+      {} as never,
+    );
+    expect(boundary.status).toBe(200);
+
+    const missing = await titleHandler(
+      request('PUT', '/api/conversations/missing/title', { title: 'Renamed' }),
+      {} as never,
+    );
+    expect(missing.status).toBe(404);
+  });
+
+  it('counts an emoji as one character in the title limit', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Emoji boundary' }),
+      {} as never,
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    const boundary = await titleHandler(
+      request('PUT', `/api/conversations/${id}/title`, { title: '😀'.repeat(100) }),
+      {} as never,
+    );
+
+    expect(boundary.status).toBe(200);
+  });
+
+  it('returns 404 without changing a conversation owned by another user', async () => {
+    const conversation = await conversationService.createConversation(
+      'Bob conversation',
+      'kimi-k2.6',
+      'bob',
+    );
+    const authenticate = jest.spyOn(auth, 'authenticateRequest').mockResolvedValue('alice');
+    process.env.AUTH_ENABLED = 'true';
+
+    try {
+      const response = await titleHandler(
+        request('PUT', `/api/conversations/${conversation.id}/title`, { title: 'Stolen' }),
+        {} as never,
+      );
+
+      expect(response.status).toBe(404);
+      await expect(conversationService.getConversation(conversation.id, 'bob')).resolves.toEqual(
+        conversation,
+      );
+    } finally {
+      process.env.AUTH_ENABLED = 'false';
+      authenticate.mockRestore();
+    }
+  });
+
+  it('rejects malformed JSON for title updates', async () => {
+    const malformed = new HttpRequest({
+      method: 'PUT',
+      url: 'http://localhost/api/conversations/conversation-id/title',
+      params: { id: 'conversation-id' },
+      body: { string: '{' },
+    });
+
+    const response = await titleHandler(malformed, {} as never);
+
+    expect(response.status).toBe(400);
   });
 
   it('streams chat events and saves the assistant message', async () => {

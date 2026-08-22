@@ -10,6 +10,7 @@ interface AppLayoutProps {
   models: ModelInfo[];
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+  onRenameConversation: (id: string, title: string) => Promise<void>;
   onNewChat: () => void;
   onChangeModel: (modelId: string) => void;
   children: React.ReactNode;
@@ -21,6 +22,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   models,
   onSelectConversation,
   onDeleteConversation,
+  onRenameConversation,
   onNewChat,
   onChangeModel,
   children,
@@ -49,6 +51,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             setSidebarOpen(false);
           }}
           onDelete={onDeleteConversation}
+          onRename={onRenameConversation}
           onNewChat={() => {
             onNewChat();
             setSidebarOpen(false);
@@ -71,6 +74,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 onDeleteConversation(id);
                 setSidebarOpen(false);
               }}
+              onRename={onRenameConversation}
               onNewChat={() => {
                 onNewChat();
                 setSidebarOpen(false);

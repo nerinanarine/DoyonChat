@@ -27,6 +27,10 @@ export async function updateConversationModel(id: string, model: string): Promis
   return put<Conversation>(`/conversations/${id}/model`, { model });
 }
 
+export async function updateConversationTitle(id: string, title: string): Promise<Conversation> {
+  return put<Conversation>(`/conversations/${id}/title`, { title: title.trim() });
+}
+
 export interface ChatStreamChunk {
   content?: string;
   reasoning?: string;
