@@ -4,7 +4,7 @@
 
 **Input**: [Feature specification](./spec.md)
 
-**Implementation Status**: Code and automated verification complete; desktop/mobile manual verification pending (2026-08-22)
+**Implementation Status**: Code, automated verification, desktop/mobile viewport verification, and production deployment complete (2026-08-22)
 
 ## Summary
 
@@ -183,22 +183,22 @@ Conversation型とCosmos DBスキーマは変更しない。
 
 **Tasks**:
 
-- [ ] `updateConversationTitle(id, title, userId)`をserviceへ追加する
-- [ ] titleの前後空白除去と1〜100文字の検証をhandlerへ追加する
-- [ ] `PUT /api/conversations/{id}/title`を登録する
-- [ ] 成功時に更新済みConversationを200で返す
-- [ ] 不正入力を400として返す
-- [ ] 存在しない会話と他ユーザーの会話を404として返す
-- [ ] `updatedAt`とtitle以外のConversationフィールドを維持する
-- [ ] Cosmos DBとin-memory fallbackの両方を更新する
+- [x] `updateConversationTitle(id, title, userId)`をserviceへ追加する
+- [x] titleの前後空白除去と1〜100文字の検証をhandlerへ追加する
+- [x] `PUT /api/conversations/{id}/title`を登録する
+- [x] 成功時に更新済みConversationを200で返す
+- [x] 不正入力を400として返す
+- [x] 存在しない会話と他ユーザーの会話を404として返す
+- [x] `updatedAt`とtitle以外のConversationフィールドを維持する
+- [x] Cosmos DBとin-memory fallbackの両方を更新する
 
 **Verification**:
 
-- [ ] 有効なタイトルがtrimされ、200レスポンスと保存結果へ反映される
-- [ ] 欠落、非文字列、空白のみ、100文字超過が400になる
-- [ ] 別ユーザーの会話と存在しない会話が404になる
-- [ ] 更新前後で`updatedAt`、`id`、`userId`、`model`、`createdAt`が変わらない
-- [ ] Cosmos DB必須時の既存503方針を維持する
+- [x] 有効なタイトルがtrimされ、200レスポンスと保存結果へ反映される
+- [x] 欠落、非文字列、空白のみ、100文字超過が400になる
+- [x] 別ユーザーの会話と存在しない会話が404になる
+- [x] 更新前後で`updatedAt`、`id`、`userId`、`model`、`createdAt`が変わらない
+- [x] Cosmos DB必須時の既存503方針を維持する
 
 ### Phase 2: FrontendのAPIと会話状態更新
 
@@ -212,20 +212,20 @@ Conversation型とCosmos DBスキーマは変更しない。
 
 **Tasks**:
 
-- [ ] `updateConversationTitle(id, title)` API clientを追加する
-- [ ] `useConversations`へ`updateTitle`を追加する
-- [ ] 成功レスポンスで該当Conversationだけを置き換える
-- [ ] 更新失敗時にConversation配列を変更しない
-- [ ] ConversationListまで更新callbackを配線する
-- [ ] アクティブ会話ヘッダーが同じConversation配列から更新されることを維持する
+- [x] `updateConversationTitle(id, title)` API clientを追加する
+- [x] `useConversations`へ`updateTitle`を追加する
+- [x] 成功レスポンスで該当Conversationだけを置き換える
+- [x] 更新失敗時にConversation配列を変更しない
+- [x] ConversationListまで更新callbackを配線する
+- [x] アクティブ会話ヘッダーが同じConversation配列から更新されることを維持する
 
 **Verification**:
 
-- [ ] API clientが正しいmethod・path・bodyを送信する
-- [ ] 成功時に該当Conversationだけが置き換わる
-- [ ] 成功時も配列順が維持される
-- [ ] API失敗時に既存Conversation stateが維持される
-- [ ] アクティブ会話のリネーム成功後にヘッダーが更新される
+- [x] API clientが正しいmethod・path・bodyを送信する
+- [x] 成功時に該当Conversationだけが置き換わる
+- [x] 成功時も配列順が維持される
+- [x] API失敗時に既存Conversation stateが維持される
+- [x] アクティブ会話のリネーム成功後にヘッダーが更新される
 
 ### Phase 3: ConversationListのインライン編集UI
 
@@ -236,44 +236,44 @@ Conversation型とCosmos DBスキーマは変更しない。
 
 **Tasks**:
 
-- [ ] 編集対象ID、入力値、保存中、エラーの最小stateを追加する
-- [ ] タイトル表示をクリック・キーボード操作可能にする
-- [ ] 現在タイトル入りinputへの切り替えとフォーカスを実装する
-- [ ] Enter保存、Escキャンセル、blurキャンセルを実装する
-- [ ] composition中のEnterを無視する
-- [ ] 空入力のEnterでAPIを呼ばず元タイトルへ戻す
-- [ ] 100文字超過をAPI呼び出し前に拒否してエラー表示する
-- [ ] 保存中の二重送信を防ぐ
-- [ ] API失敗時に入力・編集状態を維持してエラー表示する
-- [ ] 成功時に編集状態とエラーを解除する
-- [ ] タイトル・inputイベントを行選択と削除操作から分離する
-- [ ] desktop/mobile共通の既存レイアウトを維持する
+- [x] 編集対象ID、入力値、保存中、エラーの最小stateを追加する
+- [x] タイトル表示をクリック・キーボード操作可能にする
+- [x] 現在タイトル入りinputへの切り替えとフォーカスを実装する
+- [x] Enter保存、Escキャンセル、blurキャンセルを実装する
+- [x] composition中のEnterを無視する
+- [x] 空入力のEnterでAPIを呼ばず元タイトルへ戻す
+- [x] 100文字超過をAPI呼び出し前に拒否してエラー表示する
+- [x] 保存中の二重送信を防ぐ
+- [x] API失敗時に入力・編集状態を維持してエラー表示する
+- [x] 成功時に編集状態とエラーを解除する
+- [x] タイトル・inputイベントを行選択と削除操作から分離する
+- [x] desktop/mobile共通の既存レイアウトを維持する
 
 **Verification**:
 
-- [ ] タイトルクリックで現在値入りinputへ切り替わりフォーカスされる
-- [ ] 非アクティブ会話の編集で会話選択callbackが呼ばれない
-- [ ] Enterで保存callbackが1回だけ呼ばれる
-- [ ] Esc、blur、空入力のEnterで保存callbackが呼ばれない
-- [ ] composition中のEnterで保存callbackが呼ばれない
-- [ ] 100文字超過時に入力エラーが表示される
-- [ ] API失敗後に入力が残り再試行できる
-- [ ] 同時に編集状態となる会話が1件だけである
-- [ ] キーボードで編集開始・保存・キャンセルできる
+- [x] タイトルクリックで現在値入りinputへ切り替わりフォーカスされる
+- [x] 非アクティブ会話の編集で会話選択callbackが呼ばれない
+- [x] Enterで保存callbackが1回だけ呼ばれる
+- [x] Esc、blur、空入力のEnterで保存callbackが呼ばれない
+- [x] composition中のEnterで保存callbackが呼ばれない
+- [x] 100文字超過時に入力エラーが表示される
+- [x] API失敗後に入力が残り再試行できる
+- [x] 同時に編集状態となる会話が1件だけである
+- [x] キーボードで編集開始・保存・キャンセルできる
 
 ### Phase 4: 全体検証とバックログ更新
 
 **Tasks**:
 
-- [ ] Functionsのbuildとunit/integration testを実行する
-- [ ] Frontendのbuildとunit testを実行する
-- [ ] Frontendのlintを実行する
-- [ ] desktop幅で編集、保存、キャンセル、再試行を確認する
-- [ ] mobile幅で同じ操作を確認する
-- [ ] 再読み込み後の永続化を確認する
-- [ ] リネームで一覧順が変わらないことを確認する
-- [ ] P2-005バックログの実装メモと変更履歴を更新する
-- [ ] バックログ一覧のステータスを対応済みへ更新する
+- [x] Functionsのbuildとunit/integration testを実行する
+- [x] Frontendのbuildとunit testを実行する
+- [x] Frontendのlintを実行する（変更箇所の新規警告なし、既存3警告あり）
+- [x] desktop幅で編集、保存、キャンセル、再試行を確認する
+- [x] mobile viewport（390×844）で編集、保存、キャンセルを確認する
+- [x] 再読み込み後の永続化を確認する
+- [x] リネームで一覧順が変わらないことを確認する
+- [x] P2-005バックログの実装メモと変更履歴を更新する
+- [x] バックログ一覧のステータスを対応済みへ更新する
 
 **Verification Commands**:
 
@@ -324,11 +324,12 @@ npm run lint
 
 ### Manual Verification
 
-- desktopサイドバーでのマウス・キーボード操作
-- mobileサイドバーでのタップ・ソフトウェアキーボード操作
-- 日本語IME、絵文字、重複タイトル
-- 保存後のページ再読み込み
-- リネーム前後の一覧順
+- [x] desktopブラウザで保存、Escキャンセル、失敗後の再試行、アクティブ見出し更新を確認
+- [x] mobile viewport（390×844）でサイドバーの編集、保存、Escキャンセルを確認
+- [x] 保存後のページ再読み込みと一覧順維持を確認
+- [x] 日本語IMEと絵文字はunit test、重複タイトルの許容は仕様・実装レビューで確認
+
+実機のタップ・ソフトウェアキーボード操作は未実施。mobile breakpointの回帰はviewport確認とunit testで検証した。
 
 ## Risks and Mitigations
 
@@ -347,9 +348,9 @@ npm run lint
 
 - [x] `specs/008-rename-conversation/spec.md`
 - [x] `specs/008-rename-conversation/plan.md`
-- [ ] Functionsのタイトル更新APIとservice
-- [ ] Frontendのtitle更新clientと会話state更新
-- [ ] ConversationListのインライン編集UI
-- [ ] Functions / Frontendの自動テスト
-- [ ] desktop / mobileの手動確認
-- [ ] P2-005バックログの実装メモ・変更履歴更新
+- [x] Functionsのタイトル更新APIとservice
+- [x] Frontendのtitle更新clientと会話state更新
+- [x] ConversationListのインライン編集UI
+- [x] Functions / Frontendの自動テスト
+- [x] desktop / mobile viewportの手動確認
+- [x] P2-005バックログの実装メモ・変更履歴更新

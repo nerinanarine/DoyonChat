@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-22
 
-**Status**: Implemented — manual verification pending
+**Status**: Implemented and deployed
 
 **Input**: [P2-005 backlog item](../000_backlog/items/P2-005-rename-conversation.md)
 
@@ -184,7 +184,7 @@ interface Conversation {
 - **SC-007**: リネーム成功後、再読み込みしても新タイトルが表示される
 - **SC-008**: 他ユーザーの会話IDと存在しない会話IDのどちらも404となり、データが変更されない
 - **SC-009**: リネーム前後で`updatedAt`と会話一覧順が変わらない
-- **SC-010**: FunctionsとFrontendのbuild・unit/integration test・lintが成功する
+- **SC-010**: FunctionsとFrontendのbuild・unit/integration testが成功し、今回の差分に起因するlint警告がない
 
 ## Out of Scope
 
