@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { streamChat } from '../../src/services/chatApi';
+import { streamChat, updateConversationTitle } from '../../src/services/chatApi';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -56,5 +56,37 @@ describe('chat stream API', () => {
     ]);
     expect(errors).toHaveLength(0);
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('conversation title API', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it('sends a trimmed title to the title endpoint', async () => {
+    const updated = {
+      id: 'conversation-1',
+      title: '新しいタイトル',
+      model: 'model-1',
+      createdAt: '2026-08-22T00:00:00.000Z',
+      updatedAt: '2026-08-22T00:00:00.000Z',
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue(updated),
+    });
+
+    await expect(updateConversationTitle('conversation-1', '  新しいタイトル  ')).resolves.toEqual(
+      updated,
+    );
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/conversations/conversation-1/title'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ title: '新しいタイトル' }),
+      }),
+    );
   });
 });

@@ -4,6 +4,8 @@
 
 **Input**: [Feature specification](./spec.md)
 
+**Implementation Status**: Code and automated verification complete; desktop/mobile manual verification pending (2026-08-22)
+
 ## Summary
 
 サイドバーの会話タイトルをインライン編集し、EnterキーでAzure Functionsへ保存できるようにする。非アクティブ会話のリネームでは会話を切り替えず、Escキー・フォーカスアウト・空入力では変更を破棄する。保存失敗時は入力を維持してインラインエラーを表示する。
@@ -54,12 +56,12 @@ interface UpdateConversationTitleRequest {
 
 ### D2. FrontendとFunctionsの両方で同じ入力条件を検証する
 
-保存値は前後空白を除去し、1文字以上100文字以下とする。
+保存値は前後空白を除去し、1文字以上100 Unicodeコードポイント以下とする。
 
 - Frontend: 空入力はキャンセル、100文字超過はインラインエラーとしてAPI呼び出し前に拒否
 - Functions: 直接APIを呼ばれた場合も同じ条件を検証し、不正入力は400
 
-共通validationモジュールは新設せず、各層に最小限の検証を置く。文字数境界は同じテストケースで確認する。
+共通validationモジュールは新設せず、各層に最小限の検証を置く。文字数は`Array.from(title).length`で数え、ASCII、日本語、絵文字の境界を同じテストケースで確認する。
 
 ### D3. リネームで会話を切り替えない
 

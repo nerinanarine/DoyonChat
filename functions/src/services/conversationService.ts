@@ -159,6 +159,29 @@ export async function updateConversationModel(
   }
 }
 
+export async function updateConversationTitle(
+  id: string,
+  title: string,
+  userId?: string,
+): Promise<Conversation | null> {
+  const existing = await getConversation(id, userId);
+  if (!existing) return null;
+
+  await ensureConversationContainer();
+  const updated: Conversation = { ...existing, title };
+  if (useMemory) {
+    memoryConversations.set(id, updated);
+    return updated;
+  }
+
+  try {
+    const { resource } = await getConversationsContainer().item(id, id).replace(updated);
+    return resource as Conversation;
+  } catch (error) {
+    return databaseUnavailable(error);
+  }
+}
+
 export async function deleteConversation(id: string, userId?: string): Promise<boolean> {
   const existing = await getConversation(id, userId);
   if (!existing) return false;

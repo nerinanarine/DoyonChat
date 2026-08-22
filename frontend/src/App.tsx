@@ -20,6 +20,7 @@ function App() {
     create,
     remove,
     load,
+    updateTitle,
   } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -105,6 +106,7 @@ function App() {
       models={models}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
+      onRenameConversation={updateTitle}
       onNewChat={handleNewChat}
       onChangeModel={handleChangeModel}
     >

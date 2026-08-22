@@ -80,6 +80,29 @@ export async function modelHandler(
   }
 }
 
+export async function titleHandler(
+  request: HttpRequest,
+  _context: InvocationContext,
+): Promise<HttpResponseInit> {
+  try {
+    const userId = await authenticateRequest(request);
+    const body = await readJsonBody(request);
+    const title = getRequiredString(body, 'title').trim();
+    if (Array.from(title).length > 100) {
+      throw new AppError(400, 'title must be 100 characters or fewer');
+    }
+    const updated = await service.updateConversationTitle(
+      getConversationId(request),
+      title,
+      userId,
+    );
+    if (!updated) throw new AppError(404, 'Conversation not found');
+    return { status: 200, jsonBody: updated };
+  } catch (error) {
+    return toHttpResponse(error);
+  }
+}
+
 app.http('conversations', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -99,4 +122,11 @@ app.http('conversation-model', {
   authLevel: 'anonymous',
   route: 'conversations/{id}/model',
   handler: modelHandler,
+});
+
+app.http('conversation-title', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  route: 'conversations/{id}/title',
+  handler: titleHandler,
 });

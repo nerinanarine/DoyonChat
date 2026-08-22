@@ -41,5 +41,10 @@ export function useConversations(enabled = true) {
     setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
   }, []);
 
-  return { conversations, loading, error, load, create, remove, updateModel };
+  const updateTitle = useCallback(async (id: string, title: string) => {
+    const updated = await api.updateConversationTitle(id, title);
+    setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  }, []);
+
+  return { conversations, loading, error, load, create, remove, updateModel, updateTitle };
 }
