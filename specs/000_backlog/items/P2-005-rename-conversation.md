@@ -2,7 +2,7 @@
 
 ## 概要
 
-自動生成タイトル（P1-004）に加え、ユーザーが会話一覧から直接タイトルを編集できるようにする。
+将来の自動生成タイトル（P1-004）とは独立して、ユーザーが会話一覧から直接タイトルを編集できるようにする。
 
 ## Feature specification
 
@@ -18,7 +18,10 @@
 ## 関連ファイル
 
 - `frontend/src/components/Sidebar/ConversationList.tsx`
-- `backend/src/routes/conversations.ts`
+- `frontend/src/hooks/useConversations.ts`
+- `frontend/src/services/chatApi.ts`
+- `functions/src/functions/conversations.ts`
+- `functions/src/services/conversationService.ts`
 
 ## 実装メモ
 
@@ -27,7 +30,9 @@
 - Cosmos DBとin-memory storeの両方でタイトルだけを更新し、`updatedAt`と一覧順を維持
 - サイドバーにEnter保存、Esc/blurキャンセル、IME対応、失敗時再試行付きのインライン編集を追加
 - Functions 39テスト、Frontend 29テスト、両build成功
-- desktop/mobileの手動確認と本番デプロイは未実施
+- desktopブラウザで保存・キャンセル・再試行・見出し更新・再読み込み・一覧順維持を確認済み
+- mobile viewport（390×844）で編集・保存・Escキャンセルを確認済み
+- ユーザー確認により本番デプロイ済み
 
 ---
 
@@ -35,5 +40,6 @@
 
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
-| 2026-08-22 | 🟡 進行中 | 実装・自動テスト完了、desktop/mobile手動確認待ち |
 | 2026-06-28 | 🔴 未対応 | 初期作成 |
+| 2026-08-22 | 🟡 進行中 | 実装・自動テスト完了、desktop/mobile手動確認待ち |
+| 2026-08-22 | 🟢 対応済み | desktop/mobile viewport確認完了、本番デプロイ済み |

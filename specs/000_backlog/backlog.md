@@ -39,7 +39,7 @@
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
 | [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🔴 未対応 | UX改善 | — | 種別ごとにメッセージ変更 |
 | [P2-004](items/P2-004-image-validation.md) | 画像サイズ制限のフロントエンドバリデーション | P2 | 🔴 未対応 | 機能追加 | — | P1-001 と同時実装推奨 |
-| [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🟡 進行中 | UX改善 | [仕様](../008-rename-conversation/spec.md) | 実装・自動テスト完了、手動確認待ち |
+| [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🟢 対応済み | UX改善 | [仕様](../008-rename-conversation/spec.md) | 実装・検証・本番デプロイ完了 |
 | [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🟢 対応済み | コスト・スケーリング | [統合仕様](../006-user-isolation-functions/spec.md) | Functions本番切替・旧App Service/Plan削除完了 |
 | [P2-007](items/P2-007-cicd-cleanup.md) | CI/CD ワークフロー重複・クリーンアップ | P2 | 🔴 未対応 | 運用改善 | — | 未使用 Secret/Var 整理、Bicep 重複排除、ビルド二重実行回避 |
 | [P2-008](items/P2-008-user-settings.md) | ユーザーごとに設定を保存できる機能 | P2 | 🔴 未対応 | 利便性 | — | P1-005 完了後に実装 |

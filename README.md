@@ -7,7 +7,7 @@
 - 💬 **テキストチャット** — 複数の AI モデルと自然な対話
 - ⚡ **ストリーミング応答** — AI の回答がリアルタイムに文字単位で表示される
 - 🔄 **モデル切り替え** — 会話ごとにモデルを変更（Kimi, GLM, DeepSeek, Qwen, MiniMax, MiMo, Hy3 など）
-- 📂 **複数会話管理** — サイドバーで会話の作成・切り替え・削除
+- 📂 **複数会話管理** — サイドバーで会話の作成・切り替え・リネーム・削除
 - 📝 **Markdown レンダリング** — コードブロックにはシンタックスハイライトとコピーボタン付き
 - 📱 **レスポンシブデザイン** — デスクトップ・タブレット・モバイル対応
 - ⏹️ **ストリーミング停止** — 生成中の応答を中断可能
@@ -77,7 +77,8 @@
 │   ├── 000_backlog/      # 未実装機能のバックログ
 │   ├── 001-chat-app/     # Phase 1（MVP）仕様
 │   ├── 006-user-isolation-functions/ # ユーザー分離・Functions移行
-│   └── 007-reasoning-display/        # Reasoning表示
+│   ├── 007-reasoning-display/        # Reasoning表示
+│   └── 008-rename-conversation/      # 会話の手動リネーム
 │
 └── .github/workflows/  # GitHub Actions CI/CD
 ```
