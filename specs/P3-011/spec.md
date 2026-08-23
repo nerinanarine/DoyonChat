@@ -2,7 +2,9 @@
 
 **Feature Branch**: `feat/011-pwa-android-ios` | **Spec Folder**: `specs/P3-011` | **Created**: 2026-08-23
 
-**Status**: Draft
+**Status**: Implemented and deployed
+
+**Deployed**: 2026-08-23 — 実機（Android Chrome / iPhone Safari）でホーム追加→standalone起動を確認、Lighthouse PWA監査相当（manifest/sw/precache検証）完了
 
 **Input**: [P3-011 backlog item](../000_backlog/items/P3-011-pwa-android-ios.md)
 

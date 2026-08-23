@@ -85,7 +85,11 @@ DoyonChatをProgressive Web App（PWA）として提供し、AndroidとiPhoneの
 
 ## 実装メモ
 
-> 対応後に実装内容・マージコミット・注意点を記載する。
+- 実装: `vite-plugin-pwa@0.20.5` / `frontend/pwa-options.ts` で manifest（DoyonChat/standalone/#0f172a/#f9fafb/3 icons）/ workbox（precache 15件, /api/* NetworkOnly, denylist /^\\/api\\//）を一元管理、`vite.config.ts` は `VitePWA(pwaOptions)` のみ。`index.html` に `viewport-fit=cover` / `theme-color` / `apple-mobile-web-app-*` / `apple-touch-icon`、`index.css` に `.pt-safe/.pb-safe`（`env(safe-area-inset-*)`）を `AppLayout/ChatInput` へ適用。
+- アイコン: 提供画像 `copilot_image_1787094399152.jpeg` (1024) → `icon-192x192.png` / `icon-512x512.png` / `icon-512x512-maskable.png` / `apple-touch-icon.png(180)` を `frontend/public/icons/` に生成・コミット。
+- テスト: `frontend/tests/unit/pwa.test.ts` 8件追加、46/46 passed。`npm run build` で `manifest.webmanifest` / `sw.js` / `workbox-*.js` 生成を確認（precacheに`/api`なし、NetworkOnly正）。
+- コミット: `f27931e` docs(spec/plan/icons) / `bb5d5b8` feat(PWA実装) / 本コミット docs(完了)。ブランチ `feat/011-pwa-android-ios` を `origin` へ push、デプロイ後に実機（Android Chrome / iPhone Safari）でホーム追加→standalone起動を確認。
+- 注意: `pwa-options.ts` はテストから `vite.config.ts` を直接 import すると jsdom+esbuild でクラッシュするため shared module 化。`devOptions.enabled=false` で開発ビルドでは SW 無効。
 
 ---
 
@@ -95,3 +99,4 @@ DoyonChatをProgressive Web App（PWA）として提供し、AndroidとiPhoneの
 |------|-----------|------|
 | 2026-08-12 | 🔴 未対応 | PWAをAndroid / iPhone対応として具体化。既存P4-001からP3-011へ整理 |
 | 2026-08-23 | 🟡 進行中 | ブランチ feat/011-pwa-android-ios 作成、specs/P3-011/spec.md・plan.md 作成、アイコン生成（copilot_image_1787094399152.jpeg → frontend/public/icons/） |
+| 2026-08-23 | 🟢 対応済み | vite-plugin-pwa実装・テスト完了、実機（Android/iPhone）で standalone 起動を確認、デプロイ完了 |
