@@ -15,6 +15,7 @@ import { chatHandler } from '../../src/functions/chat';
 import { AppError, toHttpResponse } from '../../src/middleware/errorHandler';
 import * as auth from '../../src/middleware/auth';
 import * as conversationService from '../../src/services/conversationService';
+import { DEFAULT_MODEL_ID, MODEL_CATALOG } from '../../src/config/modelCatalog';
 
 jest.mock('../../src/db', () => {
   const unavailableContainer = {
@@ -81,7 +82,32 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
-    expect(models.jsonBody).toHaveLength(18);
+    expect(models.jsonBody).toHaveLength(23);
+    expect((models.jsonBody as Array<{ id: string }>).map(({ id }) => id)).toEqual([
+      'grok-4.5',
+      'gpt-5.6-luna',
+      'muse-spark-1.2-contributor',
+      'glm-5.3',
+      'glm-5.2',
+      'glm-5.1',
+      'kimi-k3',
+      'kimi-k2.7-code',
+      'kimi-k2.6',
+      'deepseek-v4-pro',
+      'deepseek-v4-flash',
+      'deepseek-v4-flash-vision-exp',
+      'mimo-v2.5',
+      'mimo-v2.5-pro',
+      'hy3',
+      'ox-alpha-free',
+      'minimax-m3',
+      'minimax-m2.7',
+      'minimax-m2.5',
+      'qwen3.8-max',
+      'qwen3.7-max',
+      'qwen3.7-plus',
+      'qwen3.6-plus',
+    ]);
   });
 
   it('requires authentication when enabled', async () => {
@@ -152,6 +178,84 @@ describe('Functions API contract', () => {
       {} as never,
     );
     expect(deleted.status).toBe(204);
+  });
+
+  it('defaults omitted models and accepts every catalog model', async () => {
+    const defaulted = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Default model' }),
+      {} as never,
+    );
+    expect(defaulted.status).toBe(201);
+    expect(defaulted.jsonBody).toEqual(
+      expect.objectContaining({ model: DEFAULT_MODEL_ID }),
+    );
+    for (const { info } of MODEL_CATALOG) {
+      const created = await conversationsHandler(
+        request('POST', '/api/conversations', {
+          title: `Create ${info.id}`,
+          model: info.id,
+        }),
+        {} as never,
+      );
+      expect(created.status).toBe(201);
+      expect(created.jsonBody).toEqual(expect.objectContaining({ model: info.id }));
+      const id = (created.jsonBody as { id: string }).id;
+      const updated = await modelHandler(
+        request('PUT', `/api/conversations/${id}/model`, { model: info.id }),
+        {} as never,
+      );
+      expect(updated.status).toBe(200);
+      expect(updated.jsonBody).toEqual(expect.objectContaining({ model: info.id }));
+    }
+  });
+
+  it.each([
+    ['a non-string model', 123],
+    ['an unknown model', 'unknown-model'],
+  ])('rejects %s on create without saving', async (_case, model) => {
+    const before = await conversationsHandler(
+      request('GET', '/api/conversations'),
+      {} as never,
+    );
+
+    const response = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Invalid', model }),
+      {} as never,
+    );
+
+    const after = await conversationsHandler(
+      request('GET', '/api/conversations'),
+      {} as never,
+    );
+    expect(response.status).toBe(400);
+    expect(after.jsonBody).toHaveLength((before.jsonBody as unknown[]).length);
+  });
+
+  it.each([
+    ['a non-string model', 123],
+    ['an unknown model', 'unknown-model'],
+  ])('rejects %s on update without changing the saved model', async (_case, model) => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Valid model' }),
+      {} as never,
+    );
+    const conversation = created.jsonBody as { id: string; model: string };
+
+    const response = await modelHandler(
+      request('PUT', `/api/conversations/${conversation.id}/model`, { model }),
+      {} as never,
+    );
+
+    const detail = await conversationHandler(
+      request('GET', `/api/conversations/${conversation.id}`),
+      {} as never,
+    );
+    expect(response.status).toBe(400);
+    expect(detail.jsonBody).toEqual(
+      expect.objectContaining({
+        conversation: expect.objectContaining({ model: conversation.model }),
+      }),
+    );
   });
 
   it.each([
@@ -267,6 +371,61 @@ describe('Functions API contract', () => {
     );
     expect(messages.status).toBe(200);
     expect(messages.jsonBody).toHaveLength(2);
+  });
+
+  it('rejects a new image for Messages models before saving the user message', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', {
+        title: 'Messages image',
+        model: 'minimax-m3',
+      }),
+      {} as never,
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', {
+        conversationId: id,
+        message: 'Describe this',
+        imageBase64: 'data:image/png;base64,image',
+      }),
+      {} as never,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(conversationService.listMessages(id, 'dev-user')).resolves.toEqual([]);
+  });
+
+  it('rejects unavailable saved models before saving messages', async () => {
+    const conversation = await conversationService.createConversation(
+      'Unavailable model',
+      'retired-model',
+      'dev-user',
+    );
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', {
+        conversationId: conversation.id,
+        message: 'Hello',
+      }),
+      {} as never,
+    );
+
+    expect(response).toEqual({
+      status: 409,
+      jsonBody: { error: 'Selected model is no longer available' },
+    });
+    await expect(
+      conversationService.listMessages(conversation.id, 'dev-user'),
+    ).resolves.toEqual([]);
+    const detail = await conversationHandler(
+      request('GET', `/api/conversations/${conversation.id}`),
+      {} as never,
+    );
+    expect(detail.status).toBe(200);
+    expect(detail.jsonBody).toEqual(
+      expect.objectContaining({ conversation: expect.objectContaining({ model: 'retired-model' }) }),
+    );
   });
 
   it('converts application errors to the existing JSON format', () => {

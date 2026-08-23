@@ -4,10 +4,13 @@ import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { Conversation, ModelInfo } from '../../types';
 import ConversationList from '../Sidebar/ConversationList';
 
+export type ModelsStatus = 'loading' | 'error' | 'loaded';
+
 interface AppLayoutProps {
   conversations: Conversation[];
   activeConversationId: string | null;
   models: ModelInfo[];
+  modelsStatus: ModelsStatus;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => Promise<void>;
@@ -20,6 +23,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   conversations,
   activeConversationId,
   models,
+  modelsStatus,
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
@@ -33,7 +37,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
-  const activeModel = models.find((m) => m.id === activeConversation?.model) || models[0];
+  const activeModel = models.find((m) => m.id === activeConversation?.model);
+  const modelLabel =
+    modelsStatus === 'loading'
+      ? 'モデルを読み込み中'
+      : modelsStatus === 'error'
+        ? 'モデル一覧を取得できません'
+        : activeModel?.name || `${activeConversation?.model}（利用不可）`;
 
   const handleLogout = () => {
     instance.logoutRedirect();
@@ -115,18 +125,24 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             <div className="relative">
               <button
                 onClick={() => setModelMenuOpen(!modelMenuOpen)}
+                disabled={modelsStatus !== 'loaded'}
+                aria-expanded={modelMenuOpen}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm text-gray-700"
               >
-                {activeModel?.name || activeConversation.model}
+                {modelLabel}
                 <ChevronDown size={14} />
               </button>
               {modelMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setModelMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 max-h-80 overflow-y-auto">
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 max-h-80 overflow-y-auto"
+                  >
                     {models.map((model) => (
                       <button
                         key={model.id}
+                        role="menuitem"
                         onClick={() => {
                           onChangeModel(model.id);
                           setModelMenuOpen(false);

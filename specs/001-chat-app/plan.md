@@ -17,7 +17,7 @@ OpenCode Go APIを利用した対話型チャットWebアプリ。React（Vite�
 **Primary Dependencies**:
 - **Frontend**: React 18, Vite 5, Tailwind CSS, react-markdown, react-syntax-highlighter, lucide-react
 - **Backend**: Express 4, cors, dotenv, @azure/cosmos (CosmosDB SDK)
-- **API**: OpenCode Go API (OpenAI-compatible Chat Completions with SSE streaming)
+- **API**: OpenCode Go API (Responses / Chat Completions / Messages with SSE streaming)
 
 **Storage**: Azure CosmosDB (Core API / SQL API)
 
@@ -132,13 +132,13 @@ infra/
 
 ## OpenCode Go API Research
 
-### API Endpoint
+### API Endpoints
 
-```
-POST https://opencode.ai/zen/go/v1/chat/completions
-Authorization: Bearer {OPENCODE_GO_API_KEY}
-Content-Type: application/json
-```
+- Responses: `POST https://opencode.ai/zen/go/v1/responses`
+- Chat Completions: `POST https://opencode.ai/zen/go/v1/chat/completions`
+- Messages: `POST https://opencode.ai/zen/go/v1/messages`
+
+モデルごとのprotocol割当は[009の正規カタログ](../009-opencode-go-models/spec.md)を使用する。Responses / Chat CompletionsはBearer認証、Messagesは`x-api-key`と`anthropic-version: 2023-06-01`を使用する。
 
 ### Request Body (Streaming)
 
@@ -182,37 +182,22 @@ data: {"id":"...","object":"chat.completion.chunk","choices":[{"delta":{"content
 data: [DONE]
 ```
 
-### Key Models (OpenCode Go)
+### Models (OpenCode Go)
 
-| Model ID | Display Name | Quality | Speed | Cost | Multimodal | Context | Best For |
-|----------|-------------|---------|-------|------|------------|---------|----------|
-| `grok-4.5` | Grok 4.5 | ★★★★★ | Medium | ★☆☆ | No | 256K | Reasoning, general tasks |
-| `gpt-5.6-luna` | GPT-5.6 Luna | ★★★★★ | Fast | ★★★★☆ | No | 272K | General reasoning, coding |
-| `glm-5.2` | GLM-5.2 | ★★★★★ | Medium | ★★☆ | Yes | ~128K | Quality, vision |
-| `glm-5.1` | GLM-5.1 | ★★★★★ | Medium | ★★☆ | Yes | ~128K | Quality, vision |
-| `kimi-k3` | Kimi K3 | ★★★★★ | Medium | ★☆☆ | No | 256K | Advanced coding, reasoning |
-| `kimi-k2.7-code` | Kimi K2.7 Code | ★★★★★ | Fast | ★★☆ | No | 256K | Advanced coding assistant |
-| `kimi-k2.6` | Kimi K2.6 | ★★★★★ | Fast | ★★☆ | No | 256K | Complex coding, general tasks |
-| `mimo-v2.5` | MiMo-V2.5 | ★★★☆☆ | Fast | ★★★★★ | No | 1M | Fast tasks, high volume |
-| `mimo-v2.5-pro` | MiMo-V2.5 Pro | ★★★★☆ | Medium | ★★★★☆ | No | 1M | General quality |
-| `minimax-m3` | MiniMax M3 | ★★★★☆ | Medium | ★★★★☆ | No | 1M | Long context, general tasks |
-| `minimax-m2.7` | MiniMax M2.7 | ★★★☆☆ | Medium | ★★★★☆ | No | ~128K | Balanced tasks |
-| `qwen3.8-max` | Qwen 3.8 Max | ★★★★★ | Medium | ★☆☆ | No | ~128K | General quality |
-| `qwen3.7-max` | Qwen 3.7 Max | ★★★★☆ | Medium | ★☆☆ | No | ~128K | General quality |
-| `qwen3.7-plus` | Qwen 3.7 Plus | ★★★★☆ | Fast | ★★★★☆ | No | ~128K | General coding |
-| `qwen3.6-plus` | Qwen 3.6 Plus | ★★★☆☆ | Fast | ★★★★☆ | No | ~128K | General tasks |
-| `deepseek-v4-pro` | DeepSeek V4 Pro | ★★★★★ | Medium | ★☆☆ | No | 1M | Agents, coding |
-| `deepseek-v4-flash` | DeepSeek V4 Flash | ★★★★☆ | Fast | ★★★★★ | No | 1M | Fast tasks, high volume |
-| `hy3` | Hy3 | ★★★☆☆ | Medium | ★★★★☆ | No | ~128K | Experimental tasks |
+| Protocol | Model IDs |
+|----------|-----------|
+| Responses | `grok-4.5`, `gpt-5.6-luna`, `muse-spark-1.2-contributor` |
+| Chat Completions | `glm-5.3`, `glm-5.2`, `glm-5.1`, `kimi-k3`, `kimi-k2.7-code`, `kimi-k2.6`, `deepseek-v4-pro`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`, `mimo-v2.5`, `mimo-v2.5-pro`, `hy3`, `ox-alpha-free` |
+| Messages | `minimax-m3`, `minimax-m2.7`, `minimax-m2.5`, `qwen3.8-max`, `qwen3.7-max`, `qwen3.7-plus`, `qwen3.6-plus` |
 
-> モデルIDと提供状況は [OpenCode Go公式モデル一覧](https://opencode.ai/docs/go) を基準にする。提供モデルは変更される可能性がある。
+> モデルIDとprotocolは [OpenCode Go公式Endpoints表](https://dev.opencode.ai/docs/go/)（2026-08-22確認）を基準にする。詳細な公開メタデータと利用不可モデルの扱いは[009の正規カタログ仕様](../009-opencode-go-models/spec.md)を参照する。
 
 ### Model Selection Rules
 
 - **Default model**: `kimi-k2.6` (best balance of quality and speed)
-- **Image upload**: `glm-5.2` and `glm-5.1` support multimodal input
+- **Image upload metadata**: `glm-5.2`, `glm-5.1`, `deepseek-v4-flash-vision-exp` support multimodal input
 - **Model per conversation**: Each conversation stores its selected model; switching model mid-conversation applies to subsequent messages only
-- **Backend config**: `OPENCODE_GO_MODEL` env var sets the default; user can override per conversation
+- **Unavailable model**: Existing history remains readable, but sending is blocked until a canonical model is selected
 
 ## CosmosDB Container Design
 

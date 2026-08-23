@@ -128,7 +128,7 @@ AIの応答に含まれるMarkdown記法（見出し、リスト、リンク、�
 - **FR-004**: ユーザーは会話を削除できる
 - **FR-005**: AIの応答に含まれるMarkdownを適切にレンダリングし、コードブロックにはシンタックスハイライトとコピーボタンを付ける
 - **FR-006**: ユーザーは画像をアップロードしてマルチモーダルメッセージを送信できる
-- **FR-007**: システムはOpenCode Go API（OpenAI互換Chat Completions）を使用してAI応答を生成する
+- **FR-007**: システムはOpenCode Go APIのResponses、Chat Completions、Messagesをモデルカタログのprotocol割当に従って使用し、AI応答を生成する
 - **FR-008**: APIキーはバックエンドで管理し、フロントエンドからは隠蔽する
 - **FR-009**: フロントエンドはデスクトップ、タブレット、モバイルの各画面サイズで適切に表示される
 - **FR-010**: ストリーミング中に「停止」ボタンを表示し、ユーザーが応答生成を中断できる
@@ -159,7 +159,7 @@ AIの応答に含まれるMarkdown記法（見出し、リスト、リンク、�
 ## Assumptions
 
 - ユーザーはモダンなブラウザ（Chrome, Firefox, Safari, Edgeの最新版）を使用する
-- OpenCode Go APIはOpenAI互換のChat Completions API（SSEストリーミング）を提供する
+- OpenCode Go APIはResponses、Chat Completions、Messagesの各APIでSSEストリーミングを提供し、モデルごとの割当は[009の正規カタログ](../009-opencode-go-models/spec.md)に従う
 - Azure上でバックエンド（Node.js）とフロントエンド（React）を分離してホスティングする
 - MVPではユーザー認証は不要（匿名ユーザー、セッションまたはローカルストレージで識別）
 - 画像アップロードはBase64エンコードで直接送信し、別途ストレージサービスは使用しない（MVPでは5MB以下の画像のみ）

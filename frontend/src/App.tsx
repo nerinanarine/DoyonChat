@@ -8,6 +8,7 @@ import ChatInput from './components/Chat/ChatInput';
 import LoginPage from './components/Auth/LoginPage';
 import { ModelInfo } from './types';
 import * as api from './services/chatApi';
+import type { ModelsStatus } from './components/Layout/AppLayout';
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
@@ -19,11 +20,12 @@ function App() {
     loading: convLoading,
     create,
     remove,
-    load,
+    updateModel,
     updateTitle,
   } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
 
   const {
     messages,
@@ -38,7 +40,14 @@ function App() {
   // Load models once authenticated
   useEffect(() => {
     if (!dataEnabled) return;
-    api.fetchModels().then(setModels).catch(console.error);
+    setModelsStatus('loading');
+    api
+      .fetchModels()
+      .then((loadedModels) => {
+        setModels(loadedModels);
+        setModelsStatus('loaded');
+      })
+      .catch(() => setModelsStatus('error'));
   }, [dataEnabled]);
 
   // Load messages when conversation changes
@@ -49,10 +58,9 @@ function App() {
   }, [activeConversationId, loadMessages]);
 
   const handleNewChat = useCallback(async () => {
-    const defaultModel = models[0]?.id;
-    const conv = await create('New Chat', defaultModel);
+    const conv = await create('New Chat');
     setActiveConversationId(conv.id);
-  }, [create, models]);
+  }, [create]);
 
   const handleSelect = useCallback((id: string) => {
     setActiveConversationId(id);
@@ -71,18 +79,16 @@ function App() {
   const handleChangeModel = useCallback(
     async (modelId: string) => {
       if (!activeConversationId) return;
-      await api.updateConversationModel(activeConversationId, modelId);
-      await load();
+      await updateModel(activeConversationId, modelId);
     },
-    [activeConversationId, load],
+    [activeConversationId, updateModel],
   );
 
   const handleSend = useCallback(
     async (text: string, imageBase64?: string) => {
       if (!activeConversationId) {
         // Create new conversation if none selected
-        const defaultModel = models[0]?.id;
-        const conv = await create(text.slice(0, 30), defaultModel);
+        const conv = await create(text.slice(0, 30));
         setActiveConversationId(conv.id);
         // Wait a tick for state to update, then send
         setTimeout(() => {
@@ -92,8 +98,24 @@ function App() {
       }
       sendMessage(text, imageBase64);
     },
-    [activeConversationId, create, models, sendMessage],
+    [activeConversationId, create, sendMessage],
   );
+
+  const activeConversation = conversations.find(
+    (conversation) => conversation.id === activeConversationId,
+  );
+  const modelUnavailable =
+    modelsStatus === 'loaded' &&
+    activeConversation !== undefined &&
+    !models.some((model) => model.id === activeConversation.model);
+  const modelDisabledReason =
+    modelsStatus === 'loading'
+      ? 'モデル一覧を読み込み中です。'
+      : modelsStatus === 'error'
+        ? 'モデル一覧を取得できませんでした。'
+        : modelUnavailable
+          ? `保存済みモデル「${activeConversation.model}」は利用不可です。利用可能なモデルを再選択してください。`
+          : undefined;
 
   if (authEnabled && !isAuthenticated) {
     return <LoginPage />;
@@ -104,6 +126,7 @@ function App() {
       conversations={conversations}
       activeConversationId={activeConversationId}
       models={models}
+      modelsStatus={modelsStatus}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}
@@ -120,7 +143,8 @@ function App() {
         onSend={handleSend}
         onStop={stop}
         isStreaming={isStreaming}
-        disabled={convLoading}
+        disabled={convLoading || Boolean(modelDisabledReason)}
+        disabledReason={modelDisabledReason}
       />
     </AppLayout>
   );

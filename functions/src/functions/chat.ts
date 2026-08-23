@@ -7,6 +7,7 @@ import {
 import { authenticateRequest } from '../middleware/auth';
 import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
+import { getModelConfig } from '../config/modelCatalog';
 import { formatMessagesForApi, streamChat } from '../services/opencodeGo';
 import { OpenCodeGoMessage } from '../types';
 import { getOptionalString, getRequiredString, readJsonBody } from './request';
@@ -111,6 +112,13 @@ export async function chatHandler(
 
     const conversation = await service.getConversation(conversationId, userId);
     if (!conversation) throw new AppError(404, 'Conversation not found');
+    const modelConfig = getModelConfig(conversation.model);
+    if (!modelConfig) {
+      throw new AppError(409, 'Selected model is no longer available');
+    }
+    if (modelConfig.protocol === 'messages' && imageBase64) {
+      throw new AppError(400, 'Images are not supported by the selected model');
+    }
 
     await service.addMessage(
       {
