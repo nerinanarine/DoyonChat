@@ -1,6 +1,8 @@
 # P1-004: 会話タイトルの自動生成 — Specification
 
-**Status**: Draft
+**Status**: Implemented and deployed
+
+**Deployed**: 2026-08-23 — 本番デプロイ済み。`OPENCODE_GO_TITLE_MODEL=deepseek-v4-flash` を Bicep で明示設定（未設定時も同モデルへフォールバック）
 **Date**: 2026-08-23
 **Backlog**: [P1-004](../000_backlog/items/P1-004-auto-title.md)
 

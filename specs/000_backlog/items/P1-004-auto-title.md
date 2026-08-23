@@ -24,7 +24,11 @@
 
 ## 実装メモ
 
-> 対応後にここに実装内容・マージコミット・注意点を記載してください。
+- Backend: `opencodeGo.ts` に `generateTitle()`（既存 streamChat で content チャンク収集・reasoning 無視・タイムアウト20秒・`OPENCODE_GO_TITLE_MODEL || deepseek-v4-flash`、カタログ外時は console.warn 付きフォールバック）と `sanitizeGeneratedTitle()`（最初の非空行のみ・引用符除去・コードポイント基準100字切り詰め・空時30字フォールバック）を追加。`conversations.ts` に `POST conversations/{id}/title/auto`（authLevel anonymous + authenticateRequest、ボディ { text } 検証400、所有者不一致404、失敗時503）。生成元テキストをボディで渡す方式によりメッセージ永続化とのレースなし。
+- Frontend: `useConversations.ts` に `NEW_CHAT_TITLE` 定数共有・renamedIds ref・Conversation 単体置換の autoTitle()。`App.tsx` handleSend で fire-and-forget トリガー（新規会話は create 戻り値 conv.id、既存はタイトル一致判定、画像のみスキップ、エラー握りつぶし）。
+- インフラ: `infra/modules/functions.bicep` に `OPENCODE_GO_TITLE_MODEL`（デフォルト deepseek-v4-flash）app setting を追加。
+- テスト: functions 単体+integration 追加（計121テスト pass）、frontend トリガー条件テスト追加（72テスト pass）。
+- コミット: `481103e` docs(spec/plan/backlog) / `09bc7f6` feat(実装)。レビューは oracle/delegate で実施し Must Fix 5件（レース解消のためテキストをボディで渡す設計・streamChat 収集方式固定・コードポイント基準サニタイズ・レスポンス形式訂正等）を反映済み。
 
 ---
 
@@ -34,3 +38,4 @@
 |------|-----------|------|
 | 2026-06-28 | 🔴 未対応 | 初期作成 |
 | 2026-08-23 | 🟡 進行中 | specs/P1-004/spec.md・plan.md 作成（oracle/delegate レビュー反映済み）。ブランチ feat/004-auto-conversation-title。AI 生成（deepseek-v4-flash デフォルト）を採用 |
+| 2026-08-23 | 🟢 対応済み | 実装・テスト完了、本番デプロイ済み |
