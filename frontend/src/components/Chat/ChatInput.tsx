@@ -91,7 +91,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <div
-      className={`border-t border-gray-200 bg-white px-4 py-3 ${dragActive ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
+      className={`border-t border-gray-200 bg-white px-4 pt-3 pb-safe ${dragActive ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

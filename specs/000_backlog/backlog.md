@@ -56,7 +56,7 @@
 | [P3-008](items/P3-008-cicd-docs-fix.md) | CI/CD 関連ドキュメントの誤記修正 | P3 | 🔴 未対応 | ドキュメント | — | spec.md FR-003、setup-guide 手順3.1 |
 | [P3-009](items/P3-009-cicd-security-hardening.md) | CI/CD セキュリティハードニング | P3 | 🔴 未対応 | セキュリティ | — | SHA ピン化、permissions 宣言の一貫化 |
 | [P3-010](items/P3-010-ai-agent.md) | AIのエージェント化 | P3 | 🔴 未対応 | 機能追加 | — | Function Calling・ツール連携検討 |
-| [P3-011](items/P3-011-pwa-android-ios.md) | PWA対応（AndroidとiPhone両方） | P3 | 🔴 未対応 | 利便性 | — | vite-plugin-pwa、実機確認 |
+| [P3-011](items/P3-011-pwa-android-ios.md) | PWA対応（AndroidとiPhone両方） | P3 | 🟡 進行中 | 利便性 | [仕様](../P3-011/spec.md) | vite-plugin-pwa、実機確認 |
 | [P4-002](items/P4-002-templates.md) | プロンプトテンプレート | P4 | 🔴 未対応 | 機能追加 | — | localStorage 保存 |
 | [P4-003](items/P4-003-code-exec.md) | コードブロックの実行機能 | P4 | 🔴 未対応 | 機能追加 | — | Sandpack 検討 |
 | [P4-004](items/P4-004-voice.md) | 音声入力（Web Speech API） | P4 | 🔴 未対応 | 機能追加 | — | ブラウザ対応状況依存 |
