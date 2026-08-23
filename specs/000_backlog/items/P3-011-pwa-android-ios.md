@@ -94,3 +94,4 @@ DoyonChatをProgressive Web App（PWA）として提供し、AndroidとiPhoneの
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-08-12 | 🔴 未対応 | PWAをAndroid / iPhone対応として具体化。既存P4-001からP3-011へ整理 |
+| 2026-08-23 | 🟡 進行中 | ブランチ feat/011-pwa-android-ios 作成、specs/P3-011/spec.md・plan.md 作成、アイコン生成（copilot_image_1787094399152.jpeg → frontend/public/icons/） |
