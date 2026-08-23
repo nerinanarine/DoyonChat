@@ -2,7 +2,9 @@
 
 **Feature Branch**: `feat/008-user-settings` | **Spec Folder**: `specs/P2-008` | **Created**: 2026-08-23
 
-**Status**: Draft
+**Status**: Implemented and deployed
+
+**Deployed**: 2026-08-23 — 本番デプロイ後、設定保存→別デバイス復元→新規会話への反映を確認
 
 **Input**: [P2-008 backlog item](../000_backlog/items/P2-008-user-settings.md)
 

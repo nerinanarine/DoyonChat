@@ -16,40 +16,40 @@
 ## Phases
 
 ### Phase 0 — 準備
-- [ ] backlog P2-008 を 🔴→🟡 に更新、受け入れ条件3（localStorage フォールバック）を「対象外」に変更、spec リンク追記
-- [ ] backlog の theme 初期項目を対象外に変更、「現状 localStorage ベース」背景と `backend/src/...` 関連ファイル記述を `functions/` 前提に修正
+- [x] backlog P2-008 を 🔴→🟡 に更新、受け入れ条件3（localStorage フォールバック）を「対象外」に変更、spec リンク追記
+- [x] backlog の theme 初期項目を対象外に変更、「現状 localStorage ベース」背景と `backend/src/...` 関連ファイル記述を `functions/` 前提に修正
 
 ### Phase 1 — Backend (Azure Functions)
-- [ ] `infra/modules/cosmosdb.bicep`: userSettings コンテナ追加
-- [ ] `functions/src/db/index.ts`: `getUserSettingsContainer()` 追加
-- [ ] `functions/src/services/userSettingsService.ts`: getSettings / updateSettings
-- [ ] `functions/src/functions/users.ts`: GET/PATCH ハンドラ + `app.http('user-settings', ...)` 登録
-- [ ] `functions/src/index.ts`: `import './functions/users'` 追加
-- [ ] functions 単体テスト追加（正常系、400 不正モデル、401 未認証、部分更新マージ、null 解除、空本文 no-op、予約キー無視、他ユーザー分離 alice/bob）
-- [ ] 既存 integration テスト（`functions/tests/`）に GET/PATCH/401/400 ケースを追加。`db` mock（`getConversationsContainer` 等）に `getUserSettingsContainer` の mock を追加しないと落ちる点に注意
+- [x] `infra/modules/cosmosdb.bicep`: userSettings コンテナ追加
+- [x] `functions/src/db/index.ts`: `getUserSettingsContainer()` 追加
+- [x] `functions/src/services/userSettingsService.ts`: getSettings / updateSettings
+- [x] `functions/src/functions/users.ts`: GET/PATCH ハンドラ + `app.http('user-settings', ...)` 登録
+- [x] `functions/src/index.ts`: `import './functions/users'` 追加
+- [x] functions 単体テスト追加（正常系、400 不正モデル、401 未認証、部分更新マージ、null 解除、空本文 no-op、予約キー無視、他ユーザー分離 alice/bob）
+- [x] 既存 integration テスト（`functions/tests/`）に GET/PATCH/401/400 ケースを追加。`db` mock（`getConversationsContainer` 等）に `getUserSettingsContainer` の mock を追加しないと落ちる点に注意
 
 検証: `cd functions && npm run build && npm test`
 
 ### Phase 2 — Frontend
-- [ ] `types/index.ts`: `UserSettings` 型追加
-- [ ] `services/api.ts`: `patch<T>()` 追加（現状 GET/POST/PUT/DELETE のみのため）
-- [ ] `services/chatApi.ts`（または新規 settingsApi）: `fetchUserSettings()` / `updateUserSettings()`
-- [ ] `hooks/useSettings.ts`: D5 どおり実装
-- [ ] `components/Settings/SettingsMenu.tsx`: 設定パネル UI（D7）
-- [ ] `components/Layout/AppLayout.tsx`: ヘッダーの歯車ボタン追加・`LogOut` 直置きボタン削除
-- [ ] `App.tsx`: useSettings 統合、handleNewChat/handleSend へ defaultModel 反映
+- [x] `types/index.ts`: `UserSettings` 型追加
+- [x] `services/api.ts`: `patch<T>()` 追加（現状 GET/POST/PUT/DELETE のみのため）
+- [x] `services/chatApi.ts`（または新規 settingsApi）: `fetchUserSettings()` / `updateUserSettings()`
+- [x] `hooks/useSettings.ts`: D5 どおり実装
+- [x] `components/Settings/SettingsMenu.tsx`: 設定パネル UI（D7）
+- [x] `components/Layout/AppLayout.tsx`: ヘッダーの歯車ボタン追加・`LogOut` 直置きボタン削除
+- [x] `App.tsx`: useSettings 統合、handleNewChat/handleSend へ defaultModel 反映
 
 検証: `cd frontend && npm run build && npm test && npm run lint`
 
 ### Phase 3 — 自動テスト
-- [ ] frontend: useSettings の取得/保存/失敗テスト、SettingsMenu のレンダリング・ログアウト発火テスト、新規会話が defaultModel を使うテスト、AppLayout テスト更新（ヘッダーに LogOut ボタンが無いこと・設定ボタンがあること）
-- [ ] functions: Phase 1 のテストを通す
+- [x] frontend: useSettings の取得/保存/失敗テスト、SettingsMenu のレンダリング・ログアウト発火テスト、新規会話が defaultModel を使うテスト、AppLayout テスト更新（ヘッダーに LogOut ボタンが無いこと・設定ボタンがあること）
+- [x] functions: Phase 1 のテストを通す
 
 ### Phase 4 — 検証・リリース
-- [ ] ローカル E2E（Functions 起動 + vite dev、Auth 有効）: 設定保存→別ブラウザ復元→新規会話反映→設定メニューからログアウト
-- [ ] デプロイ順序: **Bicep（userSettings コンテナ作成）→ Functions** の順で適用し、コンテナ未作成のまま Functions だけ出さないことを確認
-- [ ] 本番デプロイ後の動作確認
-- [ ] spec Status 更新、backlog 🟢、実装メモ記載
+- [x] ローカル E2E（Functions 起動 + vite dev、Auth 有効）: 設定保存→別ブラウザ復元→新規会話反映→設定メニューからログアウト
+- [x] デプロイ順序: **Bicep（userSettings コンテナ作成）→ Functions** の順で適用し、コンテナ未作成のまま Functions だけ出さないことを確認
+- [x] 本番デプロイ後の動作確認
+- [x] spec Status 更新、backlog 🟢、実装メモ記載
 
 ## Verification Commands
 

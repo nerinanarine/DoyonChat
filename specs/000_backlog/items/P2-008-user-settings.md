@@ -63,7 +63,11 @@ PATCH /api/users/me/settings
 
 ## 実装メモ
 
-> 対応後にここに実装内容・マージコミット・注意点を記載してください。
+- Backend: `functions/src/functions/users.ts`（GET/PATCH /api/users/me/settings、authLevel anonymous + authenticateRequest）と `services/userSettingsService.ts`（1ユーザー1ドキュメント id===userId 点読み、未保存時 `{ userId, settings:{} }`、カタログ外 defaultModel は応答から除外、null で解除、予約キー無視、conversationService と同じ memory fallback パターン）。Cosmos `userSettings` コンテナを `infra/modules/cosmosdb.bicep` に追加。
+- Frontend: `hooks/useSettings.ts`（ログイン直後に1回取得、楽観更新+失敗ロールバック）、`components/Settings/SettingsMenu.tsx`（モデルセレクト・解除・ログアウト。models 未読込時 disabled）。`AppLayout.tsx` のヘッダー直置き LogOut を削除し設定メニューへ移動。`App.tsx` の新規会話で defaultModel 適用。`api.ts` に patch() 追加。
+- テスト: functions 単体+integration 追加（計106テスト pass、userSettingsService カバレッジ 90.9%）、frontend useSettings/SettingsMenu/AppLayout テスト追加更新（64テスト pass）。
+- コミット: `8fd0b0f` docs(spec/plan/backlog) / `a193cf5` feat(実装)。レビューは pi-subagents の oracle/delegate で実施し Must Fix 5件（identity統一・廃止モデル対策・Cosmos障害方針・SC-006修正・Phase0拡張）を反映済み。
+- 注意: デプロイ順は Bicep(userSettings コンテナ)→Functions。テーマ/localStorage フォールバックは対象外。
 
 ---
 
@@ -73,3 +77,4 @@ PATCH /api/users/me/settings
 |------|-----------|------|
 | 2026-07-05 | 🔴 未対応 | 初期作成
 | 2026-08-23 | 🟡 進行中 | specs/P2-008/spec.md・plan.md 作成（レビュー反映済み）。ブランチ feat/008-user-settings。テーマ/localStorage フォールバックを対象外に変更 |
+| 2026-08-23 | 🟢 対応済み | 実装・テスト完了、本番デプロイ後の動作確認済み |
