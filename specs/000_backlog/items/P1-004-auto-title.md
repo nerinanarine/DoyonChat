@@ -2,7 +2,7 @@
 
 ## 概要
 
-現在、新規会話のタイトルは固定の「New Chat」のまま。手動リネームはP2-005で対応済みだが、最初のユーザーメッセージからタイトルを自動生成するか、AI に要約させることで、会話一覧の識別性をさらに向上させる。
+会話タイトルを AI（OpenCode Go）に要約させて自動生成する。現在、送信時に会話を自動生成した場合は最初のユーザーメッセージ先頭30文字切り出しがタイトルになり、「新規チャット」ボタンで作成した会話は `New Chat` のまま残る。AI 要約により識別性を向上させる。
 
 ## 受け入れ条件
 
@@ -12,13 +12,15 @@
 
 ## 実装案
 
-- シンプル版: 最初のユーザーメッセージを 20 文字で切ってタイトルにする
-- 高度版: AI に「以下のメッセージから 20 文字以内のタイトルを生成してください」と問い合わせる
+- シンプル版: 最初のユーザーメッセージを 30 文字で切ってタイトルにする（送信時自動作成パスのみ現状実装済み）
+- 高度版: AI に「以下のメッセージから 30 文字以内のタイトルを生成してください」と問い合わせる（本件で採用）
 
 ## 関連ファイル
 
+- `frontend/src/App.tsx`（handleSend トリガー）
 - `frontend/src/hooks/useConversations.ts`
-- `backend/src/routes/conversations.ts`
+- `functions/src/functions/conversations.ts`（title/auto エンドポイント新設）
+- `functions/src/services/opencodeGo.ts`（generateTitle 新設）
 
 ## 実装メモ
 
@@ -31,3 +33,4 @@
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-06-28 | 🔴 未対応 | 初期作成 |
+| 2026-08-23 | 🟡 進行中 | specs/P1-004/spec.md・plan.md 作成（oracle/delegate レビュー反映済み）。ブランチ feat/004-auto-conversation-title。AI 生成（deepseek-v4-flash デフォルト）を採用 |
