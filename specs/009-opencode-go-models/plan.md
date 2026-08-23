@@ -4,7 +4,7 @@
 
 **Input**: [Feature specification](./spec.md)
 
-**Implementation Status**: Complete
+**Implementation Status**: Code, automated/live verification, merge, and production deployment complete (2026-08-23)
 
 ## Summary
 

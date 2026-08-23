@@ -6,8 +6,11 @@
 
 - 💬 **テキストチャット** — 複数の AI モデルと自然な対話
 - ⚡ **ストリーミング応答** — AI の回答がリアルタイムに文字単位で表示される
-- 🔄 **モデル切り替え** — 会話ごとにモデルを変更（Kimi, GLM, DeepSeek, Qwen, MiniMax, MiMo, Hy3 など）
+- 🔄 **モデル切り替え** — OpenCode Go公式Endpoints表の23モデルを会話ごとに選択
+- 🖼️ **画像入力** — ファイル選択・ドラッグ＆ドロップ・プレビュー・5MB上限検証
+- 🧠 **Reasoning表示** — モデルの思考過程と最終回答を分けて表示
 - 📂 **複数会話管理** — サイドバーで会話の作成・切り替え・リネーム・削除
+- 🔐 **Entra ID認証** — Microsoftアカウントでログインし、ユーザーごとに会話を分離
 - 📝 **Markdown レンダリング** — コードブロックにはシンタックスハイライトとコピーボタン付き
 - 📱 **レスポンシブデザイン** — デスクトップ・タブレット・モバイル対応
 - ⏹️ **ストリーミング停止** — 生成中の応答を中断可能
@@ -74,11 +77,13 @@
 │   └── scripts/          # デプロイスクリプト
 │
 ├── specs/              # 仕様書・設計書
-│   ├── 000_backlog/      # 未実装機能のバックログ
+│   ├── 000_backlog/      # バックログと対応履歴
 │   ├── 001-chat-app/     # Phase 1（MVP）仕様
+│   ├── 005-entra-id-auth/           # Entra ID認証
 │   ├── 006-user-isolation-functions/ # ユーザー分離・Functions移行
 │   ├── 007-reasoning-display/        # Reasoning表示
-│   └── 008-rename-conversation/      # 会話の手動リネーム
+│   ├── 008-rename-conversation/      # 会話の手動リネーム
+│   └── 009-opencode-go-models/       # OpenCode Goモデル更新
 │
 └── .github/workflows/  # GitHub Actions CI/CD
 ```
@@ -242,10 +247,10 @@ npm run test:live:models
 
 未実装機能・改善項目は [specs/000_backlog/backlog.md](specs/000_backlog/backlog.md) で管理しています。
 
-主な項目:
+主な未対応項目:
 
-- **P1** 画像アップロード UI、マルチモーダル警告、ストリーミング中断保存、自動タイトル生成、**Reasoning 表示改善**、Entra ID 認証、ユーザー分離
-- **P2** コンテキスト長警告、複数タブ同期、エラー UX 改善、Azure Functions 移行
+- **P1** マルチモーダル非対応モデル警告、ストリーミング中断時の中間保存、自動タイトル生成、DoyonHub・管理機能
+- **P2** コンテキスト長警告、複数タブ同期、エラー UX 改善、CI/CDクリーンアップ、ユーザー設定、Playwright E2E、生成モデル名・生成時間表示
 - **P3** ダークモード、検索、エクスポート、キーボードショートカット、アクセシビリティ、仮想スクロール、テスト強化、**PWA（Android/iPhone）**
 - **P4** プロンプトテンプレート、コード実行、音声入力、会話共有
 
