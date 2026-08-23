@@ -51,7 +51,10 @@ OpenCode Go公式Endpoints表を正として、DoyonChatで選択・チャット
 - live test条件: 直列、各1リクエスト、retryなし、512 tokens上限、120秒timeout
 - Kimi K3は公式モデル定義に従い、非対応の`temperature`をrequestから除外
 - APIキー、request / response本文、上流error bodyはログ・Git管理ファイルへ出力していない
-- マージコミット: 未マージ
+- 実装コミット: `ed17587`
+- PR: #24
+- mainマージコミット: `29d70bb`
+- 本番デプロイ: GitHub Actions Deploy run `32608281147`成功（2026-08-23）
 
 ---
 
@@ -61,3 +64,4 @@ OpenCode Go公式Endpoints表を正として、DoyonChatで選択・チャット
 |------|-----------|------|
 | 2026-08-22 | 🟡 進行中 | 公式Endpoints表23モデルを対象にSpec/Plan作成開始 |
 | 2026-08-23 | 🟡 進行中 | 実装・通常テスト・全23モデル実API疎通を完了。マージ待ち |
+| 2026-08-23 | 🟢 対応済み | PR #24をmainへマージし、Deploy run `32608281147`で本番デプロイ完了 |

@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-22
 
-**Status**: Implemented
+**Status**: Implemented and deployed
 
 **Input**: [P2-011 backlog item](../000_backlog/items/P2-011-opencode-go-models.md)
 

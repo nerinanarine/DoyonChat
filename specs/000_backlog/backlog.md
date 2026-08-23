@@ -25,8 +25,8 @@
 
 | ID | タイトル | 優先度 | ステータス | カテゴリ | 関連仕様 | 備考 |
 |----|---------|--------|-----------|---------|---------|------|
-| [P1-001](items/P1-001-image-upload-ui.md) | 画像入力（マルチモーダル）フロントエンド UI | P1 | 🔴 未対応 | 機能追加 | FR-006 | バックエンドは対応済み |
-| [P1-002](items/P1-002-multimodal-warning.md) | マルチモーダル非対応モデル警告 | P1 | 🔴 未対応 | UX改善 | FR-014 | glm-5.x のみ対応 |
+| [P1-001](items/P1-001-image-upload-ui.md) | 画像入力（マルチモーダル）フロントエンド UI | P1 | 🟢 対応済み | 機能追加 | FR-006 | 画像選択・D&D・プレビュー・Base64送信を本番デプロイ済み |
+| [P1-002](items/P1-002-multimodal-warning.md) | マルチモーダル非対応モデル警告 | P1 | 🔴 未対応 | UX改善 | FR-014 | MessagesはBackendで400拒否済み、送信前の警告UIが未対応 |
 | [P1-003](items/P1-003-partial-save-on-stop.md) | ストリーミング中断時の中間保存 | P1 | 🔴 未対応 | データ保全 | — | データ損失防止 |
 | [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🔴 未対応 | UX改善 | — | 現在は固定「New Chat」 |
 | [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🟢 対応済み | セキュリティ | — | P1-006 の前提条件を完了 |
@@ -38,14 +38,14 @@
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
 | [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🔴 未対応 | UX改善 | — | 種別ごとにメッセージ変更 |
-| [P2-004](items/P2-004-image-validation.md) | 画像サイズ制限のフロントエンドバリデーション | P2 | 🔴 未対応 | 機能追加 | — | P1-001 と同時実装推奨 |
+| [P2-004](items/P2-004-image-validation.md) | 画像サイズ制限のフロントエンドバリデーション | P2 | 🟢 対応済み | 機能追加 | — | 5MB上限・画像形式検証を本番デプロイ済み |
 | [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🟢 対応済み | UX改善 | [仕様](../008-rename-conversation/spec.md) | 実装・検証・本番デプロイ完了 |
 | [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🟢 対応済み | コスト・スケーリング | [統合仕様](../006-user-isolation-functions/spec.md) | Functions本番切替・旧App Service/Plan削除完了 |
 | [P2-007](items/P2-007-cicd-cleanup.md) | CI/CD ワークフロー重複・クリーンアップ | P2 | 🔴 未対応 | 運用改善 | — | 未使用 Secret/Var 整理、Bicep 重複排除、ビルド二重実行回避 |
 | [P2-008](items/P2-008-user-settings.md) | ユーザーごとに設定を保存できる機能 | P2 | 🔴 未対応 | 利便性 | — | P1-005 完了後に実装 |
 | [P2-009](items/P2-009-playwright-ci-e2e.md) | Playwright による CI/CD ブラウザテスト導入 | P2 | 🔴 未対応 | 品質・運用 | P1-005 | PR smoke、デプロイ後検証、実 Entra E2E の段階導入 |
 | [P2-010](items/P2-010-model-and-generation-time.md) | 生成メッセージへのモデル名・生成時間表示 | P2 | 🔴 未対応 | UX改善 | — | メッセージ単位の利用モデルと初回回答表示時間を表示 |
-| [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟡 進行中 | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 公式Endpoints表23モデル・3プロトコル対応 |
+| [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟢 対応済み | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 23モデル・3プロトコル対応を本番デプロイ済み、23/23実API疎通成功 |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |
 | [P3-002](items/P3-002-search.md) | 会話の検索 | P3 | 🔴 未対応 | 利便性 | — | クライアントサイド検索 |
 | [P3-003](items/P3-003-export.md) | 会話のエクスポート | P3 | 🔴 未対応 | 利便性 | — | Markdown / JSON |
