@@ -12,6 +12,7 @@ import {
 } from '../../src/functions/conversations';
 import { messagesHandler } from '../../src/functions/messages';
 import { chatHandler } from '../../src/functions/chat';
+import { userSettingsHandler } from '../../src/functions/users';
 import { AppError, toHttpResponse } from '../../src/middleware/errorHandler';
 import * as auth from '../../src/middleware/auth';
 import * as conversationService from '../../src/services/conversationService';
@@ -24,6 +25,7 @@ jest.mock('../../src/db', () => {
   return {
     getConversationsContainer: jest.fn(() => unavailableContainer),
     getMessagesContainer: jest.fn(() => unavailableContainer),
+    getUserSettingsContainer: jest.fn(() => unavailableContainer),
   };
 });
 
@@ -118,10 +120,98 @@ describe('Functions API contract', () => {
       request('PUT', '/api/conversations/conversation-id/title', { title: 'Renamed' }),
       {} as never,
     );
+    const settingsResponse = await userSettingsHandler(
+      request('GET', '/api/users/me/settings'),
+      {} as never,
+    );
 
     expect(modelsResponse.status).toBe(401);
     expect(titleResponse.status).toBe(401);
+    expect(settingsResponse.status).toBe(401);
     process.env.AUTH_ENABLED = 'false';
+  });
+
+  it('gets and patches user settings (dev-user)', async () => {
+    const empty = await userSettingsHandler(
+      request('GET', '/api/users/me/settings'),
+      {} as never,
+    );
+    expect(empty.status).toBe(200);
+    expect(empty.jsonBody).toEqual({ userId: 'dev-user', settings: {} });
+
+    const patched = await userSettingsHandler(
+      request('PATCH', '/api/users/me/settings', { defaultModel: 'glm-5.1' }),
+      {} as never,
+    );
+    expect(patched.status).toBe(200);
+    expect(patched.jsonBody).toEqual(
+      expect.objectContaining({ userId: 'dev-user', settings: { defaultModel: 'glm-5.1' } }),
+    );
+
+    const fetched = await userSettingsHandler(
+      request('GET', '/api/users/me/settings'),
+      {} as never,
+    );
+    expect(fetched.jsonBody).toEqual(patched.jsonBody);
+
+    const cleared = await userSettingsHandler(
+      request('PATCH', '/api/users/me/settings', { defaultModel: null }),
+      {} as never,
+    );
+    expect(cleared.jsonBody).toEqual(
+      expect.objectContaining({ userId: 'dev-user', settings: {} }),
+    );
+  });
+
+  it.each([
+    ['a non-string model', 123],
+    ['a blank string model', '   '],
+    ['an unknown model', 'unknown-model'],
+  ])('rejects %s when patching user settings', async (_case, model) => {
+    const response = await userSettingsHandler(
+      request('PATCH', '/api/users/me/settings', { defaultModel: model }),
+      {} as never,
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('keeps settings isolated per user', async () => {
+    const authenticate = jest.spyOn(auth, 'authenticateRequest');
+    process.env.AUTH_ENABLED = 'true';
+
+    try {
+      authenticate
+        .mockResolvedValueOnce('alice')
+        .mockResolvedValueOnce('alice')
+        .mockResolvedValueOnce('bob');
+      await userSettingsHandler(
+        request('PATCH', '/api/users/me/settings', { defaultModel: 'kimi-k2.6' }),
+        {} as never,
+      );
+
+      const alice = await userSettingsHandler(
+        request('GET', '/api/users/me/settings'),
+        {} as never,
+      );
+      expect(alice.jsonBody).toEqual(
+        expect.objectContaining({
+          userId: 'alice',
+          settings: { defaultModel: 'kimi-k2.6' },
+        }),
+      );
+
+      const bob = await userSettingsHandler(
+        request('GET', '/api/users/me/settings'),
+        {} as never,
+      );
+      expect(bob.jsonBody).toEqual(
+        expect.objectContaining({ userId: 'bob', settings: {} }),
+      );
+    } finally {
+      process.env.AUTH_ENABLED = 'false';
+      authenticate.mockRestore();
+    }
   });
 
   it('supports conversation CRUD, model updates, and title updates', async () => {

@@ -42,7 +42,7 @@
 | [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🟢 対応済み | UX改善 | [仕様](../008-rename-conversation/spec.md) | 実装・検証・本番デプロイ完了 |
 | [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🟢 対応済み | コスト・スケーリング | [統合仕様](../006-user-isolation-functions/spec.md) | Functions本番切替・旧App Service/Plan削除完了 |
 | [P2-007](items/P2-007-cicd-cleanup.md) | CI/CD ワークフロー重複・クリーンアップ | P2 | 🔴 未対応 | 運用改善 | — | 未使用 Secret/Var 整理、Bicep 重複排除、ビルド二重実行回避 |
-| [P2-008](items/P2-008-user-settings.md) | ユーザーごとに設定を保存できる機能 | P2 | 🔴 未対応 | 利便性 | — | P1-005 完了後に実装 |
+| [P2-008](items/P2-008-user-settings.md) | ユーザーごとに設定を保存できる機能 | P2 | 🟡 進行中 | 利便性 | [仕様](../P2-008/spec.md) | 既定モデル設定・設定メニューへログアウト移動。テーマ/localStorageフォールバックは対象外 |
 | [P2-009](items/P2-009-playwright-ci-e2e.md) | Playwright による CI/CD ブラウザテスト導入 | P2 | 🔴 未対応 | 品質・運用 | P1-005 | PR smoke、デプロイ後検証、実 Entra E2E の段階導入 |
 | [P2-010](items/P2-010-model-and-generation-time.md) | 生成メッセージへのモデル名・生成時間表示 | P2 | 🔴 未対応 | UX改善 | — | メッセージ単位の利用モデルと初回回答表示時間を表示 |
 | [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟢 対応済み | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 23モデル・3プロトコル対応を本番デプロイ済み、23/23実API疎通成功 |

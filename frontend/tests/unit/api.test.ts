@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { get, post, del, put, ApiError } from '../../src/services/api';
+import { get, post, del, put, patch, ApiError } from '../../src/services/api';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -83,6 +83,26 @@ describe('API Client', () => {
       expect.stringContaining('/api/test/1'),
       expect.objectContaining({
         method: 'PUT',
+        body: JSON.stringify(mockBody),
+      }),
+    );
+  });
+
+  it('patch should make PATCH request with body', async () => {
+    const mockBody = { defaultModel: null };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ userId: '1', settings: {} }),
+      text: () => Promise.resolve(''),
+    });
+
+    const result = await patch('/test/1', mockBody);
+
+    expect(result).toEqual({ userId: '1', settings: {} });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/test/1'),
+      expect.objectContaining({
+        method: 'PATCH',
         body: JSON.stringify(mockBody),
       }),
     );

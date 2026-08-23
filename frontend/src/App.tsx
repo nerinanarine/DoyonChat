@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useIsAuthenticated } from '@azure/msal-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
+import { useSettings } from './hooks/useSettings';
 import AppLayout from './components/Layout/AppLayout';
 import ChatMessageList from './components/Chat/ChatMessageList';
 import ChatInput from './components/Chat/ChatInput';
 import LoginPage from './components/Auth/LoginPage';
-import { ModelInfo } from './types';
+import { ModelInfo, ModelsStatus } from './types';
 import * as api from './services/chatApi';
-import type { ModelsStatus } from './components/Layout/AppLayout';
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
@@ -37,6 +37,9 @@ function App() {
     stop,
   } = useChat(activeConversationId);
 
+  const { settings, status: settingsStatus, error: settingsError, updateSettings } =
+    useSettings(dataEnabled);
+
   // Load models once authenticated
   useEffect(() => {
     if (!dataEnabled) return;
@@ -58,9 +61,11 @@ function App() {
   }, [activeConversationId, loadMessages]);
 
   const handleNewChat = useCallback(async () => {
-    const conv = await create('New Chat');
+    const conv = settings.defaultModel
+      ? await create('New Chat', settings.defaultModel)
+      : await create('New Chat');
     setActiveConversationId(conv.id);
-  }, [create]);
+  }, [create, settings]);
 
   const handleSelect = useCallback((id: string) => {
     setActiveConversationId(id);
@@ -88,7 +93,9 @@ function App() {
     async (text: string, imageBase64?: string) => {
       if (!activeConversationId) {
         // Create new conversation if none selected
-        const conv = await create(text.slice(0, 30));
+        const conv = settings.defaultModel
+          ? await create(text.slice(0, 30), settings.defaultModel)
+          : await create(text.slice(0, 30));
         setActiveConversationId(conv.id);
         // Wait a tick for state to update, then send
         setTimeout(() => {
@@ -98,7 +105,14 @@ function App() {
       }
       sendMessage(text, imageBase64);
     },
-    [activeConversationId, create, sendMessage],
+    [activeConversationId, create, sendMessage, settings],
+  );
+
+  const handleChangeDefaultModel = useCallback(
+    async (modelId: string | null) => {
+      await updateSettings({ defaultModel: modelId ?? null });
+    },
+    [updateSettings],
   );
 
   const activeConversation = conversations.find(
@@ -127,6 +141,10 @@ function App() {
       activeConversationId={activeConversationId}
       models={models}
       modelsStatus={modelsStatus}
+      settings={settings}
+      settingsStatus={settingsStatus}
+      settingsError={settingsError}
+      onChangeDefaultModel={handleChangeDefaultModel}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}

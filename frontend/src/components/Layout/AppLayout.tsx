@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
 import { useMsal } from '@azure/msal-react';
-import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
-import { Conversation, ModelInfo } from '../../types';
+import { Menu, X, ChevronDown } from 'lucide-react';
+import {
+  Conversation,
+  ModelInfo,
+  UserSettings,
+  ModelsStatus,
+  SettingsStatus,
+} from '../../types';
 import ConversationList from '../Sidebar/ConversationList';
-
-export type ModelsStatus = 'loading' | 'error' | 'loaded';
+import SettingsMenu from '../Settings/SettingsMenu';
 
 interface AppLayoutProps {
   conversations: Conversation[];
   activeConversationId: string | null;
   models: ModelInfo[];
   modelsStatus: ModelsStatus;
+  settings: UserSettings;
+  settingsStatus: SettingsStatus;
+  settingsError: string | null;
+  onChangeDefaultModel: (modelId: string | null) => Promise<void>;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => Promise<void>;
@@ -24,6 +33,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   activeConversationId,
   models,
   modelsStatus,
+  settings,
+  settingsStatus,
+  settingsError,
+  onChangeDefaultModel,
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
@@ -113,13 +126,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 
           <div className="flex items-center gap-2">
             {authEnabled && (
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-                title="ログアウト"
-              >
-                <LogOut size={18} />
-              </button>
+              <SettingsMenu
+                models={models}
+                modelsStatus={modelsStatus}
+                settings={settings}
+                settingsStatus={settingsStatus}
+                settingsError={settingsError}
+                onChangeDefaultModel={onChangeDefaultModel}
+                onLogout={handleLogout}
+              />
             )}
             {activeConversation && (
             <div className="relative">

@@ -1,8 +1,18 @@
-import { Conversation, Message, ModelInfo } from '../types';
-import { get, post, del, put, getToken } from './api';
+import { Conversation, Message, ModelInfo, UserSettingsResponse } from '../types';
+import { get, post, del, put, patch, getToken } from './api';
 
 export async function fetchModels(): Promise<ModelInfo[]> {
   return get<ModelInfo[]>('/models');
+}
+
+export async function fetchUserSettings(): Promise<UserSettingsResponse> {
+  return get<UserSettingsResponse>('/users/me/settings');
+}
+
+export async function updateUserSettings(
+  partial: { defaultModel?: string | null },
+): Promise<UserSettingsResponse> {
+  return patch<UserSettingsResponse>('/users/me/settings', partial);
 }
 
 export async function fetchConversations(): Promise<Conversation[]> {

@@ -24,4 +24,8 @@ export function getMessagesContainer() {
   return getDatabase().container('messages');
 }
 
+export function getUserSettingsContainer() {
+  return getDatabase().container('userSettings');
+}
+
 export default getCosmosClient;

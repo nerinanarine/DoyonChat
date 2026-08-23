@@ -34,3 +34,17 @@ export interface ChatRequest {
   message: string;
   imageBase64?: string;
 }
+
+export interface UserSettings {
+  defaultModel?: string;
+}
+
+export interface UserSettingsResponse {
+  userId: string;
+  settings: UserSettings;
+  updatedAt?: string;
+}
+
+export type ModelsStatus = 'loading' | 'error' | 'loaded';
+
+export type SettingsStatus = 'loading' | 'error' | 'loaded';
