@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { streamChat, updateConversationTitle } from '../../src/services/chatApi';
+import {
+  streamChat,
+  updateConversationTitle,
+  fetchUserSettings,
+  updateUserSettings,
+} from '../../src/services/chatApi';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -86,6 +91,48 @@ describe('conversation title API', () => {
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ title: '新しいタイトル' }),
+      }),
+    );
+  });
+});
+
+describe('user settings API', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it('fetches user settings from the settings endpoint', async () => {
+    const response = {
+      userId: 'alice',
+      settings: { defaultModel: 'kimi-k2.6' },
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue(response),
+    });
+
+    await expect(fetchUserSettings()).resolves.toEqual(response);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/users/me/settings'),
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('patches user settings including a null clear', async () => {
+    const response = { userId: 'alice', settings: {} };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue(response),
+    });
+
+    await expect(updateUserSettings({ defaultModel: null })).resolves.toEqual(response);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/users/me/settings'),
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ defaultModel: null }),
       }),
     );
   });

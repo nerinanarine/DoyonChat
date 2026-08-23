@@ -56,6 +56,17 @@ resource messagesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   }
 }
 
+resource userSettingsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = {
+  parent: cosmosDatabase
+  name: 'userSettings'
+  properties: {
+    resource: {
+      id: 'userSettings'
+      partitionKey: { paths: ['/userId'], kind: 'Hash' }
+    }
+  }
+}
+
 output cosmosDbEndpoint string = cosmosAccount.properties.documentEndpoint
 output cosmosDbAccountName string = cosmosAccount.name
 output cosmosDbPrimaryKey string = cosmosAccount.listKeys().primaryMasterKey

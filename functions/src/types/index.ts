@@ -35,6 +35,23 @@ export interface ChatRequest {
   imageBase64?: string;
 }
 
+export interface UserSettings {
+  defaultModel?: string;
+}
+
+export interface UserSettingsDocument {
+  id: string;
+  userId: string;
+  settings: UserSettings;
+  updatedAt: string;
+}
+
+export interface UserSettingsResponse {
+  userId: string;
+  settings: UserSettings;
+  updatedAt?: string;
+}
+
 export interface OpenCodeGoMessage {
   role: 'user' | 'assistant';
   content: string | OpenCodeGoContentPart[];

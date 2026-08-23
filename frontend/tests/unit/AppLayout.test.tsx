@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { useMsal } from '@azure/msal-react';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { Conversation, ModelInfo } from '../../src/types';
 
 vi.mock('@azure/msal-react', () => ({
-  useMsal: () => ({ instance: { logoutRedirect: vi.fn() } }),
+  useMsal: vi.fn(() => ({ instance: { logoutRedirect: vi.fn() } })),
 }));
 
 const conversation: Conversation = {
@@ -31,6 +32,10 @@ const props = {
     },
   ],
   modelsStatus: 'loaded' as const,
+  settings: {},
+  settingsStatus: 'loaded' as const,
+  settingsError: null,
+  onChangeDefaultModel: vi.fn().mockResolvedValue(undefined),
   onSelectConversation: vi.fn(),
   onDeleteConversation: vi.fn(),
   onRenameConversation: vi.fn().mockResolvedValue(undefined),
@@ -118,5 +123,27 @@ describe('AppLayout model state', () => {
     const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
     expect(items).toHaveLength(23);
     expect(new Set(items.map((item) => item.textContent)).size).toBe(23);
+  });
+});
+
+describe('AppLayout settings menu', () => {
+  it('shows the settings button and hides the logout button when auth is enabled', () => {
+    vi.stubEnv('VITE_AUTH_ENABLED', 'true');
+    render(<AppLayout {...props} conversations={[conversation]} />);
+
+    expect(screen.getByRole('button', { name: '設定' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ログアウト' })).not.toBeInTheDocument();
+  });
+
+  it('opens the settings menu and logs out from inside it', () => {
+    vi.stubEnv('VITE_AUTH_ENABLED', 'true');
+    const onLogout = vi.fn();
+    vi.mocked(useMsal).mockReturnValue({ instance: { logoutRedirect: onLogout } } as never);
+    render(<AppLayout {...props} conversations={[conversation]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ログアウト' }));
+
+    expect(onLogout).toHaveBeenCalledTimes(1);
   });
 });

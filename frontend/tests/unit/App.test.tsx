@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
 import { useChat } from '../../src/hooks/useChat';
 import { useConversations } from '../../src/hooks/useConversations';
+import { useSettings } from '../../src/hooks/useSettings';
 import * as api from '../../src/services/chatApi';
 import { Conversation, ModelInfo } from '../../src/types';
 
@@ -12,6 +13,7 @@ vi.mock('@azure/msal-react', () => ({
 }));
 vi.mock('../../src/hooks/useChat', () => ({ useChat: vi.fn() }));
 vi.mock('../../src/hooks/useConversations', () => ({ useConversations: vi.fn() }));
+vi.mock('../../src/hooks/useSettings', () => ({ useSettings: vi.fn() }));
 vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn() }));
 
 const defaultModel: ModelInfo = {
@@ -35,8 +37,9 @@ const createdConversation: Conversation = {
 };
 
 const create = vi.fn();
+const updateSettings = vi.fn().mockResolvedValue(undefined);
 
-function mockHooks(conversations: Conversation[] = []) {
+function mockHooks(conversations: Conversation[] = [], settings: ModelInfo['id'] | undefined = undefined) {
   vi.mocked(useConversations).mockReturnValue({
     conversations,
     loading: false,
@@ -57,6 +60,13 @@ function mockHooks(conversations: Conversation[] = []) {
     sendMessage: vi.fn(),
     stop: vi.fn(),
   });
+  vi.mocked(useSettings).mockReturnValue({
+    settings: settings === undefined ? {} : { defaultModel: settings },
+    status: 'loaded',
+    error: null,
+    updateSettings,
+    reload: vi.fn(),
+  });
 }
 
 describe('App model state', () => {
@@ -74,6 +84,26 @@ describe('App model state', () => {
 
     await waitFor(() => expect(create).toHaveBeenCalledWith('New Chat'));
     expect(create.mock.calls[0]).toHaveLength(1);
+  });
+
+  it('uses the saved defaultModel when creating a new conversation', async () => {
+    mockHooks([], 'kimi-k2.6');
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: '新規チャット' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledWith('New Chat', 'kimi-k2.6'));
+  });
+
+  it('uses the saved defaultModel when the first message creates a conversation', async () => {
+    mockHooks([], 'glm-5.1');
+    render(<App />);
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    fireEvent.change(input, { target: { value: '最初のメッセージ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledWith('最初のメッセージ', 'glm-5.1'));
   });
 
   it('omits model when the first message creates a conversation', async () => {
