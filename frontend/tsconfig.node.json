@@ -7,5 +7,5 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "tailwind.config.js"]
+  "include": ["vite.config.ts", "pwa-options.ts", "tailwind.config.js"]
 }
