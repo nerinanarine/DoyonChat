@@ -28,7 +28,7 @@
 | [P1-001](items/P1-001-image-upload-ui.md) | 画像入力（マルチモーダル）フロントエンド UI | P1 | 🟢 対応済み | 機能追加 | FR-006 | 画像選択・D&D・プレビュー・Base64送信を本番デプロイ済み |
 | [P1-002](items/P1-002-multimodal-warning.md) | マルチモーダル非対応モデル警告 | P1 | 🔴 未対応 | UX改善 | FR-014 | MessagesはBackendで400拒否済み、送信前の警告UIが未対応 |
 | [P1-003](items/P1-003-partial-save-on-stop.md) | ストリーミング中断時の中間保存 | P1 | 🔴 未対応 | データ保全 | — | データ損失防止 |
-| [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🟡 進行中 | UX改善 | [仕様](../P1-004/spec.md) | AI 要約タイトル（deepseek-v4-flash）。手動リネーム尊重 |
+| [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🟢 対応済み | UX改善 | [仕様](../P1-004/spec.md) | AI 要約タイトル（deepseek-v4-flash）、本番デプロイ済み |
 | [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🟢 対応済み | セキュリティ | — | P1-006 の前提条件を完了 |
 | [P1-006](items/P1-006-user-separated-chats.md) | ユーザーごとにチャットを分ける | P1 | 🟢 対応済み | セキュリティ | [統合仕様](../006-user-isolation-functions/spec.md) | P2-006 と同時実装、本番切替完了 |
 | [P1-007](items/P1-007-reasoning-display.md) | Reasoning モデルの Thinking コンテンツをわかりやすく表示 | P1 | 🟢 対応済み | UX改善 | — | 思考と回答を視覚的に分離、開発環境反映済み |

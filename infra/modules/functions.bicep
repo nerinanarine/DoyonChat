@@ -14,6 +14,7 @@ param cosmosDbDatabase string = 'chatdb'
 @secure()
 param openCodeGoApiKey string
 param openCodeGoModel string = 'kimi-k2.6'
+param openCodeGoTitleModel string = 'deepseek-v4-flash'
 param authEnabled string = 'false'
 param entraTenantId string = ''
 param entraApiClientId string = ''
@@ -112,6 +113,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     COSMOSDB_REQUIRED: cosmosDbRequired
     OPENCODE_GO_API_KEY: openCodeGoApiKey
     OPENCODE_GO_MODEL: openCodeGoModel
+    OPENCODE_GO_TITLE_MODEL: openCodeGoTitleModel
     AUTH_ENABLED: authEnabled
     ENTRA_TENANT_ID: entraTenantId
     ENTRA_API_CLIENT_ID: entraApiClientId

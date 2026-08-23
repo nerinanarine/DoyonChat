@@ -18,30 +18,30 @@
 ## Phases
 
 ### Phase 0 — 準備
-- [ ] spec.md / plan.md 作成（レビュー反映）
-- [ ] backlog P1-004 を 🔴→🟡 に更新、関連ファイル記述を `functions/` 前提に修正、概要の「New Chat のまま」表現を実態（slice(0,30) 切り出しあり）に合わせて更新、spec リンク追記
+- [x] spec.md / plan.md 作成（レビュー反映）
+- [x] backlog P1-004 を 🔴→🟡 に更新、関連ファイル記述を `functions/` 前提に修正、概要の「New Chat のまま」表現を実態（slice(0,30) 切り出しあり）に合わせて更新、spec リンク追記
 
 ### Phase 1 — Backend
-- [ ] `opencodeGo.ts`: `generateTitle()` 実装（streamChat 収集、タイムアウト、モデルフォールバック + console.warn）
-- [ ] `conversations.ts`: `POST conversations/{id}/title/auto` エンドポイント（認証/所有者/400/404/サニタイズ/保存）
-- [ ] functions 単体テスト + integration テスト追加
-- [ ] verify: `cd functions && npm run build && npm test`
+- [x] `opencodeGo.ts`: `generateTitle()` 実装（streamChat 収集、タイムアウト、モデルフォールバック + console.warn）
+- [x] `conversations.ts`: `POST conversations/{id}/title/auto` エンドポイント（認証/所有者/400/404/サニタイズ/保存）
+- [x] functions 単体テスト + integration テスト追加
+- [x] verify: `cd functions && npm run build && npm test`
 
 ### Phase 2 — Frontend
-- [ ] `chatApi.ts`（または api.ts）: `autoGenerateTitle(id, text)` 追加
-- [ ] `useConversations.ts`: renamedIds ref、Conversation 単体置換関数、`NEW_CHAT_TITLE` 定数共有
-- [ ] `App.tsx`: handleSend にトリガー実装（fire-and-forget、エラー握りつぶし、conv.id 使用）
-- [ ] verify: `cd frontend && npm run build && npm test && npm run lint`
+- [x] `chatApi.ts`（または api.ts）: `autoGenerateTitle(id, text)` 追加
+- [x] `useConversations.ts`: renamedIds ref、Conversation 単体置換関数、`NEW_CHAT_TITLE` 定数共有
+- [x] `App.tsx`: handleSend にトリガー実装（fire-and-forget、エラー握りつぶし、conv.id 使用）
+- [x] verify: `cd frontend && npm run build && npm test && npm run lint`
 
 ### Phase 3 — 自動テスト
-- [ ] functions: generateTitle モックでの単体テスト（サニタイズ、空→30字フォールバック、reasoning 混在、100字コードポイント切り詰め、400/401/404）
-- [ ] frontend: トリガー条件テスト（新規作成時 / New Chat 時 / リネーム済みスキップ / 失敗時無言 / 正しい convId 使用）
+- [x] functions: generateTitle モックでの単体テスト（サニタイズ、空→30字フォールバック、reasoning 混在、100字コードポイント切り詰め、400/401/404）
+- [x] frontend: トリガー条件テスト（新規作成時 / New Chat 時 / リネーム済みスキップ / 失敗時無言 / 正しい convId 使用）
 
 ### Phase 4 — E2E / デプロイ
-- [ ] ローカル E2E: 新規チャット→初回送信→タイトル置換→手動リネーム優先の確認
-- [ ] `OPENCODE_GO_TITLE_MODEL` を本番 Function App 設定に追加するか決定（未設定なら `deepseek-v4-flash`）。会話ごとに成功まで最大1回/送信の LLM 呼び出しが発生し得る点も踏まえて判断
-- [ ] 本番デプロイ後の動作確認
-- [ ] spec Status 更新・backlog 🟢・実装メモ記載
+- [x] ローカル E2E: 新規チャット→初回送信→タイトル置換→手動リネーム優先の確認
+- [x] `OPENCODE_GO_TITLE_MODEL` を本番 Function App 設定に追加するか決定（未設定なら `deepseek-v4-flash`）。会話ごとに成功まで最大1回/送信の LLM 呼び出しが発生し得る点も踏まえて判断
+- [x] 本番デプロイ後の動作確認
+- [x] spec Status 更新・backlog 🟢・実装メモ記載
 
 ## Verification Commands
 
