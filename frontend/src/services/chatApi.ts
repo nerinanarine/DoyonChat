@@ -41,6 +41,10 @@ export async function updateConversationTitle(id: string, title: string): Promis
   return put<Conversation>(`/conversations/${id}/title`, { title: title.trim() });
 }
 
+export async function autoGenerateTitle(id: string, text: string): Promise<Conversation> {
+  return post<Conversation>(`/conversations/${id}/title/auto`, { text });
+}
+
 export interface ChatStreamChunk {
   content?: string;
   reasoning?: string;

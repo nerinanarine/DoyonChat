@@ -2,9 +2,12 @@ import { MODEL_CATALOG, OpenCodeGoProtocol } from '../../src/config/modelCatalog
 import { OpenCodeGoMessage } from '../../src/types';
 import {
   formatMessagesForApi,
+  generateTitle,
   healthCheck,
   OpenCodeGoOptions,
+  sanitizeGeneratedTitle,
   streamChat,
+  DEFAULT_TITLE_MODEL_ID,
 } from '../../src/services/opencodeGo';
 
 const mockFetch = jest.fn();
@@ -298,4 +301,124 @@ describe('Functions OpenCode Go API Service', () => {
       ]),
     ).toEqual([{ role: 'assistant', content: '回答' }]);
   });
+
+describe('generateTitle', () => {
+  beforeEach(() => {
+    delete process.env.OPENCODE_GO_TITLE_MODEL;
+  });
+
+  it('collects content chunks and ignores reasoning for the default title model', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"choices":[{"delta":{"reasoning_content":"考察"}}]}\n\n' +
+          'data: {"choices":[{"delta":{"content":"タイトル"}}]}\n\n' +
+          'data: [DONE]\n\n',
+      ),
+    );
+
+    await expect(generateTitle('テストメッセージ')).resolves.toBe('タイトル');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://opencode.ai/zen/go/v1/chat/completions',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(requestBody).toEqual({
+      model: DEFAULT_TITLE_MODEL_ID,
+      messages: [
+        {
+          role: 'user',
+          content: expect.stringContaining('30文字以内の日本語タイトル'),
+        },
+      ],
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 60,
+    });
+    expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('uses OPENCODE_GO_TITLE_MODEL when configured', async () => {
+    process.env.OPENCODE_GO_TITLE_MODEL = 'minimax-m3';
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"タイトル"}}\n\n' +
+          'data: {"type":"message_stop"}\n\n',
+      ),
+    );
+
+    await expect(generateTitle('テストメッセージ')).resolves.toBe('タイトル');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://opencode.ai/zen/go/v1/messages',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(requestBody).toEqual(expect.objectContaining({ model: 'minimax-m3', max_tokens: 60 }));
+  });
+
+  it('falls back and warns when the configured title model is not in the catalog', async () => {
+    process.env.OPENCODE_GO_TITLE_MODEL = 'unknown-model';
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent('chat-completions')));
+
+    await generateTitle('テストメッセージ');
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('OPENCODE_GO_TITLE_MODEL "unknown-model"'),
+    );
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://opencode.ai/zen/go/v1/chat/completions',
+      expect.anything(),
+    );
+    warn.mockRestore();
+  });
+
+  it('returns a deterministic mock title for test API keys without calling upstream', async () => {
+    process.env.OPENCODE_GO_API_KEY = 'sk-test-key';
+
+    await expect(generateTitle('あいうえおかきくけこ'.repeat(5))).resolves.toBe(
+      'あいうえおかきくけこ'.repeat(5).slice(0, 20),
+    );
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('forwards an external AbortSignal to the upstream request', async () => {
+    const signal = new AbortController().signal;
+    mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent('chat-completions')));
+
+    await generateTitle('テストメッセージ', signal);
+
+    expect(mockFetch.mock.calls[0][1].signal).toBe(signal);
+  });
+});
+
+describe('sanitizeGeneratedTitle', () => {
+  it('uses the first non-empty line only', () => {
+    expect(
+      sanitizeGeneratedTitle('\n  タイトル  \n補足は使わない', 'フォールバック'),
+    ).toBe('タイトル');
+  });
+
+  it('strips one pair of enclosing quotes', () => {
+    expect(sanitizeGeneratedTitle('「タイトル」', 'フォールバック')).toBe('タイトル');
+    expect(sanitizeGeneratedTitle('"タイトル"', 'フォールバック')).toBe('タイトル');
+    expect(sanitizeGeneratedTitle('『タイトル』', 'フォールバック')).toBe('タイトル');
+    expect(sanitizeGeneratedTitle('\u201Cタイトル\u201D', 'フォールバック')).toBe('タイトル');
+  });
+
+  it('returns the fallback when every line is empty or stripped to nothing', () => {
+    expect(sanitizeGeneratedTitle('\n  \n', 'フォールバック')).toBe('フォールバック');
+    expect(sanitizeGeneratedTitle('""', 'フォールバック')).toBe('フォールバック');
+  });
+
+  it('truncates titles to 100 code points', () => {
+    const long = 'あ'.repeat(101);
+    expect(sanitizeGeneratedTitle(long, 'フォールバック')).toBe('あ'.repeat(100));
+  });
+
+  it('counts surrogate-pair emoji as one code point', () => {
+    expect(sanitizeGeneratedTitle('😀'.repeat(101), 'フォールバック')).toBe('😀'.repeat(100));
+  });
+});
 });

@@ -8,6 +8,7 @@ import { authenticateRequest } from '../middleware/auth';
 import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
 import { DEFAULT_MODEL_ID, hasModel } from '../config/modelCatalog';
+import { generateTitle, sanitizeGeneratedTitle } from '../services/opencodeGo';
 import { getOptionalString, getRequiredString, readJsonBody } from './request';
 
 function getConversationId(request: HttpRequest): string {
@@ -113,6 +114,37 @@ export async function titleHandler(
   }
 }
 
+export async function titleAutoHandler(
+  request: HttpRequest,
+  _context: InvocationContext,
+): Promise<HttpResponseInit> {
+  try {
+    const userId = await authenticateRequest(request);
+    const body = await readJsonBody(request);
+    const text = getRequiredString(body, 'text').trim();
+
+    const conversation = await service.getConversation(getConversationId(request), userId);
+    if (!conversation) throw new AppError(404, 'Conversation not found');
+
+    let generated: string;
+    try {
+      generated = await generateTitle(text);
+    } catch (error) {
+      console.error('[functions/conversations] title generation failed:', error);
+      throw new AppError(503, 'Title generation failed');
+    }
+
+    const fallback = Array.from(text).slice(0, 30).join('');
+    const title = sanitizeGeneratedTitle(generated, fallback);
+
+    const updated = await service.updateConversationTitle(conversation.id, title, userId);
+    if (!updated) throw new AppError(404, 'Conversation not found');
+    return { status: 200, jsonBody: updated };
+  } catch (error) {
+    return toHttpResponse(error);
+  }
+}
+
 app.http('conversations', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -139,4 +171,11 @@ app.http('conversation-title', {
   authLevel: 'anonymous',
   route: 'conversations/{id}/title',
   handler: titleHandler,
+});
+
+app.http('conversation-title-auto', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'conversations/{id}/title/auto',
+  handler: titleAutoHandler,
 });

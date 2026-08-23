@@ -7,6 +7,7 @@ import { Conversation } from '../../src/types';
 vi.mock('../../src/services/chatApi', () => ({
   fetchConversations: vi.fn(),
   updateConversationTitle: vi.fn(),
+  autoGenerateTitle: vi.fn(),
 }));
 
 const conversations: Conversation[] = [
@@ -69,5 +70,61 @@ describe('useConversations title update', () => {
 
     expect(thrown).toBe(error);
     expect(result.current.conversations).toBe(beforeUpdate);
+    expect(result.current.isRenamed('conversation-1')).toBe(false);
+  });
+});
+
+describe('useConversations auto title', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.fetchConversations).mockResolvedValue(conversations);
+  });
+
+  it('tracks a successful manual rename so auto title is skipped later', async () => {
+    const updated = { ...conversations[0], title: 'リネーム済み' };
+    vi.mocked(api.updateConversationTitle).mockResolvedValue(updated);
+    const { result } = renderHook(() => useConversations());
+    await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+
+    await act(async () => {
+      await result.current.updateTitle('conversation-1', 'リネーム済み');
+    });
+
+    expect(result.current.isRenamed('conversation-1')).toBe(true);
+    expect(result.current.isRenamed('conversation-2')).toBe(false);
+  });
+
+  it('replaces only the targeted conversation with the auto-generated title', async () => {
+    const updated = { ...conversations[1], title: 'AI生成タイトル' };
+    vi.mocked(api.autoGenerateTitle).mockResolvedValue(updated);
+    const { result } = renderHook(() => useConversations());
+    await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+
+    await act(async () => {
+      await result.current.autoTitle('conversation-2', 'メッセージ');
+    });
+
+    expect(api.autoGenerateTitle).toHaveBeenCalledWith('conversation-2', 'メッセージ');
+    expect(result.current.conversations.map((conversation) => conversation.id)).toEqual([
+      'conversation-1',
+      'conversation-2',
+    ]);
+    expect(result.current.conversations[1]).toBe(updated);
+  });
+
+  it('swallows auto title failures without changing the conversation state', async () => {
+    vi.mocked(api.autoGenerateTitle).mockRejectedValue(new Error('generation failed'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useConversations());
+    await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+    const before = result.current.conversations;
+
+    await act(async () => {
+      await result.current.autoTitle('conversation-1', 'メッセージ');
+    });
+
+    expect(warn).toHaveBeenCalled();
+    expect(result.current.conversations).toBe(before);
+    warn.mockRestore();
   });
 });

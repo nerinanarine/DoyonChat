@@ -8,6 +8,7 @@ import {
   conversationHandler,
   conversationsHandler,
   modelHandler,
+  titleAutoHandler,
   titleHandler,
 } from '../../src/functions/conversations';
 import { messagesHandler } from '../../src/functions/messages';
@@ -16,6 +17,7 @@ import { userSettingsHandler } from '../../src/functions/users';
 import { AppError, toHttpResponse } from '../../src/middleware/errorHandler';
 import * as auth from '../../src/middleware/auth';
 import * as conversationService from '../../src/services/conversationService';
+import * as opencodeGo from '../../src/services/opencodeGo';
 import { DEFAULT_MODEL_ID, MODEL_CATALOG } from '../../src/config/modelCatalog';
 
 jest.mock('../../src/db', () => {
@@ -120,6 +122,10 @@ describe('Functions API contract', () => {
       request('PUT', '/api/conversations/conversation-id/title', { title: 'Renamed' }),
       {} as never,
     );
+    const autoTitleResponse = await titleAutoHandler(
+      request('POST', '/api/conversations/conversation-id/title/auto', { text: 'こんにちは' }),
+      {} as never,
+    );
     const settingsResponse = await userSettingsHandler(
       request('GET', '/api/users/me/settings'),
       {} as never,
@@ -127,6 +133,7 @@ describe('Functions API contract', () => {
 
     expect(modelsResponse.status).toBe(401);
     expect(titleResponse.status).toBe(401);
+    expect(autoTitleResponse.status).toBe(401);
     expect(settingsResponse.status).toBe(401);
     process.env.AUTH_ENABLED = 'false';
   });
@@ -433,6 +440,115 @@ describe('Functions API contract', () => {
     const response = await titleHandler(malformed, {} as never);
 
     expect(response.status).toBe(400);
+  });
+
+  it('auto-generates a conversation title from the request text', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Auto title' }),
+      {} as never,
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    // OPENCODE_GO_API_KEY is 'sk-test-key' → generateTitle uses its deterministic mock path.
+    const response = await titleAutoHandler(
+      request('POST', `/api/conversations/${id}/title/auto`, { text: '最初のメッセージです' }),
+      {} as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.jsonBody).toEqual(
+      expect.objectContaining({ id, title: '最初のメッセージです'.slice(0, 20) }),
+    );
+  });
+
+  it('sanitizes generated titles (first line, enclosing quotes, fallback)', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Sanitize target' }),
+      {} as never,
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    const generate = jest.spyOn(opencodeGo, 'generateTitle');
+    try {
+      generate.mockResolvedValueOnce('「タイトル」\n（補足行は使われない）');
+      const quoted = await titleAutoHandler(
+        request('POST', `/api/conversations/${id}/title/auto`, { text: 'こんにちは' }),
+        {} as never,
+      );
+      expect(quoted.status).toBe(200);
+      expect(quoted.jsonBody).toEqual(expect.objectContaining({ id, title: 'タイトル' }));
+
+      generate.mockResolvedValueOnce('  \n   ');
+      const empty = await titleAutoHandler(
+        request('POST', `/api/conversations/${id}/title/auto`, { text: 'こんにちは' }),
+        {} as never,
+      );
+      expect(empty.status).toBe(200);
+      expect(empty.jsonBody).toEqual(
+        expect.objectContaining({ id, title: 'こんにちは'.slice(0, 30) }),
+      );
+    } finally {
+      generate.mockRestore();
+    }
+  });
+
+  it('rejects missing or blank text for auto title generation', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Text required' }),
+      {} as never,
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    const missing = await titleAutoHandler(
+      request('POST', `/api/conversations/${id}/title/auto`, {}),
+      {} as never,
+    );
+    expect(missing.status).toBe(400);
+
+    const blank = await titleAutoHandler(
+      request('POST', `/api/conversations/${id}/title/auto`, { text: '   ' }),
+      {} as never,
+    );
+    expect(blank.status).toBe(400);
+  });
+
+  it('returns 404 for an unknown conversation on auto title generation', async () => {
+    const response = await titleAutoHandler(
+      request('POST', '/api/conversations/missing-conversation/title/auto', {
+        text: 'こんにちは',
+      }),
+      {} as never,
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 503 without changing the title when generation fails', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Failure target' }),
+      {} as never,
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    const generate = jest.spyOn(opencodeGo, 'generateTitle');
+    try {
+      generate.mockRejectedValueOnce(new Error('upstream unavailable'));
+      const response = await titleAutoHandler(
+        request('POST', `/api/conversations/${id}/title/auto`, { text: 'こんにちは' }),
+        {} as never,
+      );
+
+      expect(response.status).toBe(503);
+      const detail = await conversationHandler(
+        request('GET', `/api/conversations/${id}`),
+        {} as never,
+      );
+      expect(detail.jsonBody).toEqual(
+        expect.objectContaining({ conversation: expect.objectContaining({ title: 'Failure target' }) }),
+      );
+    } finally {
+      generate.mockRestore();
+    }
   });
 
   it('streams chat events and saves the assistant message', async () => {

@@ -12,7 +12,10 @@ vi.mock('@azure/msal-react', () => ({
   useMsal: () => ({ instance: { logoutRedirect: vi.fn() } }),
 }));
 vi.mock('../../src/hooks/useChat', () => ({ useChat: vi.fn() }));
-vi.mock('../../src/hooks/useConversations', () => ({ useConversations: vi.fn() }));
+vi.mock('../../src/hooks/useConversations', () => ({
+  useConversations: vi.fn(),
+  NEW_CHAT_TITLE: 'New Chat',
+}));
 vi.mock('../../src/hooks/useSettings', () => ({ useSettings: vi.fn() }));
 vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn() }));
 
@@ -37,9 +40,14 @@ const createdConversation: Conversation = {
 };
 
 const create = vi.fn();
+const autoTitle = vi.fn();
+const isRenamed = vi.fn();
 const updateSettings = vi.fn().mockResolvedValue(undefined);
 
-function mockHooks(conversations: Conversation[] = [], settings: ModelInfo['id'] | undefined = undefined) {
+function mockHooks(
+  conversations: Conversation[] = [],
+  settings: ModelInfo['id'] | undefined = undefined,
+) {
   vi.mocked(useConversations).mockReturnValue({
     conversations,
     loading: false,
@@ -49,6 +57,8 @@ function mockHooks(conversations: Conversation[] = [], settings: ModelInfo['id']
     remove: vi.fn(),
     updateModel: vi.fn(),
     updateTitle: vi.fn(),
+    autoTitle,
+    isRenamed,
   });
   vi.mocked(useChat).mockReturnValue({
     messages: [],
@@ -73,6 +83,8 @@ describe('App model state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     create.mockResolvedValue(createdConversation);
+    autoTitle.mockResolvedValue(undefined);
+    isRenamed.mockReturnValue(false);
     mockHooks();
     vi.mocked(api.fetchModels).mockResolvedValue([defaultModel]);
   });
@@ -85,7 +97,6 @@ describe('App model state', () => {
     await waitFor(() => expect(create).toHaveBeenCalledWith('New Chat'));
     expect(create.mock.calls[0]).toHaveLength(1);
   });
-
   it('uses the saved defaultModel when creating a new conversation', async () => {
     mockHooks([], 'kimi-k2.6');
     render(<App />);
@@ -153,5 +164,63 @@ describe('App model state', () => {
     );
     expect(screen.getByRole('button', { name: /retired-model（利用不可）/ })).toBeEnabled();
     expect(screen.getByPlaceholderText('メッセージを入力...')).toBeDisabled();
+  });
+
+  it('triggers auto title with the created conversation id after the first message', async () => {
+    render(<App />);
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, { target: { value: '最初のメッセージ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(autoTitle).toHaveBeenCalledWith('created-conversation', '最初のメッセージ'),
+    );
+  });
+
+  it('triggers auto title when the active conversation is still New Chat', async () => {
+    mockHooks([{ ...createdConversation, id: 'existing-conversation', title: 'New Chat' }]);
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'New Chat' }).parentElement as HTMLElement);
+
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, { target: { value: '二通目のメッセージ' } });
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+
+    await waitFor(() =>
+      expect(autoTitle).toHaveBeenCalledWith('existing-conversation', '二通目のメッセージ'),
+    );
+  });
+
+  it('skips auto title for a manually renamed conversation', async () => {
+    mockHooks([{ ...createdConversation, id: 'existing-conversation', title: 'New Chat' }]);
+    isRenamed.mockReturnValue(true);
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'New Chat' }).parentElement as HTMLElement);
+
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, { target: { value: 'メッセージ' } });
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+
+    expect(autoTitle).not.toHaveBeenCalled();
+  });
+
+  it('skips auto title when the active conversation already has a custom title', async () => {
+    mockHooks([{ ...createdConversation, id: 'existing-conversation', title: '設定済みタイトル' }]);
+    render(<App />);
+    fireEvent.click(
+      screen.getByRole('button', { name: '設定済みタイトル' }).parentElement as HTMLElement,
+    );
+
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, { target: { value: 'メッセージ' } });
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+
+    expect(autoTitle).not.toHaveBeenCalled();
   });
 });
