@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
+  autoGenerateTitle,
   streamChat,
   updateConversationTitle,
   fetchUserSettings,
@@ -91,6 +92,30 @@ describe('conversation title API', () => {
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ title: '新しいタイトル' }),
+      }),
+    );
+  });
+
+  it('posts the first message text to the auto title endpoint', async () => {
+    const updated = {
+      id: 'conversation-1',
+      title: 'AI生成タイトル',
+      model: 'model-1',
+      createdAt: '2026-08-22T00:00:00.000Z',
+      updatedAt: '2026-08-22T00:00:00.000Z',
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue(updated),
+    });
+
+    await expect(autoGenerateTitle('conversation-1', 'こんにちは')).resolves.toEqual(updated);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/conversations/conversation-1/title/auto'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ text: 'こんにちは' }),
       }),
     );
   });

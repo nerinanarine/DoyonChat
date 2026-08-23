@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useIsAuthenticated } from '@azure/msal-react';
-import { useConversations } from './hooks/useConversations';
+import { useConversations, NEW_CHAT_TITLE } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
 import { useSettings } from './hooks/useSettings';
 import AppLayout from './components/Layout/AppLayout';
@@ -22,6 +22,8 @@ function App() {
     remove,
     updateModel,
     updateTitle,
+    autoTitle,
+    isRenamed,
   } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -62,8 +64,8 @@ function App() {
 
   const handleNewChat = useCallback(async () => {
     const conv = settings.defaultModel
-      ? await create('New Chat', settings.defaultModel)
-      : await create('New Chat');
+      ? await create(NEW_CHAT_TITLE, settings.defaultModel)
+      : await create(NEW_CHAT_TITLE);
     setActiveConversationId(conv.id);
   }, [create, settings]);
 
@@ -101,11 +103,21 @@ function App() {
         setTimeout(() => {
           sendMessage(text, imageBase64);
         }, 50);
+        if (text.trim()) {
+          autoTitle(conv.id, text);
+        }
         return;
       }
       sendMessage(text, imageBase64);
+      if (
+        text.trim() &&
+        conversations.find((c) => c.id === activeConversationId)?.title === NEW_CHAT_TITLE &&
+        !isRenamed(activeConversationId)
+      ) {
+        autoTitle(activeConversationId, text);
+      }
     },
-    [activeConversationId, create, sendMessage, settings],
+    [activeConversationId, conversations, create, sendMessage, settings, autoTitle, isRenamed],
   );
 
   const handleChangeDefaultModel = useCallback(

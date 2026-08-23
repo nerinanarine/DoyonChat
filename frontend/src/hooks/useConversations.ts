@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Conversation } from '../types';
 import * as api from '../services/chatApi';
+
+export const NEW_CHAT_TITLE = 'New Chat';
 
 export function useConversations(enabled = true) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const renamedIds = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -26,7 +29,7 @@ export function useConversations(enabled = true) {
   }, [load, enabled]);
 
   const create = useCallback(async (title?: string, model?: string) => {
-    const conv = await api.createConversation(title, model);
+    const conv = await api.createConversation(title ?? NEW_CHAT_TITLE, model);
     setConversations((prev) => [conv, ...prev]);
     return conv;
   }, []);
@@ -43,8 +46,32 @@ export function useConversations(enabled = true) {
 
   const updateTitle = useCallback(async (id: string, title: string) => {
     const updated = await api.updateConversationTitle(id, title);
+    renamedIds.current.add(id);
     setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
   }, []);
 
-  return { conversations, loading, error, load, create, remove, updateModel, updateTitle };
+  const autoTitle = useCallback(async (id: string, text: string) => {
+    try {
+      const updated = await api.autoGenerateTitle(id, text);
+      setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } catch (err) {
+      // タイトル生成は装飾目的なので、失敗しても無言でチャットを継続する。
+      console.warn('[useConversations] auto title generation failed:', err);
+    }
+  }, []);
+
+  const isRenamed = useCallback((id: string) => renamedIds.current.has(id), []);
+
+  return {
+    conversations,
+    loading,
+    error,
+    load,
+    create,
+    remove,
+    updateModel,
+    updateTitle,
+    autoTitle,
+    isRenamed,
+  };
 }

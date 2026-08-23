@@ -14,6 +14,11 @@ import {
 
 const API_BASE = 'https://opencode.ai/zen/go/v1';
 
+export const DEFAULT_TITLE_MODEL_ID = 'deepseek-v4-flash';
+
+const TITLE_GENERATION_TIMEOUT_MS = 20_000;
+const TITLE_MAX_TOKENS = 60;
+
 type ProtocolEvent =
   | { kind: 'delta'; content: string; reasoning: string }
   | { kind: 'completed' }
@@ -237,6 +242,85 @@ export async function healthCheck(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// カタログ外の TITLE モデル設定を検知するための既定モデル解決。
+function resolveTitleModel(): string {
+  const configured = process.env.OPENCODE_GO_TITLE_MODEL || DEFAULT_TITLE_MODEL_ID;
+  if (!getModelConfig(configured)) {
+    console.warn(
+      `[opencodeGo] OPENCODE_GO_TITLE_MODEL "${configured}" is not in the model catalog; using "${DEFAULT_TITLE_MODEL_ID}"`,
+    );
+    return DEFAULT_TITLE_MODEL_ID;
+  }
+  return configured;
+}
+
+function isDevTestKey(apiKey: string): boolean {
+  return apiKey === 'sk-opencode-test-key' || apiKey.startsWith('sk-test');
+}
+
+// 囲み引用符（" ' 「」 『』 “”）を一組だけ除去する。
+function stripEnclosingQuotes(text: string): string {
+  const pairs: Array<readonly [string, string]> = [
+    ['"', '"'],
+    ["'", "'"],
+    ['「', '」'],
+    ['『', '』'],
+    ['\u201C', '\u201D'],
+  ];
+  for (const [open, close] of pairs) {
+    if (text.length >= open.length + close.length && text.startsWith(open) && text.endsWith(close)) {
+      return text.slice(open.length, -close.length);
+    }
+  }
+  return text;
+}
+
+// 生成タイトルを既存 titleHandler と同じコードポイント基準で整形する。
+export function sanitizeGeneratedTitle(raw: string, fallback: string): string {
+  const firstLine = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+  if (!firstLine) return fallback;
+
+  const cleaned = stripEnclosingQuotes(firstLine).trim();
+  if (!cleaned) return fallback;
+
+  const codepoints = Array.from(cleaned);
+  return codepoints.length > 100 ? codepoints.slice(0, 100).join('') : cleaned;
+}
+
+// 会話タイトルを OpenCode Go に短命で生成させる（チャット本体ストリームとは独立）。
+export async function generateTitle(
+  text: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const model = resolveTitleModel();
+  const apiKey = await getApiKey().catch(() => '');
+  if (!apiKey || isDevTestKey(apiKey)) {
+    return Array.from(text).slice(0, 20).join('');
+  }
+
+  const prompt = [
+    '次のメッセージから30文字以内の日本語タイトルのみを出力してください。',
+    '引用符や記号は付けず、タイトルのみを1行で出力してください。',
+    '',
+    'メッセージ:',
+    text,
+  ].join('\n');
+
+  const requestSignal = signal ?? AbortSignal.timeout(TITLE_GENERATION_TIMEOUT_MS);
+  let content = '';
+  for await (const chunk of streamChat(
+    [{ role: 'user', content: prompt }],
+    { model, maxTokens: TITLE_MAX_TOKENS, signal: requestSignal },
+  )) {
+    if (chunk.done) break;
+    content += chunk.content;
+  }
+  return content;
 }
 
 export async function* streamChat(
