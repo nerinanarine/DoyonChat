@@ -7,9 +7,16 @@ interface ChatInputProps {
   onStop: () => void;
   isStreaming: boolean;
   disabled?: boolean;
+  disabledReason?: string;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, isStreaming, disabled }) => {
+const ChatInput: React.FC<ChatInputProps> = ({
+  onSend,
+  onStop,
+  isStreaming,
+  disabled,
+  disabledReason,
+}) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -40,6 +47,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, isStreaming, disa
   const [dragActive, setDragActive] = useState(false);
 
   const processImage = useCallback(async (file: File) => {
+    if (disabled) return;
     const error = validateImageFile(file);
     if (error) {
       alert(error);
@@ -52,7 +60,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, isStreaming, disa
     } catch {
       alert('画像の処理に失敗しました');
     }
-  }, []);
+  }, [disabled]);
 
   const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,9 +107,15 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, isStreaming, disa
           </button>
         </div>
       )}
+      {disabledReason && (
+        <p role="status" className="mb-2 text-sm text-amber-700">
+          {disabledReason}
+        </p>
+      )}
       <div className="flex items-end gap-2">
         <button
           onClick={() => fileInputRef.current?.click()}
+          disabled={disabled}
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
           title="画像をアップロード"
           type="button"
@@ -113,6 +127,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onStop, isStreaming, disa
           type="file"
           accept="image/*"
           className="hidden"
+          disabled={disabled}
           onChange={handleImageSelect}
         />
         <textarea

@@ -4,7 +4,7 @@
 
 **Input**: [Feature specification](./spec.md)
 
-**Implementation Status**: Not started
+**Implementation Status**: Complete
 
 ## Summary
 
@@ -110,13 +110,13 @@ live testは`streamChat`を直接呼ぶ。`chatHandler`は上流エラーをSSE�
 ### D7. live testを低コスト・秘密非出力にする
 
 - prompt: `Reply only OK`
-- max output: 32 tokens
+- max output: 512 tokens（公式資料の通常出力125〜310 tokensを収める上限。短文応答なので未使用分は生成されない）
 - concurrency: 1
 - requests: 1 per model
 - retry: 0
-- timeout: 60 seconds per model
+- timeout: 120 seconds per model
 
-各モデルで`AbortController`を生成し、60秒経過時に上流fetchを中断する。中断したstreamの終了を待ってから次モデルへ進む。
+各モデルで`AbortController`を生成し、120秒経過時に上流fetchを中断する。中断したstreamの終了を待ってから次モデルへ進む。
 
 各結果はmodel ID、protocol、成否、所要時間、サニタイズ済み分類だけを保持する。回答本文は空判定にだけ使い、保存・出力しない。上流例外はcatchし、HTTP status・timeout・empty-content・incomplete-streamなどの分類へ変換してから集約する。
 
@@ -168,13 +168,13 @@ specs/009-opencode-go-models/
 - [x] 既定モデル`kimi-k2.6`の維持を確定する
 - [x] `/v1/models`にだけ存在する6件を対象外として記録する
 - [x] 利用不可モデルの閲覧・送信停止・再選択動作を確定する
-- [ ] 23 ID、protocol、件数、一意性の失敗するcontract testを追加する
+- [x] 23 ID、protocol、件数、一意性の失敗するcontract testを追加する
 
 **Verification**:
 
 - [x] [spec.md](./spec.md)と公式Endpoints表を照合する
 - [x] P3-007とのスコープ境界を確認する
-- [ ] contract testが現行18件カタログとの差分を検出する
+- [x] contract testが現行18件カタログとの差分を検出する
 
 ### Phase 1: モデルカタログの単一化
 
@@ -187,20 +187,20 @@ specs/009-opencode-go-models/
 
 **Tasks**:
 
-- [ ] 公開ModelInfoと内部protocolを持つ静的カタログを追加する
-- [ ] 既存18件を移し、新規5件を追加する
-- [ ] `models.ts`をカタログの公開情報から返すよう変更する
-- [ ] `DEFAULT_MODEL_ID`と`hasModel`をカタログから提供する
-- [ ] 新規5件へ仕様どおりの中立メタデータ（`quality: 3`、`speed/contextLength: Unknown`、`cost: See OpenCode Go`、`bestFor: General use`、spec記載の`description`）を設定する
-- [ ] MuseとOx Alphaの注意事項を公開説明へ反映する
+- [x] 公開ModelInfoと内部protocolを持つ静的カタログを追加する
+- [x] 既存18件を移し、新規5件を追加する
+- [x] `models.ts`をカタログの公開情報から返すよう変更する
+- [x] `DEFAULT_MODEL_ID`と`hasModel`をカタログから提供する
+- [x] 新規5件へ仕様どおりの中立メタデータ（`quality: 3`、`speed/contextLength: Unknown`、`cost: See OpenCode Go`、`bestFor: General use`、spec記載の`description`）を設定する
+- [x] MuseとOx Alphaの注意事項を公開説明へ反映する
 
 **Verification**:
 
-- [ ] IDが23件で一意である
-- [ ] protocol件数が3 / 13 / 7である
-- [ ] `kimi-k2.6`が正規カタログ内にある
-- [ ] `GET /api/models`が正規23件を固定順で返す
-- [ ] 対象外6件が含まれない
+- [x] IDが23件で一意である
+- [x] protocol件数が3 / 13 / 7である
+- [x] `kimi-k2.6`が正規カタログ内にある
+- [x] `GET /api/models`が正規23件を固定順で返す
+- [x] 対象外6件が含まれない
 
 ### Phase 2: 3プロトコルのstream client
 
@@ -213,29 +213,29 @@ specs/009-opencode-go-models/
 
 **Tasks**:
 
-- [ ] カタログのprotocolでResponses / Chat Completions / Messagesを分岐する
-- [ ] Responses 3モデルのrequestとSSE処理を共通化する
-- [ ] Chat Completions 13モデルの既存requestとSSE処理をカタログへ接続する
-- [ ] Messages 7モデルのrequestとSSE parserを追加する
-- [ ] Messagesのheadersと`{ model, messages, max_tokens, stream: true }` bodyを追加する
-- [ ] Messagesのtext / thinking / completion / error eventを正規化する
-- [ ] 3protocolの正常完了マーカーを固定し、マーカー前のEOFを未完了エラーにする
-- [ ] `streamChat`へ任意の`AbortSignal`を追加して全fetchへ渡す
-- [ ] 既存画像付き履歴はtext partだけを送り、空contentになる過去メッセージを除外する
-- [ ] protocol固有error eventを上流エラーとして扱う
-- [ ] `healthCheck`も正規protocolを利用する
+- [x] カタログのprotocolでResponses / Chat Completions / Messagesを分岐する
+- [x] Responses 3モデルのrequestとSSE処理を共通化する
+- [x] Chat Completions 13モデルの既存requestとSSE処理をカタログへ接続する
+- [x] Messages 7モデルのrequestとSSE parserを追加する
+- [x] Messagesのheadersと`{ model, messages, max_tokens, stream: true }` bodyを追加する
+- [x] Messagesのtext / thinking / completion / error eventを正規化する
+- [x] 3protocolの正常完了マーカーを固定し、マーカー前のEOFを未完了エラーにする
+- [x] `streamChat`へ任意の`AbortSignal`を追加して全fetchへ渡す
+- [x] 既存画像付き履歴はtext partだけを送り、空contentになる過去メッセージを除外する
+- [x] protocol固有error eventを上流エラーとして扱う
+- [x] `healthCheck`も正規protocolを利用する
 
 **Verification**:
 
-- [ ] 23モデルすべてが期待URLへ送信される
-- [ ] 3protocolのrequest bodyが各API契約と一致する
-- [ ] MessagesのURL、headers、bodyがfixture contractと一致する
-- [ ] 本文、Reasoning、完了が共通StreamChunkへ変換される
-- [ ] 完了マーカー前のEOFが未完了エラーになる
-- [ ] 渡したAbortSignalが全protocolのfetchへ伝播する
-- [ ] HTTPエラーとSSE error eventが成功完了にならない
-- [ ] 未知model / protocolがChat Completionsへfallbackしない
-- [ ] 既存Reasoning表示用parserの回帰がない
+- [x] 23モデルすべてが期待URLへ送信される
+- [x] 3protocolのrequest bodyが各API契約と一致する
+- [x] MessagesのURL、headers、bodyがfixture contractと一致する
+- [x] 本文、Reasoning、完了が共通StreamChunkへ変換される
+- [x] 完了マーカー前のEOFが未完了エラーになる
+- [x] 渡したAbortSignalが全protocolのfetchへ伝播する
+- [x] HTTPエラーとSSE error eventが成功完了にならない
+- [x] 未知model / protocolがChat Completionsへfallbackしない
+- [x] 既存Reasoning表示用parserの回帰がない
 
 ### Phase 3: Backendモデル検証と409境界
 
@@ -248,22 +248,22 @@ specs/009-opencode-go-models/
 
 **Tasks**:
 
-- [ ] 会話作成時に省略modelへ`kimi-k2.6`を設定する
-- [ ] 会話作成とモデル変更で正規カタログを検証する
-- [ ] 非文字列modelと未知modelを400として保存前に拒否する
-- [ ] chat開始時にConversationのmodelを再検証する
-- [ ] Messagesモデルへの新規画像送信をuserメッセージ保存前に400で拒否する
-- [ ] 利用不可modelを409としてuserメッセージ保存前に拒否する
-- [ ] 正規modelの既存所有権・404挙動を維持する
+- [x] 会話作成時に省略modelへ`kimi-k2.6`を設定する
+- [x] 会話作成とモデル変更で正規カタログを検証する
+- [x] 非文字列modelと未知modelを400として保存前に拒否する
+- [x] chat開始時にConversationのmodelを再検証する
+- [x] Messagesモデルへの新規画像送信をuserメッセージ保存前に400で拒否する
+- [x] 利用不可modelを409としてuserメッセージ保存前に拒否する
+- [x] 正規modelの既存所有権・404挙動を維持する
 
 **Verification**:
 
-- [ ] 23モデルの作成・更新が成功する
-- [ ] 非文字列modelと未知modelの作成・更新が400になり保存されない
-- [ ] Messagesモデルへの新規画像送信が400になり保存されない
-- [ ] 既存利用不可modelのchatが409になる
-- [ ] 409時にuser / assistantメッセージが増えない
-- [ ] 他ユーザー会話の404境界を維持する
+- [x] 23モデルの作成・更新が成功する
+- [x] 非文字列modelと未知modelの作成・更新が400になり保存されない
+- [x] Messagesモデルへの新規画像送信が400になり保存されない
+- [x] 既存利用不可modelのchatが409になる
+- [x] 409時にuser / assistantメッセージが増えない
+- [x] 他ユーザー会話の404境界を維持する
 
 ### Phase 4: Frontendの利用不可モデル状態
 
@@ -277,24 +277,24 @@ specs/009-opencode-go-models/
 
 **Tasks**:
 
-- [ ] 新規会話作成時にFrontendからmodelを省略し、Backend既定値を利用する
-- [ ] modelsのloading / error / loadedを明示的に扱う
-- [ ] 保存modelがloadedカタログにない場合だけ利用不可と判定する
-- [ ] 先頭モデルへの表示fallbackを削除する
-- [ ] 保存IDと「利用不可」、再選択案内を表示する
-- [ ] 利用不可時にChatInputを停止する
-- [ ] 利用不可時もModelSelectorを操作可能にする
-- [ ] 正規モデル保存後に入力・送信を再開する
+- [x] 新規会話作成時にFrontendからmodelを省略し、Backend既定値を利用する
+- [x] modelsのloading / error / loadedを明示的に扱う
+- [x] 保存modelがloadedカタログにない場合だけ利用不可と判定する
+- [x] 先頭モデルへの表示fallbackを削除する
+- [x] 保存IDと「利用不可」、再選択案内を表示する
+- [x] 利用不可時にChatInputを停止する
+- [x] 利用不可時もModelSelectorを操作可能にする
+- [x] 正規モデル保存後に入力・送信を再開する
 
 **Verification**:
 
-- [ ] 23モデルが選択UIへ重複なく表示される
-- [ ] 新規会話作成requestにmodelがなく、保存結果が`kimi-k2.6`になる
-- [ ] loading / error / 利用不可が別理由で表示され、いずれも送信できない
-- [ ] 利用不可modelの保存IDと案内が表示される
-- [ ] 利用不可時は送信callbackが呼ばれない
-- [ ] 再選択成功後に送信可能になる
-- [ ] 正規モデルを持つ既存会話の表示・送信に回帰がない
+- [x] 23モデルが選択UIへ重複なく表示される
+- [x] 新規会話作成requestにmodelがなく、保存結果が`kimi-k2.6`になる
+- [x] loading / error / 利用不可が別理由で表示され、いずれも送信できない
+- [x] 利用不可modelの保存IDと案内が表示される
+- [x] 利用不可時は送信callbackが呼ばれない
+- [x] 再選択成功後に送信可能になる
+- [x] 正規モデルを持つ既存会話の表示・送信に回帰がない
 
 ### Phase 5: live test harness
 
@@ -307,25 +307,25 @@ specs/009-opencode-go-models/
 
 **Tasks**:
 
-- [ ] 通常Jest roots外へlive testを追加する
-- [ ] 専用Jest設定と`test:live:models` scriptを追加する
-- [ ] process environmentとlocal settingsからAPIキーを安全に解決する
-- [ ] 未設定・テンプレートキーをAPI呼び出し前に拒否する
-- [ ] 23モデルを直列で各1回実行する
-- [ ] 本文受信と正常完了の両方を成功条件にする
-- [ ] 60秒で`AbortController`によりfetchを中断し、中断完了後に次モデルへ進む
-- [ ] retryなし、32 tokens上限を実装する
-- [ ] 失敗を継続収集し、最後に集約して失敗させる
-- [ ] ログをmodel / protocol / 成否 / 所要時間 / 分類だけに制限する
+- [x] 通常Jest roots外へlive testを追加する
+- [x] 専用Jest設定と`test:live:models` scriptを追加する
+- [x] process environmentとlocal settingsからAPIキーを安全に解決する
+- [x] 未設定・テンプレートキーをAPI呼び出し前に拒否する
+- [x] 23モデルを直列で各1回実行する
+- [x] 本文受信と正常完了の両方を成功条件にする
+- [x] 120秒で`AbortController`によりfetchを中断し、中断完了後に次モデルへ進む
+- [x] retryなし、512 tokens上限を実装する
+- [x] 失敗を継続収集し、最後に集約して失敗させる
+- [x] ログをmodel / protocol / 成否 / 所要時間 / 分類だけに制限する
 
 **Verification**:
 
-- [ ] `npm test`がlive testを検出しない
-- [ ] CI・deploy workflowがlive test scriptを呼ばない
-- [ ] キー未設定時にネットワーク呼び出し前で停止する
-- [ ] mockしたlive harnessで成功・timeout・429・本文なし・未完了を判定できる
-- [ ] timeout時にfetchが中断され、中断完了前に次モデルを開始しない
-- [ ] 失敗ログにキー、body、回答、上流error bodyが含まれない
+- [x] `npm test`がlive testを検出しない
+- [x] CI・deploy workflowがlive test scriptを呼ばない
+- [x] キー未設定時にネットワーク呼び出し前で停止する
+- [x] mockしたlive harnessで成功・timeout・429・本文なし・未完了を判定できる
+- [x] timeout時にfetchが中断され、中断完了前に次モデルを開始しない
+- [x] 失敗ログにキー、body、回答、上流error bodyが含まれない
 
 `functions/local.settings.json.example`は既定モデルを変更しない。live testの読み込み方法に説明追加が必要な場合だけ変更する。
 
@@ -338,32 +338,32 @@ specs/009-opencode-go-models/
 
 **Tasks**:
 
-- [ ] `npm run test:live:models`を1回実行する
-- [ ] Responses 3モデルの成功を確認する
-- [ ] Chat Completions 13モデルの成功を確認する
-- [ ] Messages 7モデルの成功を確認する
-- [ ] 23/23成功を実装メモへ記録する
+- [x] `npm run test:live:models`を1回実行する
+- [x] Responses 3モデルの成功を確認する
+- [x] Chat Completions 13モデルの成功を確認する
+- [x] Messages 7モデルの成功を確認する
+- [x] 23/23成功を実装メモへ記録する
 
 **Verification**:
 
-- [ ] 全モデルで空でない本文を受信する
-- [ ] 全モデルで正常完了へ到達する
-- [ ] 429、timeout、HTTP/SSE errorが残っていない
-- [ ] ログへ機密情報・本文が出ていない
+- [x] 全モデルで空でない本文を受信する
+- [x] 全モデルで正常完了へ到達する
+- [x] 429、timeout、HTTP/SSE errorが残っていない
+- [x] ログへ機密情報・本文が出ていない
 
 ### Phase 7: ドキュメント同期・全体検証
 
 **Tasks**:
 
-- [ ] READMEの外部API説明とモデル表を3protocol・23件へ更新する
-- [ ] READMEへlive testの安全な実行手順を追加する
-- [ ] `specs/001-chat-app/spec.md`の単一Chat Completions前提を更新する
-- [ ] `specs/001-chat-app/plan.md`の旧モデル表とAPI説明を更新する
-- [ ] P3-007へP2-011で実API疎通済みの参照を追記する
-- [ ] P2-011の実装メモ・変更履歴を更新する
-- [ ] Functions / Frontendの全testとbuildを実行する
-- [ ] Frontend lintを実行し、今回の差分に新規警告がないことを確認する
-- [ ] `git diff --check`を実行する
+- [x] READMEの外部API説明とモデル表を3protocol・23件へ更新する
+- [x] READMEへlive testの安全な実行手順を追加する
+- [x] `specs/001-chat-app/spec.md`の単一Chat Completions前提を更新する
+- [x] `specs/001-chat-app/plan.md`の旧モデル表とAPI説明を更新する
+- [x] P3-007へP2-011で実API疎通済みの参照を追記する
+- [x] P2-011の実装メモ・変更履歴を更新する
+- [x] Functions / Frontendの全testとbuildを実行する
+- [x] Frontend lintを実行し、今回の差分に新規警告がないことを確認する
+- [x] `git diff --check`を実行する
 
 ## Verification Commands
 
@@ -412,7 +412,7 @@ npm run lint
 ### Live Tests
 
 - 正規23モデルを固定順で直列実行
-- 各1リクエスト、32 tokens以下、60秒でfetch中断、自動retryなし
+- 各1リクエスト、512 tokens以下、120秒でfetch中断、自動retryなし
 - 空でない本文とprotocol固有完了マーカーを確認
 - 一部失敗後も継続し、最後に集約
 - 本文・キー・request / upstream error body非出力
@@ -430,7 +430,7 @@ npm run lint
 | 未知modelがChat Completionsへ誤送信される | 未知model / protocolをfallbackせず、Backend境界で拒否する |
 | 409前にuserメッセージだけ保存される | model検証をメッセージ作成より前に配置し、件数でintegration testする |
 | models取得失敗をモデル廃止と誤表示する | loading / error / loadedを分離し、loaded後だけ利用不可判定する |
-| live testが課金やrate limitを増やす | 直列・各1回・32 tokens・retryなし・明示実行に限定する |
+| live testが課金やrate limitを増やす | 直列・各1回・512 tokens上限・retryなし・明示実行に限定し、短文回答を指定する |
 | live testが秘密や回答を漏らす | 出力項目をallowlist化し、上流errorを分類へ変換する |
 | Museへ機密情報を送る | 固定非機密プロンプトだけをlive testで使用し、モデル説明に公式注意を含める |
 | 期間限定モデルが終了する | 失敗を隠さず、公式表更新時にカタログ変更として扱う |
@@ -440,10 +440,10 @@ npm run lint
 - [x] `specs/000_backlog/items/P2-011-opencode-go-models.md`
 - [x] `specs/009-opencode-go-models/spec.md`
 - [x] `specs/009-opencode-go-models/plan.md`
-- [ ] 正規23モデルの単一カタログ
-- [ ] Responses / Chat Completions / Messages adapter
-- [ ] Backend model validationと利用不可model 409
-- [ ] Frontend利用不可model状態
-- [ ] 通常テストから隔離したlive test harness
-- [ ] 全23モデルの実API疎通結果
-- [ ] README・MVP仕様・P3-007同期
+- [x] 正規23モデルの単一カタログ
+- [x] Responses / Chat Completions / Messages adapter
+- [x] Backend model validationと利用不可model 409
+- [x] Frontend利用不可model状態
+- [x] 通常テストから隔離したlive test harness
+- [x] 全23モデルの実API疎通結果
+- [x] README・MVP仕様・P3-007同期

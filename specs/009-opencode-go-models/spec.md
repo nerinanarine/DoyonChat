@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-22
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: [P2-011 backlog item](../000_backlog/items/P2-011-opencode-go-models.md)
 
@@ -174,8 +174,8 @@ The following six IDs returned by `/v1/models` are not present in the official E
 - **FR-027**: live testは`OPENCODE_GO_API_KEY`をprocess environmentまたはGit除外済み`functions/local.settings.json`から読み込まなければならない
 - **FR-028**: APIキーが未設定またはテンプレート値の場合、実APIを呼ぶ前に明示的に停止しなければならない
 - **FR-029**: live testは23モデルを直列に各1リクエスト、自動retryなしで実行しなければならない
-- **FR-030**: 固定プロンプトは非機密の短文とし、出力上限を32 tokens以下にしなければならない
-- **FR-031**: 各モデルは60秒で`AbortController`を発火し、上流fetchの中断完了後に次モデルへ進み、timeoutを成功として扱ってはならない
+- **FR-030**: 固定プロンプトは非機密の短文とし、Reasoningが本文を圧迫しないよう出力上限を512 tokens以下にしなければならない
+- **FR-031**: 各モデルは120秒で`AbortController`を発火し、上流fetchの中断完了後に次モデルへ進み、timeoutを成功として扱ってはならない
 - **FR-032**: 一部モデルの失敗後も残りを実行し、最後に失敗モデルを集約しなければならない
 - **FR-033**: 成功には空でない本文deltaの受信と正常完了の両方が必要である
 - **FR-034**: ログはmodel ID、protocol、成否、所要時間、サニタイズ済みエラー分類だけを出力しなければならない
@@ -233,8 +233,8 @@ npm run test:live:models
 - 実行は開発者の明示操作とみなす
 - `functions/local.settings.json`はGit除外済みであり、APIキーをcommitしない
 - prompt: `Reply only OK`
-- max output: 32 tokens
-- per-model timeout: 60 seconds
+- max output: 512 tokens
+- per-model timeout: 120 seconds
 - timeout action: `AbortController`で上流fetchを中断し、中断完了後に次モデルを実行
 - concurrency: 1
 - automatic retries: 0

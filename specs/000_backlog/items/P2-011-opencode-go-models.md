@@ -44,7 +44,14 @@ OpenCode Go公式Endpoints表を正として、DoyonChatで選択・チャット
 
 ## 実装メモ
 
-> 対応後に実装内容、23モデルのlive test結果、マージコミット、注意点を記載してください。実APIキーはGit管理せず、`functions/local.settings.json`またはprocess environmentから読み込みます。
+- 正規23モデルをFunctionsの単一カタログへ集約し、Responses 3件、Chat Completions 13件、Messages 7件をprotocol別に実装
+- 会話作成・モデル変更・chat送信前のmodel検証と、Frontendのloading / error / 利用不可状態を実装
+- 通常テスト・CIから分離した`npm run test:live:models`を追加
+- 2026-08-23に全23モデルで空でない本文と正常完了を同一runで確認（23/23成功）
+- live test条件: 直列、各1リクエスト、retryなし、512 tokens上限、120秒timeout
+- Kimi K3は公式モデル定義に従い、非対応の`temperature`をrequestから除外
+- APIキー、request / response本文、上流error bodyはログ・Git管理ファイルへ出力していない
+- マージコミット: 未マージ
 
 ---
 
@@ -53,3 +60,4 @@ OpenCode Go公式Endpoints表を正として、DoyonChatで選択・チャット
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-08-22 | 🟡 進行中 | 公式Endpoints表23モデルを対象にSpec/Plan作成開始 |
+| 2026-08-23 | 🟡 進行中 | 実装・通常テスト・全23モデル実API疎通を完了。マージ待ち |

@@ -7,6 +7,7 @@ import {
 import { authenticateRequest } from '../middleware/auth';
 import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
+import { DEFAULT_MODEL_ID, hasModel } from '../config/modelCatalog';
 import { getOptionalString, getRequiredString, readJsonBody } from './request';
 
 function getConversationId(request: HttpRequest): string {
@@ -26,9 +27,15 @@ export async function conversationsHandler(
     }
 
     const body = await readJsonBody(request);
+    const model = Object.prototype.hasOwnProperty.call(body, 'model')
+      ? getRequiredString(body, 'model')
+      : DEFAULT_MODEL_ID;
+    if (!hasModel(model)) {
+      throw new AppError(400, 'model is not supported');
+    }
     const conversation = await service.createConversation(
       getOptionalString(body, 'title'),
-      getOptionalString(body, 'model'),
+      model,
       userId,
     );
     return { status: 201, jsonBody: conversation };
@@ -68,6 +75,9 @@ export async function modelHandler(
     const userId = await authenticateRequest(request);
     const body = await readJsonBody(request);
     const model = getRequiredString(body, 'model');
+    if (!hasModel(model)) {
+      throw new AppError(400, 'model is not supported');
+    }
     const updated = await service.updateConversationModel(
       getConversationId(request),
       model,

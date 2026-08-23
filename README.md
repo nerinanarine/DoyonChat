@@ -48,7 +48,7 @@
 
 | API | 用途 |
 |-----|------|
-| OpenCode Go API | AI モデルへのリクエスト（Chat Completions / Responses SSE） |
+| OpenCode Go API | AI モデルへのリクエスト（Responses / Chat Completions / Messages SSE） |
 
 ## ディレクトリ構成
 
@@ -197,30 +197,46 @@ Function App名、API URL、Static Web App URLはBicepのdeployment outputsか�
 
 ## 対応モデル
 
-| モデル | マルチモーダル | 備考 |
-|--------|-------------|------|
-| `grok-4.5` | ❌ | 一般推論・汎用タスク |
-| `gpt-5.6-luna` | ❌ | 一般推論・コーディング |
-| `glm-5.2` | ✅ | 高品質、画像入力対応 |
-| `glm-5.1` | ✅ | 高品質、画像入力対応 |
-| `kimi-k3` | ❌ | 高度な推論・コーディング |
-| `kimi-k2.7-code` | ❌ | コーディング特化 |
-| `kimi-k2.6` | ❌ | 高品質、長文対応 |
-| `mimo-v2.5` | ❌ | 高速・大量処理 |
-| `mimo-v2.5-pro` | ❌ | 高品質、汎用タスク |
-| `minimax-m3` | ❌ | 長文・汎用タスク |
-| `minimax-m2.7` | ❌ | 品質とコストのバランス |
-| `qwen3.8-max` | ❌ | 高品質、汎用タスク |
-| `qwen3.7-max` | ❌ | 高品質、汎用タスク |
-| `qwen3.7-plus` | ❌ | 汎用コーディング |
-| `qwen3.6-plus` | ❌ | 汎用タスク |
-| `deepseek-v4-pro` | ❌ | エージェント・コーディング |
-| `deepseek-v4-flash` | ❌ | 高速処理・大量処理 |
-| `hy3` | ❌ | 実験的モデル |
+| Protocol | モデル | マルチモーダル | 備考 |
+|----------|--------|-------------|------|
+| Responses | `grok-4.5` | ❌ | 一般推論・汎用タスク |
+| Responses | `gpt-5.6-luna` | ❌ | 一般推論・コーディング |
+| Responses | `muse-spark-1.2-contributor` | ❌ | 地域制限・学習利用に関する公式注意あり |
+| Chat Completions | `glm-5.3` | ❌ | OpenCode Go model |
+| Chat Completions | `glm-5.2` | ✅ | 高品質、画像入力対応 |
+| Chat Completions | `glm-5.1` | ✅ | 高品質、画像入力対応 |
+| Chat Completions | `kimi-k3` | ❌ | 高度な推論・コーディング |
+| Chat Completions | `kimi-k2.7-code` | ❌ | コーディング特化 |
+| Chat Completions | `kimi-k2.6` | ❌ | 高品質、長文対応（既定モデル） |
+| Chat Completions | `deepseek-v4-pro` | ❌ | エージェント・コーディング |
+| Chat Completions | `deepseek-v4-flash` | ❌ | 高速処理・大量処理 |
+| Chat Completions | `deepseek-v4-flash-vision-exp` | ✅ | 画像入力対応の実験モデル |
+| Chat Completions | `mimo-v2.5` | ❌ | 高速・大量処理 |
+| Chat Completions | `mimo-v2.5-pro` | ❌ | 高品質、汎用タスク |
+| Chat Completions | `hy3` | ❌ | 実験的モデル |
+| Chat Completions | `ox-alpha-free` | ❌ | 期間限定モデル |
+| Messages | `minimax-m3` | ❌ | 長文・汎用タスク |
+| Messages | `minimax-m2.7` | ❌ | 品質とコストのバランス |
+| Messages | `minimax-m2.5` | ❌ | OpenCode Go model |
+| Messages | `qwen3.8-max` | ❌ | 高品質、汎用タスク |
+| Messages | `qwen3.7-max` | ❌ | 高品質、汎用タスク |
+| Messages | `qwen3.7-plus` | ❌ | 汎用コーディング |
+| Messages | `qwen3.6-plus` | ❌ | 汎用タスク |
 
-> モデルIDと提供状況は [OpenCode Go公式モデル一覧](https://opencode.ai/docs/go) を基準にしています。提供モデルは変更される可能性があります。
+> モデルID・protocol・提供状況は [OpenCode Go公式Endpoints表](https://dev.opencode.ai/docs/go/)（2026-08-22確認）を基準にしています。提供モデルは変更される可能性があります。
 >
-> **注意:** マルチモーダル（画像入力）は現在フロントエンド未実装です。対応予定は [バックログ](specs/000_backlog/backlog.md) を参照。
+> **注意:** 画像入力UIは利用できますが、Messagesモデルへの新規画像送信は非対応のため、送信前に別protocolの画像対応モデルを選択してください。
+
+### 全23モデルの実API確認
+
+`functions/local.settings.json`の`Values.OPENCODE_GO_API_KEY`へ実キーを設定し、明示的に次を実行します。
+
+```bash
+cd functions
+npm run test:live:models
+```
+
+このコマンドは23モデルを直列に各1回、512 tokens上限・120秒timeout・retryなしで呼びます。通常の`npm test`やCIからは実行されません。APIキー、リクエスト・回答本文、上流エラー本文はログへ出力しません。
 
 ## バックログ（未実装機能）
 

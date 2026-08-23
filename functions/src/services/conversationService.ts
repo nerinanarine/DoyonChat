@@ -1,4 +1,5 @@
 import { Conversation, Message } from '../types';
+import { DEFAULT_MODEL_ID } from '../config/modelCatalog';
 import { getConversationsContainer, getMessagesContainer } from '../db';
 import { AppError } from '../middleware/errorHandler';
 
@@ -106,7 +107,7 @@ export async function getConversation(
 
 export async function createConversation(
   title = 'New Chat',
-  model = 'kimi-k2.6',
+  model = DEFAULT_MODEL_ID,
   userId?: string,
 ): Promise<Conversation> {
   if (isAuthenticationEnabled() && !userId) {

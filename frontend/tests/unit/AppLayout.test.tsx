@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import AppLayout from '../../src/components/Layout/AppLayout';
-import { Conversation } from '../../src/types';
+import { Conversation, ModelInfo } from '../../src/types';
 
 vi.mock('@azure/msal-react', () => ({
   useMsal: () => ({ instance: { logoutRedirect: vi.fn() } }),
@@ -30,6 +30,7 @@ const props = {
       bestFor: 'Test',
     },
   ],
+  modelsStatus: 'loaded' as const,
   onSelectConversation: vi.fn(),
   onDeleteConversation: vi.fn(),
   onRenameConversation: vi.fn().mockResolvedValue(undefined),
@@ -51,5 +52,71 @@ describe('AppLayout conversation title', () => {
     );
 
     expect(screen.getByRole('heading', { name: '更新後タイトル' })).toBeInTheDocument();
+  });
+});
+
+describe('AppLayout model state', () => {
+  it('shows loading and fetch failure separately without marking the saved model unavailable', () => {
+    const { rerender } = render(
+      <AppLayout {...props} models={[]} modelsStatus="loading" conversations={[conversation]} />,
+    );
+
+    expect(screen.getByRole('button', { name: /モデルを読み込み中/ })).toBeDisabled();
+    expect(screen.queryByText(/利用不可/)).not.toBeInTheDocument();
+
+    rerender(
+      <AppLayout {...props} models={[]} modelsStatus="error" conversations={[conversation]} />,
+    );
+
+    expect(screen.getByRole('button', { name: /モデル一覧を取得できません/ })).toBeDisabled();
+    expect(screen.queryByText(/利用不可/)).not.toBeInTheDocument();
+  });
+
+  it('shows the saved unavailable ID and still allows selecting an available model', () => {
+    const onChangeModel = vi.fn();
+    const unavailableConversation = { ...conversation, model: 'retired-model' };
+    const { rerender } = render(
+      <AppLayout
+        {...props}
+        conversations={[unavailableConversation]}
+        onChangeModel={onChangeModel}
+      />,
+    );
+
+    const selector = screen.getByRole('button', { name: /retired-model（利用不可）/ });
+    expect(selector).toBeEnabled();
+    fireEvent.click(selector);
+    fireEvent.click(screen.getByRole('menuitem', { name: /Model 1/ }));
+    expect(onChangeModel).toHaveBeenCalledWith('model-1');
+
+    rerender(
+      <AppLayout
+        {...props}
+        conversations={[{ ...unavailableConversation, model: 'model-1' }]}
+        onChangeModel={onChangeModel}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Model 1/ })).toBeEnabled();
+    expect(screen.queryByText(/利用不可/)).not.toBeInTheDocument();
+  });
+
+  it('shows all 23 loaded models once each', () => {
+    const models: ModelInfo[] = Array.from({ length: 23 }, (_, index) => ({
+      id: `model-${index + 1}`,
+      name: `Model ${index + 1}`,
+      description: `Model ${index + 1} description`,
+      quality: 3,
+      speed: 'Unknown',
+      cost: 'See OpenCode Go',
+      supportsMultimodal: false,
+      contextLength: 'Unknown',
+      bestFor: 'General use',
+    }));
+    render(<AppLayout {...props} models={models} conversations={[conversation]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Model 1/ }));
+    const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
+    expect(items).toHaveLength(23);
+    expect(new Set(items.map((item) => item.textContent)).size).toBe(23);
   });
 });

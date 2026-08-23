@@ -11,7 +11,8 @@
     "start:func": "func start",
     "test": "jest --coverage",
     "test:unit": "jest --testMatch='**/tests/unit/**/*.test.ts' --coverage",
-    "test:integration": "jest --testMatch='**/tests/integration/**/*.test.ts' --coverage"
+    "test:integration": "jest --testMatch='**/tests/integration/**/*.test.ts' --coverage",
+    "test:live:models": "jest --config jest.live.config.js --runInBand"
   },
   "dependencies": {
     "@azure/cosmos": "^4.9.3",
