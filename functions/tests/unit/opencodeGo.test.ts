@@ -89,11 +89,11 @@ describe('Functions OpenCode Go API Service', () => {
     );
     mockFetch.mockResolvedValueOnce(response);
 
-    const chunks = await collectStream('grok-4.5');
+    const chunks = await collectStream('grok-4.6');
 
     const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
     expect(requestBody).toEqual({
-      model: 'grok-4.5',
+      model: 'grok-4.6',
       input: [
         { role: 'user', content: [{ type: 'input_text', text: 'ping' }] },
       ],
@@ -207,7 +207,7 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.5', 'responses' as const],
+    ['grok-4.6', 'responses' as const],
     ['kimi-k2.6', 'chat-completions' as const],
     ['minimax-m3', 'messages' as const],
   ])('passes AbortSignal to %s fetch', async (model, protocol) => {
@@ -220,7 +220,7 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.5', 'data: {"type":"response.output_text.delta","delta":"partial"}\n\n'],
+    ['grok-4.6', 'data: {"type":"response.output_text.delta","delta":"partial"}\n\n'],
     ['kimi-k2.6', 'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'],
     ['minimax-m3', 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"partial"}}\n\n'],
   ])('rejects %s when EOF arrives before its completion marker', async (model, event) => {
@@ -232,7 +232,7 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.5', 'data: {"type":"response.failed","error":{"message":"unavailable"}}\n\n'],
+    ['grok-4.6', 'data: {"type":"response.failed","error":{"message":"unavailable"}}\n\n'],
     ['kimi-k2.6', 'data: {"error":{"message":"unavailable"}}\n\n'],
     ['minimax-m3', 'data: {"type":"error","error":{"message":"unavailable"}}\n\n'],
   ])('surfaces %s protocol error events', async (model, event) => {
