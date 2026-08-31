@@ -8,12 +8,18 @@ When in doubt, always confirm with the user rather than guessing.
 
 **Use specialized agents and skill tools proactively when they fit the task.**
 
-- Delegate to `planner` for breaking down complex user requests into structured tasks.
-- Delegate to `coder` for code generation, test writing, and patch application.
-- Delegate to `reviewer` for code review, static analysis, and auto-fixes.
-- Use domain-specific skills (docx, xlsx, pdf, pptx, web design, etc.) when the deliverable matches their scope.
+Delegate tasks through the `pi-subagents` extension using the agent whose role best matches the work:
 
-Don't default to manual execution when a dedicated agent or tool can do the job better.
+- `scout`: Codebase reconnaissance, locating relevant files and symbols, and preparing context for implementation.
+- `researcher`: Focused web research using authoritative sources.
+- `worker`: Code generation, test writing, implementation, and patch application. This is the primary writing agent.
+- `reviewer`: Code, plan, and implementation review, static analysis, and validation. Treat it as read-only unless explicitly configured otherwise.
+- `oracle`: Architecture, plan, and decision-consistency checks when tradeoffs or unresolved design decisions exist.
+- `delegate`: Small, well-bounded tasks that do not need a specialized role.
+
+Use the native `subagent` tool and verify available agents with `subagent({ action: "list" })` before delegating. For multi-step or parallel work, use a single `workflowScript`; keep one writer per working directory or use isolated worktrees. Keep the parent agent as the final decision-maker and use `worker` as the single writer for implementation changes.
+
+Use domain-specific skills (docx, xlsx, pdf, pptx, web design, etc.) when the deliverable matches their scope. Do not default to manual execution when a dedicated agent or tool can do the work better.
 
 Before implementing:
 - State your assumptions explicitly. If uncertain, ask.
