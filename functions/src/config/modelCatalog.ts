@@ -9,7 +9,7 @@ export interface OpenCodeGoModelConfig {
 
 export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
   {
-    info: { id: 'grok-4.5', name: 'Grok 4.5', description: 'Frontier general reasoning model', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '256K', bestFor: 'Reasoning, general tasks' },
+    info: { id: 'grok-4.6', name: 'Grok 4.6', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'responses',
   },
   {
@@ -17,8 +17,8 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'responses',
   },
   {
-    info: { id: 'muse-spark-1.2-contributor', name: 'Muse Spark 1.2 Contributor', description: 'OpenCode Go model. Regional restrictions apply; prompts and outputs may be used for training.', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-    protocol: 'responses',
+    info: { id: 'glm-5.3-flash', name: 'GLM-5.3-Flash', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
   },
   {
     info: { id: 'glm-5.3', name: 'GLM-5.3', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
@@ -45,6 +45,10 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'chat-completions',
   },
   {
+    info: { id: 'longcat-2.0', name: 'LongCat-2.0', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
     info: { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', description: 'Coding and agent workflows', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Agents, coding' },
     protocol: 'chat-completions',
   },
@@ -65,14 +69,6 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'chat-completions',
   },
   {
-    info: { id: 'hy3', name: 'Hy3', description: 'Experimental model', quality: 3, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'Experimental tasks' },
-    protocol: 'chat-completions',
-  },
-  {
-    info: { id: 'ox-alpha-free', name: 'Ox Alpha Free', description: 'OpenCode Go model. Limited-time availability.', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-    protocol: 'chat-completions',
-  },
-  {
     info: { id: 'minimax-m3', name: 'MiniMax M3', description: 'General tasks with long context', quality: 4, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Long context, general tasks' },
     protocol: 'messages',
   },
@@ -85,7 +81,15 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'messages',
   },
   {
+    info: { id: 'muse-spark-1.2-contributor', name: 'Muse Spark 1.2 Contributor', description: 'OpenCode Go model. Regional restrictions apply; prompts and outputs may be used for training.', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'responses',
+  },
+  {
     info: { id: 'qwen3.8-max', name: 'Qwen 3.8 Max', description: 'High-quality general model', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'General quality' },
+    protocol: 'messages',
+  },
+  {
+    info: { id: 'qwen3.8-flash', name: 'Qwen3.8 Flash', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'messages',
   },
   {
@@ -99,6 +103,14 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
   {
     info: { id: 'qwen3.6-plus', name: 'Qwen 3.6 Plus', description: 'General coding', quality: 3, speed: 'Fast', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'General tasks' },
     protocol: 'messages',
+  },
+  {
+    info: { id: 'hy4-preview', name: 'Hy4 preview', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
+    info: { id: 'hy3', name: 'Hy3', description: 'Experimental model', quality: 3, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'Experimental tasks' },
+    protocol: 'chat-completions',
   },
 ];
 

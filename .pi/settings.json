@@ -1,7 +1,0 @@
-{
-  "lastChangelogVersion": "0.75.4",
-  "defaultProvider": "opencode-go",
-  "defaultModel": "gpt-5.6-luna",
-  "tavilyApiKey": "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",
-  "extensions": [".pi/extensions/tavily-search.ts"]
-}

@@ -86,31 +86,34 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
-    expect(models.jsonBody).toHaveLength(23);
+    expect(models.jsonBody).toHaveLength(26);
     expect((models.jsonBody as Array<{ id: string }>).map(({ id }) => id)).toEqual([
-      'grok-4.5',
+      'grok-4.6',
       'gpt-5.6-luna',
-      'muse-spark-1.2-contributor',
+      'glm-5.3-flash',
       'glm-5.3',
       'glm-5.2',
       'glm-5.1',
       'kimi-k3',
       'kimi-k2.7-code',
       'kimi-k2.6',
+      'longcat-2.0',
       'deepseek-v4-pro',
       'deepseek-v4-flash',
       'deepseek-v4-flash-vision-exp',
       'mimo-v2.5',
       'mimo-v2.5-pro',
-      'hy3',
-      'ox-alpha-free',
       'minimax-m3',
       'minimax-m2.7',
       'minimax-m2.5',
+      'muse-spark-1.2-contributor',
       'qwen3.8-max',
+      'qwen3.8-flash',
       'qwen3.7-max',
       'qwen3.7-plus',
       'qwen3.6-plus',
+      'hy4-preview',
+      'hy3',
     ]);
   });
 

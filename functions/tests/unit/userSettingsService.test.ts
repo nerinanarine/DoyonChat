@@ -57,7 +57,7 @@ describe('Functions user settings service', () => {
     const updated = await service.updateSettings('alice', {
       id: 'spoofed',
       userId: 'bob',
-      settings: { defaultModel: 'grok-4.5' },
+      settings: { defaultModel: 'grok-4.6' },
       theme: 'dark',
       defaultModel: 'kimi-k2.6',
     });
@@ -77,7 +77,7 @@ describe('Functions user settings service', () => {
 
   it('keeps user settings isolated per user', async () => {
     await service.updateSettings('alice', { defaultModel: 'kimi-k2.6' });
-    await service.updateSettings('bob', { defaultModel: 'grok-4.5' });
+    await service.updateSettings('bob', { defaultModel: 'grok-4.6' });
 
     await expect(service.getSettings('alice')).resolves.toEqual({
       userId: 'alice',
@@ -86,7 +86,7 @@ describe('Functions user settings service', () => {
     });
     await expect(service.getSettings('bob')).resolves.toEqual({
       userId: 'bob',
-      settings: { defaultModel: 'grok-4.5' },
+      settings: { defaultModel: 'grok-4.6' },
       updatedAt: expect.any(String),
     });
   });
