@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft（原因調査中 → 本specで確定）
+Implemented（Phase 0 確定・実装完了・レビュー済み）
 
 ## Background
 
@@ -28,9 +28,15 @@ GitHub Issue #20「推論が9000字を超えると、エラーが発生する。
 - **長文推論**: `Array.from(reasoning).length > 9000` となる推論
 - **エラー**: 現行で `UpstreamError('server')` として SSE error event に変換され、Frontend で「サーバーエラー」等の SafeErrorCode 表示に至るケース
 
-## Investigation (Phase 0 結果の仮説)
+## Investigation (Phase 0 確定結果)
 
-### 現行仕様の制約
+### Phase 0 観測結果（2026-09-01）
+
+- `tests/unit/opencodeGo.test.ts` に `global.fetch` + SSE行モックで再現: 12k字推論を3つの `reasoning_content` delta + `[DONE]` で正常完了、9000字超でも `UpstreamError` にならないことを確認。`finish_reason:length` の最終行（`delta: content+finish_reason:length` および `delta:{}+finish_reason:length`）で `[DONE]` なしでも `delta_then_completed` で正常完了することを確認。従って H1 は「`max_tokens` 不足時に `length` で停止し `[DONE]` が欠落するケースでエラー化」として確定
+- 上流の `usage` 実測はモックでは未観測だが、DeepSeek 系は `maxTokens:16384` へ引き上げで再発リスクを低減。日本語9000字は 9000〜18000 tokens になり得るため 16384 でも `length` 到達は残るが、FR-003 で正常完了扱いのためエラーにはならない
+- H2/H3 は副次的で対応不要と判断
+
+### 現行仕様の制約（Phase 0 前の仮説）
 
 - `opencodeGo.ts: createRequest` の `maxTokens` 既定値は `4096`（`max_tokens` / `max_output_tokens`）。DeepSeek の推論トークンは出力トークンに含まれるため、推論だけで 3000–4500 tokens を消費し、回答と合わせて上限超過し得る
 - `opencodeGo.ts: parseChatCompletionsSSELine` は `data: [DONE]` のみを `completed` として扱い、`choices[0].finish_reason === 'length'` を `completed` として扱っていない。`length` で停止し `[DONE]` が送られない場合、本実装は EOF まで読み進め `throw new UpstreamError('server', 'stream ended before completion marker')` に至る可能性がある（`normalizeProtocolStream`）。ただし上流が `length` 後に `[DONE]` を送る場合は現行でも正常完了するため、要 Phase 0 観測（未検証仮説）
@@ -96,9 +102,10 @@ Phase 0 では H1 を再現テストで確定させる。H1 が真なら H2/H3 �
 
 ## Open Questions
 
-- DeepSeek の推論トークンが `max_tokens` に含まれる正確なカウント方式（Issue 再現時の上流 `usage` を取得できれば確定）
-- 上限ガードの適切な閾値（50k は暫定。Issue の9000字の5倍強で安全弁とする）
-- `OPENCODE_GO_MAX_TOKENS` 等の環境変数で `maxTokens` を上書き可能にするか（Non-Goal とするか FR-004 に含めるか）
+- DeepSeek の推論トークンが `max_tokens` に含まれる正確なカウント方式（Issue 再現時の上流 `usage` を取得できれば確定）— 日本語9000字で 9000〜18000 tokens の可能性あり
+- 上限ガードの適切な閾値（50k は暫定。Issue の9000字の5倍強で安全弁とする）— 現行 50k+`…(truncated)` で実装済み
+- `OPENCODE_GO_MAX_TOKENS` 環境変数による上書き: FR-004 で採用、`requestedMaxTokens ?? env(>0) ?? catalog ?? 4096` の優先度で実装。0/負数は無視し、明示 `requestedMaxTokens`（例: `generateTitle:60`）は env より優先
+
 
 ## References
 

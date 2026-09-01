@@ -21,6 +21,7 @@ const TITLE_MAX_TOKENS = 60;
 
 type ProtocolEvent =
   | { kind: 'delta'; content: string; reasoning: string }
+  | { kind: 'delta_then_completed'; content: string; reasoning: string }
   | { kind: 'completed' }
   | { kind: 'error'; message: string };
 
@@ -179,6 +180,19 @@ function errorMessage(value: unknown): string {
   return textFromValue(value) || 'OpenCode Go stream error';
 }
 
+const DEFAULT_MAX_TOKENS = 4096;
+
+function resolveMaxTokens(model: string, requestedMaxTokens?: number): number {
+  if (requestedMaxTokens !== undefined) return requestedMaxTokens;
+  const envOverride = process.env.OPENCODE_GO_MAX_TOKENS;
+  const envValue = envOverride ? Number(envOverride) : NaN;
+  if (!Number.isNaN(envValue) && envValue > 0) {
+    return envValue;
+  }
+  const config = getModelConfig(model);
+  return config?.maxTokens ?? DEFAULT_MAX_TOKENS;
+}
+
 function createRequest(
   protocol: OpenCodeGoProtocol,
   messages: OpenCodeGoMessage[],
@@ -186,7 +200,7 @@ function createRequest(
   options: OpenCodeGoOptions,
   apiKey: string,
 ): { url: string; init: RequestInit } {
-  const maxTokens = options.maxTokens ?? 4096;
+  const maxTokens = resolveMaxTokens(model, options.maxTokens);
   const signal = options.signal;
 
   if (protocol === 'responses') {
@@ -431,11 +445,11 @@ async function* normalizeProtocolStream(
           const event = parseLine(line);
           if (!event) continue;
           if (event.kind === 'error') throw new UpstreamError('server');
-          if (event.kind === 'delta') {
+          if (event.kind === 'delta' || event.kind === 'delta_then_completed') {
             const chunk = createStreamChunk(event.content, event.reasoning);
             if (chunk) yield chunk;
           }
-          if (event.kind === 'completed') {
+          if (event.kind === 'completed' || event.kind === 'delta_then_completed') {
             const flushed = flushMarkupParser(markupParser);
             if (flushed) yield flushed;
             yield { content: '', done: true };
@@ -453,11 +467,11 @@ async function* normalizeProtocolStream(
         const event = parseLine(line);
         if (!event) continue;
         if (event.kind === 'error') throw new UpstreamError('server');
-        if (event.kind === 'delta') {
+        if (event.kind === 'delta' || event.kind === 'delta_then_completed') {
           const chunk = createStreamChunk(event.content, event.reasoning);
           if (chunk) yield chunk;
         }
-        if (event.kind === 'completed') {
+        if (event.kind === 'completed' || event.kind === 'delta_then_completed') {
           const flushed = flushMarkupParser(markupParser);
           if (flushed) yield flushed;
           yield { content: '', done: true };
@@ -506,6 +520,18 @@ function parseResponsesSSELine(
     return { kind: 'error', message: errorMessage(error) };
   }
 
+  // Responses の出力上限到達（incomplete）も正常完了として扱う。
+  if (
+    event.type === 'response.incomplete' ||
+    (event.response &&
+      typeof event.response === 'object' &&
+      ((event.response as Record<string, unknown>).status === 'incomplete' ||
+        (event.response as Record<string, unknown>).incomplete_reason ===
+          'max_tokens'))
+  ) {
+    return { kind: 'completed' };
+  }
+
   const normalized = normalizeResponsesEvent(event, markupParser);
   if (!normalized) return null;
   if (normalized.done) return { kind: 'completed' };
@@ -527,15 +553,23 @@ function parseChatCompletionsSSELine(
   const json = parseJsonData(line, 'Chat Completions');
   if (!json) return null;
   if (json.error) return { kind: 'error', message: errorMessage(json.error) };
+
   const choices = Array.isArray(json.choices) ? json.choices : [];
   const firstChoice = choices[0];
-  const delta =
+  const choiceRecord =
     firstChoice && typeof firstChoice === 'object'
-      ? (firstChoice as Record<string, unknown>).delta
+      ? (firstChoice as Record<string, unknown>)
       : undefined;
+
+  const delta = choiceRecord?.delta;
   const parts = normalizeChatCompletionDelta(delta, markupParser);
-  if (!parts.content && !parts.reasoning) return null;
-  return { kind: 'delta', ...parts };
+  const isLengthStop = choiceRecord?.finish_reason === 'length';
+  if (!parts.content && !parts.reasoning) {
+    return isLengthStop ? { kind: 'completed' } : null;
+  }
+  return isLengthStop
+    ? { kind: 'delta_then_completed', ...parts }
+    : { kind: 'delta', ...parts };
 }
 
 function parseMessagesSSELine(
@@ -548,6 +582,17 @@ function parseMessagesSSELine(
     return { kind: 'error', message: errorMessage(event.error || event.message) };
   }
   if (event.type === 'message_stop') return { kind: 'completed' };
+
+  // Messages の出力上限到達（max_tokens）も正常完了として扱う。
+  if (
+    event.type === 'message_delta' &&
+    typeof event.delta === 'object' &&
+    event.delta !== null &&
+    (event.delta as Record<string, unknown>).stop_reason === 'max_tokens'
+  ) {
+    return { kind: 'completed' };
+  }
+
   if (event.type !== 'content_block_delta') return null;
 
   const delta =

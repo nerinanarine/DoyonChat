@@ -263,6 +263,47 @@ describe('Functions SSE response', () => {
     }
   });
 
+  it('truncates reasoning beyond REASONING_MAX_CODEPOINTS when finalizing', async () => {
+    process.env.OPENCODE_GO_API_KEY = 'real-test-key';
+    const longReasoning = '考'.repeat(60_000);
+    const streamSpy = jest
+      .spyOn(opencodeGo, 'streamChat')
+      .mockImplementation(async function* () {
+        yield { content: 'answer', done: false };
+        yield { content: '', reasoning: longReasoning, done: false };
+        yield { content: '', done: true };
+      });
+
+    try {
+      const created = await conversationsHandler(
+        request('POST', '/api/conversations', { title: 'Long reasoning chat' }),
+        {} as never,
+      );
+      const conversationId = (created.jsonBody as { id: string }).id;
+
+      const response = await chatHandler(
+        request('POST', '/api/chat', { conversationId, message: 'Hello' }),
+        {} as never,
+      );
+      const text = await readStream(response);
+      expect(text).toContain('"done":true');
+
+      const detail = await conversationHandler(
+        request('GET', `/api/conversations/${conversationId}`),
+        {} as never,
+      );
+      const messages = (detail.jsonBody as { messages: Array<{ reasoning?: string }> }).messages;
+      const assistant = messages.find((m) => m.reasoning !== undefined);
+      expect(assistant).toBeDefined();
+      const reasoning = assistant!.reasoning!;
+      expect(Array.from(reasoning).length).toBeLessThanOrEqual(50_000 + '…(truncated)'.length);
+      expect(reasoning).toContain('…(truncated)');
+    } finally {
+      streamSpy.mockRestore();
+      process.env.OPENCODE_GO_API_KEY = 'sk-test-key';
+    }
+  });
+
   it('does not duplicate the user message when retrying with the same userMessageId', async () => {
     process.env.OPENCODE_GO_API_KEY = 'real-test-key';
     const streamSpy = jest

@@ -28,6 +28,8 @@ const MOCK_RESPONSE = [
 ];
 
 const INTERRUPTED_MESSAGE = '(生成が中断されました)';
+const TRUNCATED_MARKER = '…(truncated)';
+const REASONING_MAX_CODEPOINTS = 50_000;
 
 function sseEvent(
   content: string,
@@ -74,6 +76,15 @@ async function* createResponseStream(
     return sseEvent(content, done, reasoning);
   };
 
+  const reasoningCodepoints = (reasoning: string): number =>
+    Array.from(reasoning).length;
+
+  const truncateReasoning = (reasoning: string): string => {
+    const codepoints = Array.from(reasoning);
+    if (codepoints.length <= REASONING_MAX_CODEPOINTS) return reasoning;
+    return codepoints.slice(0, REASONING_MAX_CODEPOINTS).join('') + TRUNCATED_MARKER;
+  };
+
   const finalizeAssistant = async (content: string, reasoning?: string) => {
     if (finalized) return;
     finalized = true;
@@ -82,7 +93,9 @@ async function* createResponseStream(
       role: 'assistant',
       content,
     };
-    if (reasoning) assistantMessage.reasoning = reasoning;
+    if (reasoning) {
+      assistantMessage.reasoning = truncateReasoning(reasoning);
+    }
     await service.addMessage(assistantMessage, userId);
   };
 
@@ -115,7 +128,8 @@ async function* createResponseStream(
     await finalizeAssistant(fullContent || '(No response)', fullReasoning || undefined);
     yield emit('', true);
     console.info(
-      `[functions/chat] stream completed in ${Date.now() - startedAt}ms`,
+      `[functions/chat] stream completed in ${Date.now() - startedAt}ms ` +
+        `reasoning=${reasoningCodepoints(fullReasoning)}`,
     );
   } catch (error) {
     const classification = classifyUpstreamError(error);
@@ -140,8 +154,12 @@ async function* createResponseStream(
         const content = fullContent.trim() ? fullContent : INTERRUPTED_MESSAGE;
         const reasoning = fullReasoning || undefined;
         await finalizeAssistant(content, reasoning);
+        const savedReasoningLength = reasoning
+          ? reasoningCodepoints(truncateReasoning(reasoning))
+          : 0;
         console.info(
-          `[functions/chat] partial stream finalized (content=${fullContent.length}, reasoning=${fullReasoning.length})`,
+          `[functions/chat] partial stream finalized ` +
+            `(content=${fullContent.length}, reasoning=${savedReasoningLength})`,
         );
       } catch (error) {
         console.error('[functions/chat] partial assistant save failed');

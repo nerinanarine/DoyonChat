@@ -5,6 +5,8 @@ export type OpenCodeGoProtocol = 'responses' | 'chat-completions' | 'messages';
 export interface OpenCodeGoModelConfig {
   info: ModelInfo;
   protocol: OpenCodeGoProtocol;
+  /** このモデルの既定 max_tokens / max_output_tokens。未指定なら 4096。 */
+  maxTokens?: number;
 }
 
 export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
@@ -51,14 +53,17 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
   {
     info: { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', description: 'Coding and agent workflows', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Agents, coding' },
     protocol: 'chat-completions',
+    maxTokens: 16384,
   },
   {
     info: { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', description: 'Fast coding and background tasks', quality: 4, speed: 'Fast', cost: '★★★★★', supportsMultimodal: false, contextLength: '1M', bestFor: 'Fast tasks, high volume' },
     protocol: 'chat-completions',
+    maxTokens: 16384,
   },
   {
     info: { id: 'deepseek-v4-flash-vision-exp', name: 'DeepSeek V4 Flash Vision Exp', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: true, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
+    maxTokens: 16384,
   },
   {
     info: { id: 'mimo-v2.5', name: 'MiMo-V2.5', description: 'Fast and efficient general model', quality: 3, speed: 'Fast', cost: '★★★★★', supportsMultimodal: false, contextLength: '1M', bestFor: 'Fast tasks, high volume' },
