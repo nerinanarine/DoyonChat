@@ -338,6 +338,83 @@ describe('Functions OpenCode Go API Service', () => {
     ).toEqual([{ role: 'assistant', content: '回答' }]);
   });
 
+  it('uses model-specific max_tokens for DeepSeek V4 Flash', async () => {
+    mockFetch.mockResolvedValueOnce(streamingResponse('data: [DONE]\n\n'));
+
+    await collectStream('deepseek-v4-flash');
+
+    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(requestBody.max_tokens).toBe(16384);
+  });
+
+  it('overrides max_tokens via OPENCODE_GO_MAX_TOKENS', async () => {
+    process.env.OPENCODE_GO_MAX_TOKENS = '2048';
+    mockFetch.mockResolvedValueOnce(streamingResponse('data: [DONE]\n\n'));
+
+    await collectStream('deepseek-v4-flash');
+
+    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(requestBody.max_tokens).toBe(2048);
+    delete process.env.OPENCODE_GO_MAX_TOKENS;
+  });
+
+  it('completes a 12k-character reasoning stream across multiple deltas', async () => {
+    const reasoningPart = '考'.repeat(4000);
+    const contentPart = '答'.repeat(100);
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        `data: {"choices":[{"delta":{"reasoning_content":"${reasoningPart}"}}]}\n\n` +
+          `data: {"choices":[{"delta":{"reasoning_content":"${reasoningPart}"}}]}\n\n` +
+          `data: {"choices":[{"delta":{"reasoning_content":"${reasoningPart}"}}]}\n\n` +
+          `data: {"choices":[{"delta":{"content":"${contentPart}"}}]}\n\n` +
+          'data: [DONE]\n\n',
+      ),
+    );
+
+    const chunks = await collectStream('deepseek-v4-flash');
+
+    const reasoningChunks = chunks.filter((c) => c.reasoning);
+    const totalReasoning = reasoningChunks.reduce(
+      (sum, c) => sum + (c.reasoning || ''),
+      '',
+    );
+    expect(Array.from(totalReasoning).length).toBe(12000);
+    expect(chunks[chunks.length - 1]).toEqual({ content: '', done: true });
+  });
+
+  it('treats finish_reason:length as a normal completion without [DONE]', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"choices":[{"delta":{"content":"partial answer"}}]}\n\n' +
+          'data: {"choices":[{"delta":{"content":"more"},"finish_reason":"length"}]}\n\n',
+      ),
+    );
+
+    const chunks = await collectStream('deepseek-v4-flash');
+
+    expect(chunks).toEqual([
+      { content: 'partial answer', done: false },
+      { content: 'more', done: false },
+      { content: '', done: true },
+    ]);
+  });
+
+  it('treats finish_reason:length on an empty delta as completed', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"choices":[{"delta":{"content":"answer"}}]}\n\n' +
+          'data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\n',
+      ),
+    );
+
+    const chunks = await collectStream('deepseek-v4-flash');
+
+    expect(chunks).toEqual([
+      { content: 'answer', done: false },
+      { content: '', done: true },
+    ]);
+  });
+
 describe('generateTitle', () => {
   beforeEach(() => {
     delete process.env.OPENCODE_GO_TITLE_MODEL;
