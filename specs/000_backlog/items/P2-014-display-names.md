@@ -84,7 +84,10 @@ AIメッセージ: models.find(m => m.id === message.model)?.displayName || mess
 
 ## 実装メモ
 
-> 対応後にここに実装内容・マージコミット・注意点を記載してください。
+- Backend: `functions/src/types/index.ts`（UserSettingsにdisplayName追加）、`services/userSettingsService.ts`（displayName保存・サニタイズ）、`functions/users.ts`（50文字上限バリデーション）
+- Frontend: `types/index.ts`（UserSettingsにdisplayName、Messageにmodel追加）、`hooks/useSettings.ts`（displayName更新対応）、`components/Settings/SettingsMenu.tsx`（表示名入力欄追加、Enter/blurで保存）、`components/Chat/ChatMessage.tsx`（モデル名/ユーザー名表示）、`components/Chat/ChatMessageList.tsx`（ストリーミング中のモデル名表示）、`App.tsx`（currentModel/settings伝播）
+- テスト: frontend 99 pass、backend 146 pass
+- コミット: `c7b9973` feat(P2-014)
 
 ---
 
@@ -93,3 +96,4 @@ AIメッセージ: models.find(m => m.id === message.model)?.displayName || mess
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-09-02 | 🔴 未対応 | 初期作成 |
+| 2026-09-02 | 🟢 対応済み | 実装・テスト完了、コミット `c7b9973` |
