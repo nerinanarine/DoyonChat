@@ -35,7 +35,7 @@
 | [P1-008](items/P1-008-doyonhub-home.md) | DoyonHubトップページ・ツールランチャー | P1 | 🔴 未対応 | 機能追加 | — | DoyonChatなどの各種ツールへの入口 |
 | [P1-009](items/P1-009-admin-menu.md) | Adminメニュー | P1 | 🔴 未対応 | 管理機能 | P1-008 | DoyonHubのトップメニューに管理機能への入口を追加 |
 | [P1-010](items/P1-010-user-management.md) | ユーザー管理 | P1 | 🔴 未対応 | 管理機能 | P1-009 | 管理対象・操作範囲は後で決定 |
-| [P1-011](items/P1-011-long-reasoning-error.md) | 長文推論時のエラー修正 | P1 | 🔴 未対応 | 品質・安定性 | — | [Issue #20](https://github.com/nerinanarine/DoyonChat/issues/20)、DeepSeek V4 Flashの9000字超推論 |
+| [P1-011](items/P1-011-long-reasoning-error.md) | 長文推論時のエラー修正 | P1 | 🟢 対応済み | 品質・安定性 | [仕様](../P1-011/spec.md) | 本番デプロイ完了、[Issue #20](https://github.com/nerinanarine/DoyonChat/issues/20) 対応 |
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
 | [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-003/spec.md) | 実装・自動テスト完了、SafeErrorCode/再試行/401遷移。本番デプロイまで管理済み |
