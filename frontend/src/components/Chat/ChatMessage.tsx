@@ -8,14 +8,16 @@ interface ChatMessageProps {
   message: Message;
   models?: ModelInfo[];
   settings?: UserSettings;
+  currentModel?: string;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, models = [], settings }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, models = [], settings, currentModel }) => {
   const isUser = message.role === 'user';
 
+  const effectiveModelId = message.model ?? currentModel;
   const displayName = isUser
     ? settings?.displayName || 'あなた'
-    : models.find((m) => m.id === message.model)?.name || message.model || 'AI';
+    : models.find((m) => m.id === effectiveModelId)?.name || effectiveModelId || 'AI';
 
   return (
     <div className={`flex gap-3 px-4 py-5 ${isUser ? 'bg-white' : 'bg-gray-50'}`}>

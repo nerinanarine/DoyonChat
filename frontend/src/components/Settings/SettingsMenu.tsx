@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, LogOut } from 'lucide-react';
 import { ModelInfo, UserSettings, ModelsStatus, SettingsStatus } from '../../types';
 
@@ -26,6 +26,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState(settings.displayName ?? '');
+
+  useEffect(() => {
+    setDisplayNameDraft(settings.displayName ?? '');
+  }, [settings.displayName]);
 
   const defaultModelId = settings.defaultModel;
   const defaultModelUnavailable =

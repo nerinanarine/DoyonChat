@@ -186,6 +186,33 @@ describe('Functions API contract', () => {
     expect(response.status).toBe(400);
   });
 
+  it('saves and clears displayName via user settings', async () => {
+    const saved = await userSettingsHandler(
+      request('PATCH', '/api/users/me/settings', { displayName: '  Alice  ' }),
+      {} as never,
+    );
+    expect(saved.status).toBe(200);
+    expect(saved.jsonBody).toEqual(
+      expect.objectContaining({ settings: expect.objectContaining({ displayName: 'Alice' }) }),
+    );
+    const cleared = await userSettingsHandler(
+      request('PATCH', '/api/users/me/settings', { displayName: '' }),
+      {} as never,
+    );
+    expect(cleared.jsonBody).toEqual(expect.objectContaining({ settings: {} }));
+  });
+
+  it.each([
+    ['a non-string displayName', 123],
+    ['a too long displayName', 'a'.repeat(51)],
+  ])('rejects %s when patching displayName', async (_case, displayName) => {
+    const response = await userSettingsHandler(
+      request('PATCH', '/api/users/me/settings', { displayName }),
+      {} as never,
+    );
+    expect(response.status).toBe(400);
+  });
+
   it('keeps settings isolated per user', async () => {
     const authenticate = jest.spyOn(auth, 'authenticateRequest');
     process.env.AUTH_ENABLED = 'true';

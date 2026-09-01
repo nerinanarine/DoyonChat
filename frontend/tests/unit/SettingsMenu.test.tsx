@@ -35,6 +35,7 @@ const props = {
   settingsStatus: 'loaded' as const,
   settingsError: null,
   onChangeDefaultModel: vi.fn().mockResolvedValue(undefined),
+  onChangeDisplayName: vi.fn().mockResolvedValue(undefined),
   onLogout: vi.fn(),
 };
 
@@ -101,5 +102,37 @@ describe('SettingsMenu', () => {
 
     expect(screen.getByText(/retired-model/)).toBeInTheDocument();
     expect(screen.getByText(/利用不可です。再選択してください。/)).toBeInTheDocument();
+  });
+
+  it('shows displayName input and saves on blur', async () => {
+    render(<SettingsMenu {...props} settings={{ displayName: 'Alice' }} />);
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+
+    const input = screen.getByLabelText('表示名') as HTMLInputElement;
+    expect(input.value).toBe('Alice');
+
+    fireEvent.change(input, { target: { value: 'Bob' } });
+    fireEvent.blur(input);
+    await vi.waitFor(() => expect(props.onChangeDisplayName).toHaveBeenCalledWith('Bob'));
+  });
+
+  it('clears displayName when input is emptied', async () => {
+    render(<SettingsMenu {...props} settings={{ displayName: 'Alice' }} />);
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+
+    const input = screen.getByLabelText('表示名');
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.blur(input);
+    await vi.waitFor(() => expect(props.onChangeDisplayName).toHaveBeenCalledWith(null));
+  });
+
+  it('saves displayName on Enter key', async () => {
+    render(<SettingsMenu {...props} settings={{}} />);
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+
+    const input = screen.getByLabelText('表示名');
+    fireEvent.change(input, { target: { value: 'Charlie' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await vi.waitFor(() => expect(props.onChangeDisplayName).toHaveBeenCalledWith('Charlie'));
   });
 });

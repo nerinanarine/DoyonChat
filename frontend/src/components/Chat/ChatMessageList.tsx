@@ -56,7 +56,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   return (
     <div className="flex-1 overflow-y-auto">
       {messages.map((msg) => (
-        <ChatMessage key={msg.id} message={msg} models={models} settings={settings} />
+        <ChatMessage key={msg.id} message={msg} models={models} settings={settings} currentModel={currentModel} />
       ))}
       {isStreaming && (
         <div className="flex gap-3 px-4 py-5 bg-gray-50">

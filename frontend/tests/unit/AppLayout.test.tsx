@@ -36,6 +36,7 @@ const props = {
   settingsStatus: 'loaded' as const,
   settingsError: null,
   onChangeDefaultModel: vi.fn().mockResolvedValue(undefined),
+  onChangeDisplayName: vi.fn().mockResolvedValue(undefined),
   onSelectConversation: vi.fn(),
   onDeleteConversation: vi.fn(),
   onRenameConversation: vi.fn().mockResolvedValue(undefined),
