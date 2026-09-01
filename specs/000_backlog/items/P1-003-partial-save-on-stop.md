@@ -17,11 +17,19 @@
 ## 関連ファイル
 
 - `frontend/src/hooks/useChat.ts`
-- `backend/src/routes/chat.ts`（新規 `POST /api/chat/stop`）
+- `frontend/src/services/chatApi.ts`
+- `functions/src/functions/chat.ts`
+- `functions/src/services/conversationService.ts`
+
+停止通知またはfinalize APIの具体的な方式は[実装計画](../../P1-003/plan.md)で確定する。
 
 ## 実装メモ
 
-> 対応後にここに実装内容・マージコミット・注意点を記載してください。
+- `createResponseStream`のGenerator `finally`で停止時の本文・推論・中断表示を保存
+- Frontendは停止後に受信済み内容を表示し、遅延再読込でサーバーの正規履歴へ収束
+- `userMessageId`による再試行のユーザーメッセージ重複防止と、アシスタントfinalizeの二重保存防止を実装
+- Functions 140テスト、Frontend 96テスト、両build成功
+- Azure Functionsホストが実クライアント切断時にGeneratorを終了させる挙動と、本番desktop/mobile操作は未確認
 
 ---
 
@@ -30,3 +38,5 @@
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-06-28 | 🔴 未対応 | 初期作成 |
+| 2026-08-31 | 🟡 進行中 | 仕様・実装計画を作成 |
+| 2026-08-31 | 🟡 進行中 | 実装・自動テスト完了（functions 140件 / frontend 96件）。停止時の中間保存・中断表示・二重保存防止を実装。手動/本番確認待ち |

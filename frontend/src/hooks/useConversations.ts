@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Conversation } from '../types';
 import * as api from '../services/chatApi';
+import { errorMessage } from '../services/errorMessages';
 
 export const NEW_CHAT_TITLE = 'New Chat';
 
@@ -17,7 +18,7 @@ export function useConversations(enabled = true) {
       const data = await api.fetchConversations();
       setConversations(data);
     } catch (err) {
-      setError((err as Error).message);
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -54,9 +55,9 @@ export function useConversations(enabled = true) {
     try {
       const updated = await api.autoGenerateTitle(id, text);
       setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
-    } catch (err) {
+    } catch {
       // タイトル生成は装飾目的なので、失敗しても無言でチャットを継続する。
-      console.warn('[useConversations] auto title generation failed:', err);
+      console.warn('[useConversations] auto title generation failed');
     }
   }, []);
 

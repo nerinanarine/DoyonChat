@@ -63,6 +63,121 @@ describe('chat stream API', () => {
     expect(errors).toHaveLength(0);
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
+
+  it('sends the client userMessageId so retries are idempotent server-side', () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse('data: {"content":"","done":true}\n\n'),
+    );
+
+    const done = new Promise<void>((resolve) => {
+      streamChat(
+        'conversation-1',
+        '質問',
+        undefined,
+        undefined,
+        resolve,
+        undefined,
+        { userMessageId: 'client-id-1' },
+      );
+    });
+
+    return done.then(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/chat'),
+        expect.objectContaining({
+          body: JSON.stringify({
+            conversationId: 'conversation-1',
+            message: '質問',
+            imageBase64: undefined,
+            userMessageId: 'client-id-1',
+          }),
+        }),
+      );
+    });
+  });
+
+  it('notifies onError without onDone when a safe SSE error event arrives', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"content":"partial","done":false}\n\n' +
+          'data: {"error":{"code":"rate_limit"}}\n\n',
+      ),
+    );
+
+    const chunks: unknown[] = [];
+    let doneCount = 0;
+    const errors: Error[] = [];
+    await new Promise<void>((resolve) => {
+      streamChat(
+        'conversation-1',
+        '質問',
+        undefined,
+        (chunk) => chunks.push(chunk),
+        () => {
+          doneCount += 1;
+        },
+        (error) => {
+          errors.push(error);
+          resolve();
+        },
+      );
+    });
+
+    expect(chunks).toEqual([{ content: 'partial', reasoning: '' }]);
+    expect(errors[0]).toMatchObject({ name: 'ChatStreamError', code: 'rate_limit' });
+    expect(doneCount).toBe(0);
+  });
+
+  it('maps an HTTP 429 response to a rate limit stream error', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 429, body: null });
+
+    const errors: Error[] = [];
+    await new Promise<void>((resolve) => {
+      streamChat(
+        'conversation-1',
+        '質問',
+        undefined,
+        undefined,
+        undefined,
+        (error) => {
+          errors.push(error);
+          resolve();
+        },
+      );
+    });
+
+    expect(errors[0]).toMatchObject({ name: 'ChatStreamError', code: 'rate_limit' });
+  });
+
+  it('does not call onError when the stream is aborted by the user', async () => {
+    const reader = {
+      read: vi.fn(async () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        throw error;
+      }),
+    };
+    mockFetch.mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } });
+
+    const errors: Error[] = [];
+    let doneCount = 0;
+    const controller = streamChat(
+      'conversation-1',
+      '質問',
+      undefined,
+      undefined,
+      () => {
+        doneCount += 1;
+      },
+      (error) => {
+        errors.push(error);
+      },
+    );
+    controller.abort();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(errors).toHaveLength(0);
+    expect(doneCount).toBe(0);
+  });
 });
 
 describe('conversation title API', () => {

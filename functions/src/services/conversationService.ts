@@ -280,3 +280,55 @@ export async function addMessage(
     return databaseUnavailable(error);
   }
 }
+
+/**
+ * client-provided id を持つユーザーメッセージを冪等に保存する。既に同じ id が存在する
+ * 場合は再保存せず既存メッセージを返す（P2-003 のチャット再試行で重複保存を防ぐ）。
+ */
+export async function addMessageIfAbsent(
+  message: Omit<Message, 'createdAt'> & { id: string },
+  userId?: string,
+): Promise<Message> {
+  const conversation = await getConversation(message.conversationId, userId);
+  if (!conversation) {
+    throw new AppError(404, 'Conversation not found');
+  }
+
+  await ensureMessageContainer();
+  if (useMemory) {
+    const existing = memoryMessages.get(message.id);
+    if (existing) return existing;
+    const now = new Date().toISOString();
+    const fullMessage: Message = { ...message, createdAt: now };
+    memoryMessages.set(fullMessage.id, fullMessage);
+    conversation.updatedAt = now;
+    memoryConversations.set(conversation.id, conversation);
+    return fullMessage;
+  }
+
+  try {
+    const now = new Date().toISOString();
+    const fullMessage: Message = { ...message, createdAt: now };
+    const { resource } = await getMessagesContainer().items.create(fullMessage);
+    conversation.updatedAt = now;
+    await getConversationsContainer()
+      .item(conversation.id, conversation.id)
+      .replace(conversation);
+    return resource as Message;
+  } catch (error) {
+    // 同一 id の再保存（再試行）→ 既存レコードを返して重複保存しない
+    const status = (error as { code?: number | string; statusCode?: number }).code
+      ?? (error as { statusCode?: number }).statusCode;
+    if (Number(status) === 409) {
+      try {
+        const { resource } = await getMessagesContainer()
+          .item(message.id, message.conversationId)
+          .read();
+        return resource as Message;
+      } catch (readError) {
+        return databaseUnavailable(readError);
+      }
+    }
+    return databaseUnavailable(error);
+  }
+}

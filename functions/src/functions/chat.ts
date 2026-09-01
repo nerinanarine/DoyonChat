@@ -8,7 +8,12 @@ import { authenticateRequest } from '../middleware/auth';
 import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
 import { getModelConfig } from '../config/modelCatalog';
-import { formatMessagesForApi, streamChat } from '../services/opencodeGo';
+import {
+  classifyUpstreamError,
+  formatMessagesForApi,
+  SafeErrorCode,
+  streamChat,
+} from '../services/opencodeGo';
 import { OpenCodeGoMessage } from '../types';
 import { getOptionalString, getRequiredString, readJsonBody } from './request';
 
@@ -21,6 +26,8 @@ const MOCK_RESPONSE = [
   '様々なタスクをお手伝いできます。\n\n',
   '何かお話ししましょう！',
 ];
+
+const INTERRUPTED_MESSAGE = '(生成が中断されました)';
 
 function sseEvent(
   content: string,
@@ -36,6 +43,11 @@ function sseEvent(
   return new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
 }
 
+function sseErrorEvent(code: SafeErrorCode): Uint8Array {
+  const event = { error: { code } };
+  return new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
+}
+
 async function* createResponseStream(
   history: OpenCodeGoMessage[],
   model: string,
@@ -44,6 +56,9 @@ async function* createResponseStream(
 ): AsyncGenerator<Uint8Array> {
   let fullContent = '';
   let fullReasoning = '';
+  let finalized = false;
+  let savePartialOnStop = true;
+  const upstreamAbortController = new AbortController();
   const startedAt = Date.now();
   let firstChunkAt: number | null = null;
 
@@ -57,6 +72,18 @@ async function* createResponseStream(
       console.info(`[functions/chat] TTFT=${firstChunkAt - startedAt}ms`);
     }
     return sseEvent(content, done, reasoning);
+  };
+
+  const finalizeAssistant = async (content: string, reasoning?: string) => {
+    if (finalized) return;
+    finalized = true;
+    const assistantMessage: Parameters<typeof service.addMessage>[0] = {
+      conversationId,
+      role: 'assistant',
+      content,
+    };
+    if (reasoning) assistantMessage.reasoning = reasoning;
+    await service.addMessage(assistantMessage, userId);
   };
 
   try {
@@ -73,30 +100,54 @@ async function* createResponseStream(
         yield emit(chunk, false);
       }
     } else {
-      for await (const chunk of streamChat(history, { model })) {
+      for await (const chunk of streamChat(history, {
+        model,
+        signal: upstreamAbortController.signal,
+      })) {
         if (chunk.done) break;
         fullContent += chunk.content;
         fullReasoning += chunk.reasoning || '';
         yield emit(chunk.content, false, chunk.reasoning);
       }
     }
+
+    // 通常完了：既存どおり完全なアシスタントメッセージを保存してから完了イベントを送る。
+    await finalizeAssistant(fullContent || '(No response)', fullReasoning || undefined);
+    yield emit('', true);
+    console.info(
+      `[functions/chat] stream completed in ${Date.now() - startedAt}ms`,
+    );
   } catch (error) {
-    console.error('[functions/chat] stream error:', error);
-    yield emit('\n\n(エラーが発生しました)', false);
+    const classification = classifyUpstreamError(error);
+    if (classification === 'interrupted') {
+      // クライアント切断・ユーザー停止によるキャンセル：エラーにせず finally で中間保存する。
+      console.info('[functions/chat] stream interrupted by client');
+    } else {
+      // 上流エラー：安全な error code だけを SSE イベントで送信し、本文として保存しない。
+      savePartialOnStop = false;
+      console.error(`[functions/chat] stream error: ${classification}`);
+      try {
+        yield sseErrorEvent(classification);
+      } catch {
+        // 接続が既に切れている場合は送信失敗を無視する
+      }
+    }
+  } finally {
+    upstreamAbortController.abort();
+    if (!finalized && savePartialOnStop) {
+      try {
+        // 停止時の中間保存：本文・推論が空なら中断表示を使う
+        const content = fullContent.trim() ? fullContent : INTERRUPTED_MESSAGE;
+        const reasoning = fullReasoning || undefined;
+        await finalizeAssistant(content, reasoning);
+        console.info(
+          `[functions/chat] partial stream finalized (content=${fullContent.length}, reasoning=${fullReasoning.length})`,
+        );
+      } catch (error) {
+        console.error('[functions/chat] partial assistant save failed');
+      }
+    }
   }
-
-  const assistantMessage: Parameters<typeof service.addMessage>[0] = {
-    conversationId,
-    role: 'assistant',
-    content: fullContent || '(No response)',
-  };
-  if (fullReasoning) assistantMessage.reasoning = fullReasoning;
-
-  await service.addMessage(assistantMessage, userId);
-  yield emit('', true);
-  console.info(
-    `[functions/chat] stream completed in ${Date.now() - startedAt}ms`,
-  );
 }
 
 export async function chatHandler(
@@ -109,6 +160,7 @@ export async function chatHandler(
     const conversationId = getRequiredString(body, 'conversationId');
     const message = getRequiredString(body, 'message');
     const imageBase64 = getOptionalString(body, 'imageBase64');
+    const userMessageId = getOptionalString(body, 'userMessageId');
 
     const conversation = await service.getConversation(conversationId, userId);
     if (!conversation) throw new AppError(404, 'Conversation not found');
@@ -120,15 +172,29 @@ export async function chatHandler(
       throw new AppError(400, 'Images are not supported by the selected model');
     }
 
-    await service.addMessage(
-      {
-        conversationId,
-        role: 'user',
-        content: message,
-        imageUrl: imageBase64 || undefined,
-      },
-      userId,
-    );
+    if (userMessageId) {
+      // 再試行で同じ userMessageId が届いてもユーザーメッセージを重複保存しない。
+      await service.addMessageIfAbsent(
+        {
+          id: userMessageId,
+          conversationId,
+          role: 'user',
+          content: message,
+          imageUrl: imageBase64 || undefined,
+        },
+        userId,
+      );
+    } else {
+      await service.addMessage(
+        {
+          conversationId,
+          role: 'user',
+          content: message,
+          imageUrl: imageBase64 || undefined,
+        },
+        userId,
+      );
+    }
 
     const messages = await service.listMessages(conversationId, userId);
     const history = formatMessagesForApi(messages);

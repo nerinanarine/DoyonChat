@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UserSettings } from '../types';
 import * as api from '../services/chatApi';
+import { errorMessage } from '../services/errorMessages';
 
 export type SettingsStatus = 'loading' | 'error' | 'loaded';
 
@@ -18,7 +19,7 @@ export function useSettings(enabled = true) {
       setStatus('loaded');
     } catch (err) {
       setStatus('error');
-      setError((err as Error).message);
+      setError(errorMessage(err));
     }
   }, []);
 
@@ -48,7 +49,7 @@ export function useSettings(enabled = true) {
         return response;
       } catch (err) {
         setSettings(previous);
-        setError((err as Error).message);
+        setError(errorMessage(err));
         throw err;
       }
     },

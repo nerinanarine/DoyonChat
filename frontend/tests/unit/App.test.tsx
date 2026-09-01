@@ -40,6 +40,7 @@ const createdConversation: Conversation = {
 };
 
 const create = vi.fn();
+const sendMessage = vi.fn();
 const autoTitle = vi.fn();
 const isRenamed = vi.fn();
 const updateSettings = vi.fn().mockResolvedValue(undefined);
@@ -66,9 +67,13 @@ function mockHooks(
     streamingReasoning: '',
     isStreaming: false,
     error: null,
+    messagesLoading: false,
+    loadError: null,
     loadMessages: vi.fn(),
-    sendMessage: vi.fn(),
+    sendMessage,
+    retrySend: vi.fn(),
     stop: vi.fn(),
+    dismissError: vi.fn(),
   });
   vi.mocked(useSettings).mockReturnValue({
     settings: settings === undefined ? {} : { defaultModel: settings },
@@ -92,7 +97,7 @@ describe('App model state', () => {
   it('omits model when creating a new conversation', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: '新規チャット' }));
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
 
     await waitFor(() => expect(create).toHaveBeenCalledWith('New Chat'));
     expect(create.mock.calls[0]).toHaveLength(1);
@@ -101,7 +106,7 @@ describe('App model state', () => {
     mockHooks([], 'kimi-k2.6');
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: '新規チャット' }));
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
 
     await waitFor(() => expect(create).toHaveBeenCalledWith('New Chat', 'kimi-k2.6'));
   });
@@ -129,19 +134,38 @@ describe('App model state', () => {
     expect(create.mock.calls[0]).toHaveLength(1);
   });
 
-  it('shows model loading and fetch failure as separate disabled reasons', async () => {
+  it('sends the first message using the newly created conversation id', async () => {
+    render(<App />);
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, { target: { value: '最初のメッセージ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+
+    await waitFor(() =>
+      expect(sendMessage).toHaveBeenCalledWith(
+        '最初のメッセージ',
+        undefined,
+        'created-conversation',
+      ),
+    );
+  });
+
+  it('shows a bootstrap loading state while data is loading and an error state with retry on failure', async () => {
     vi.mocked(api.fetchModels).mockReturnValue(new Promise(() => {}));
     const { unmount } = render(<App />);
-    expect(screen.getByRole('status')).toHaveTextContent('モデル一覧を読み込み中です。');
-    expect(screen.getByPlaceholderText('メッセージを入力...')).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('データを読み込み中...');
+    expect(screen.queryByPlaceholderText('メッセージを入力...')).not.toBeInTheDocument();
     unmount();
 
     vi.mocked(api.fetchModels).mockRejectedValue(new Error('fetch failed'));
     render(<App />);
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('モデル一覧を取得できませんでした。'),
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '初期データの読み込みに失敗しました。接続を確認して再試行してください。',
+      ),
     );
-    expect(screen.getByPlaceholderText('メッセージを入力...')).toBeDisabled();
+    expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
   });
 
   it('marks a saved model unavailable only after the catalog has loaded', async () => {
@@ -154,7 +178,7 @@ describe('App model state', () => {
     mockHooks([unavailableConversation]);
     render(<App />);
 
-    const titleButton = screen.getByRole('button', { name: unavailableConversation.title });
+    const titleButton = await screen.findByRole('button', { name: unavailableConversation.title });
     fireEvent.click(titleButton.parentElement as HTMLElement);
 
     await waitFor(() =>
@@ -183,7 +207,9 @@ describe('App model state', () => {
   it('triggers auto title when the active conversation is still New Chat', async () => {
     mockHooks([{ ...createdConversation, id: 'existing-conversation', title: 'New Chat' }]);
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'New Chat' }).parentElement as HTMLElement);
+    fireEvent.click(
+      (await screen.findByRole('button', { name: 'New Chat' })).parentElement as HTMLElement,
+    );
 
     const input = await screen.findByPlaceholderText('メッセージを入力...');
     await waitFor(() => expect(input).toBeEnabled());
@@ -199,7 +225,9 @@ describe('App model state', () => {
     mockHooks([{ ...createdConversation, id: 'existing-conversation', title: 'New Chat' }]);
     isRenamed.mockReturnValue(true);
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'New Chat' }).parentElement as HTMLElement);
+    fireEvent.click(
+      (await screen.findByRole('button', { name: 'New Chat' })).parentElement as HTMLElement,
+    );
 
     const input = await screen.findByPlaceholderText('メッセージを入力...');
     await waitFor(() => expect(input).toBeEnabled());
@@ -213,7 +241,7 @@ describe('App model state', () => {
     mockHooks([{ ...createdConversation, id: 'existing-conversation', title: '設定済みタイトル' }]);
     render(<App />);
     fireEvent.click(
-      screen.getByRole('button', { name: '設定済みタイトル' }).parentElement as HTMLElement,
+      (await screen.findByRole('button', { name: '設定済みタイトル' })).parentElement as HTMLElement,
     );
 
     const input = await screen.findByPlaceholderText('メッセージを入力...');

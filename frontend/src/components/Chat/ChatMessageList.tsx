@@ -3,6 +3,7 @@ import { Message } from '../../types';
 import ChatMessage from './ChatMessage';
 import CollapsibleReasoning from './CollapsibleReasoning';
 import MarkdownRenderer from '../Markdown/MarkdownRenderer';
+import LoadingState from '../Common/LoadingState';
 import { Bot } from 'lucide-react';
 
 interface ChatMessageListProps {
@@ -10,6 +11,7 @@ interface ChatMessageListProps {
   streamingText: string;
   streamingReasoning: string;
   isStreaming: boolean;
+  loading?: boolean;
 }
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
@@ -17,12 +19,21 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   streamingText,
   streamingReasoning,
   isStreaming,
+  loading = false,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText, streamingReasoning]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-start justify-center">
+        <LoadingState label="メッセージを読み込み中..." />
+      </div>
+    );
+  }
 
   if (messages.length === 0 && !isStreaming) {
     return (
