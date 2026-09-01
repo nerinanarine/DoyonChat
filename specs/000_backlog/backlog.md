@@ -27,7 +27,7 @@
 |----|---------|--------|-----------|---------|---------|------|
 | [P1-001](items/P1-001-image-upload-ui.md) | 画像入力（マルチモーダル）フロントエンド UI | P1 | 🟢 対応済み | 機能追加 | FR-006 | 画像選択・D&D・プレビュー・Base64送信を本番デプロイ済み |
 | [P1-002](items/P1-002-multimodal-warning.md) | マルチモーダル非対応モデル警告 | P1 | 🔴 未対応 | UX改善 | FR-014 | MessagesはBackendで400拒否済み、送信前の警告UIが未対応 |
-| [P1-003](items/P1-003-partial-save-on-stop.md) | ストリーミング中断時の中間保存 | P1 | 🟡 進行中 | データ保全 | [仕様](../P1-003/spec.md) | 実装・自動テスト完了、停止時部分保存。手動/本番確認待ち |
+| [P1-003](items/P1-003-partial-save-on-stop.md) | ストリーミング中断時の中間保存 | P1 | 🟢 対応済み | データ保全 | [仕様](../P1-003/spec.md) | 実装・自動テスト完了、停止時部分保存。本番デプロイまで管理済み |
 | [P1-004](items/P1-004-auto-title.md) | 会話タイトルの自動生成 | P1 | 🟢 対応済み | UX改善 | [仕様](../P1-004/spec.md) | AI 要約タイトル（deepseek-v4-flash）、本番デプロイ済み |
 | [P1-005](items/P1-005-entra-id-auth.md) | Entra ID（Azure AD）を利用したユーザー認証 | P1 | 🟢 対応済み | セキュリティ | — | P1-006 の前提条件を完了 |
 | [P1-006](items/P1-006-user-separated-chats.md) | ユーザーごとにチャットを分ける | P1 | 🟢 対応済み | セキュリティ | [統合仕様](../006-user-isolation-functions/spec.md) | P2-006 と同時実装、本番切替完了 |
@@ -38,7 +38,7 @@
 | [P1-011](items/P1-011-long-reasoning-error.md) | 長文推論時のエラー修正 | P1 | 🔴 未対応 | 品質・安定性 | — | [Issue #20](https://github.com/nerinanarine/DoyonChat/issues/20)、DeepSeek V4 Flashの9000字超推論 |
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
-| [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🟡 進行中 | UX改善 | [仕様](../P2-003/spec.md) | 実装・自動テスト完了、SafeErrorCode/再試行/401遷移。手動/本番確認待ち |
+| [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-003/spec.md) | 実装・自動テスト完了、SafeErrorCode/再試行/401遷移。本番デプロイまで管理済み |
 | [P2-004](items/P2-004-image-validation.md) | 画像サイズ制限のフロントエンドバリデーション | P2 | 🟢 対応済み | 機能追加 | — | 5MB上限・画像形式検証を本番デプロイ済み |
 | [P2-005](items/P2-005-rename-conversation.md) | 会話の手動リネーム | P2 | 🟢 対応済み | UX改善 | [仕様](../008-rename-conversation/spec.md) | 実装・検証・本番デプロイ完了 |
 | [P2-006](items/P2-006-functions-migration.md) | バックエンドを App Service から Azure Functions に変更 | P2 | 🟢 対応済み | コスト・スケーリング | [統合仕様](../006-user-isolation-functions/spec.md) | Functions本番切替・旧App Service/Plan削除完了 |
@@ -48,7 +48,7 @@
 | [P2-010](items/P2-010-model-and-generation-time.md) | 生成メッセージへのモデル名・生成時間表示 | P2 | 🔴 未対応 | UX改善 | — | メッセージ単位の利用モデルと初回回答表示時間を表示 |
 | [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟡 進行中 | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 26モデル・3プロトコル対応へ更新（2026-08-31、grok-4.5/ox-alpha-free廃止）。26/26 live test成功、本番デプロイ待ち |
 | [P2-012](items/P2-012-mobile-line-break-send.md) | モバイル入力の改行とCtrl+Enter送信 | P2 | 🔴 未対応 | UX改善 | — | [Issue #33](https://github.com/nerinanarine/DoyonChat/issues/33) |
-| [P2-013](items/P2-013-loading-state.md) | データ取得中のローディング画面 | P2 | 🟡 進行中 | UX改善 | [仕様](../P2-013/spec.md) | 実装・自動テスト完了、bootstrap/メッセージloading。手動/本番確認待ち、[Issue #34](https://github.com/nerinanarine/DoyonChat/issues/34) |
+| [P2-013](items/P2-013-loading-state.md) | データ取得中のローディング画面 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-013/spec.md) | 実装・自動テスト完了、bootstrap/メッセージloading。本番デプロイまで管理済み、[Issue #34](https://github.com/nerinanarine/DoyonChat/issues/34) |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |
 | [P3-002](items/P3-002-search.md) | 会話の検索 | P3 | 🔴 未対応 | 利便性 | — | クライアントサイド検索 |
 | [P3-003](items/P3-003-export.md) | 会話のエクスポート | P3 | 🔴 未対応 | 利便性 | — | Markdown / JSON |
