@@ -1,15 +1,23 @@
 import React from 'react';
-import { Message } from '../../types';
+import { Message, ModelInfo, UserSettings } from '../../types';
 import MarkdownRenderer from '../Markdown/MarkdownRenderer';
 import CollapsibleReasoning from './CollapsibleReasoning';
 import { User, Bot } from 'lucide-react';
 
 interface ChatMessageProps {
   message: Message;
+  models?: ModelInfo[];
+  settings?: UserSettings;
+  currentModel?: string;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, models = [], settings, currentModel }) => {
   const isUser = message.role === 'user';
+
+  const effectiveModelId = message.model ?? currentModel;
+  const displayName = isUser
+    ? settings?.displayName || 'あなた'
+    : models.find((m) => m.id === effectiveModelId)?.name || effectiveModelId || 'AI';
 
   return (
     <div className={`flex gap-3 px-4 py-5 ${isUser ? 'bg-white' : 'bg-gray-50'}`}>
@@ -25,7 +33,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         </div>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold mb-1 text-gray-900">{isUser ? 'あなた' : 'AI'}</div>
+        <div className="text-sm font-semibold mb-1 text-gray-900">{displayName}</div>
         {message.imageUrl && (
           <img
             src={message.imageUrl}

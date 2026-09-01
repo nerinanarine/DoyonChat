@@ -37,6 +37,7 @@ export interface ChatRequest {
 
 export interface UserSettings {
   defaultModel?: string;
+  displayName?: string;
 }
 
 export interface UserSettingsDocument {

@@ -35,6 +35,9 @@ function sanitizeSettings(settings: UserSettings): UserSettings {
   if (settings.defaultModel !== undefined && hasModel(settings.defaultModel)) {
     sanitized.defaultModel = settings.defaultModel;
   }
+  if (settings.displayName !== undefined && settings.displayName.trim()) {
+    sanitized.displayName = settings.displayName.trim();
+  }
   return sanitized;
 }
 
@@ -71,17 +74,31 @@ export async function updateSettings(
   const existing = await readDocument(userId);
 
   // Empty body (no known keys) is a no-op returning current settings. Spec FR-005.
-  if (!Object.prototype.hasOwnProperty.call(partial, 'defaultModel')) {
+  const hasDefaultModel = Object.prototype.hasOwnProperty.call(partial, 'defaultModel');
+  const hasDisplayName = Object.prototype.hasOwnProperty.call(partial, 'displayName');
+  if (!hasDefaultModel && !hasDisplayName) {
     return toResponse(existing, userId);
   }
 
-  // Only the known key `defaultModel` is merged (reserved/unknown keys are ignored).
+  // Only known keys are merged (reserved/unknown keys are ignored).
   const settings: UserSettings = { ...existing?.settings };
-  const value = partial.defaultModel;
-  if (value === null) {
-    delete settings.defaultModel;
-  } else if (typeof value === 'string') {
-    settings.defaultModel = value;
+
+  if (hasDefaultModel) {
+    const value = partial.defaultModel;
+    if (value === null) {
+      delete settings.defaultModel;
+    } else if (typeof value === 'string') {
+      settings.defaultModel = value;
+    }
+  }
+
+  if (hasDisplayName) {
+    const value = partial.displayName;
+    if (value === null || value === '') {
+      delete settings.displayName;
+    } else if (typeof value === 'string') {
+      settings.displayName = value.trim();
+    }
   }
 
   const now = new Date().toISOString();

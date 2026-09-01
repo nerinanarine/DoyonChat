@@ -20,6 +20,7 @@ interface AppLayoutProps {
   settingsStatus: SettingsStatus;
   settingsError: string | null;
   onChangeDefaultModel: (modelId: string | null) => Promise<void>;
+  onChangeDisplayName: (name: string | null) => Promise<void>;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => Promise<void>;
@@ -37,6 +38,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   settingsStatus,
   settingsError,
   onChangeDefaultModel,
+  onChangeDisplayName,
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
@@ -133,6 +135,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 settingsStatus={settingsStatus}
                 settingsError={settingsError}
                 onChangeDefaultModel={onChangeDefaultModel}
+                onChangeDisplayName={onChangeDisplayName}
                 onLogout={handleLogout}
               />
             )}

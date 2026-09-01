@@ -149,6 +149,13 @@ function App() {
     [updateSettings],
   );
 
+  const handleChangeDisplayName = useCallback(
+    async (name: string | null) => {
+      await updateSettings({ displayName: name ?? null });
+    },
+    [updateSettings],
+  );
+
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
@@ -203,6 +210,7 @@ function App() {
       settingsStatus={settingsStatus}
       settingsError={settingsError}
       onChangeDefaultModel={handleChangeDefaultModel}
+      onChangeDisplayName={handleChangeDisplayName}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}
@@ -228,6 +236,9 @@ function App() {
         streamingReasoning={streamingReasoning}
         isStreaming={isStreaming}
         loading={messagesLoading}
+        models={models}
+        settings={settings}
+        currentModel={activeConversation?.model}
       />
       <ChatInput
         onSend={handleSend}

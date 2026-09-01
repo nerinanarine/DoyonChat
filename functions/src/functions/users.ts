@@ -33,6 +33,19 @@ export async function userSettingsHandler(
         throw new AppError(400, 'model is not supported');
       }
     }
+    if (
+      Object.prototype.hasOwnProperty.call(body, 'displayName') &&
+      body.displayName !== null &&
+      body.displayName !== ''
+    ) {
+      const name = body.displayName;
+      if (typeof name !== 'string') {
+        throw new AppError(400, 'displayName must be a string');
+      }
+      if (name.trim().length > 50) {
+        throw new AppError(400, 'displayName must be 50 characters or less');
+      }
+    }
     return { status: 200, jsonBody: await service.updateSettings(userId, body) };
   } catch (error) {
     return toHttpResponse(error);

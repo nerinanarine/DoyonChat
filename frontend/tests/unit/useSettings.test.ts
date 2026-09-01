@@ -95,4 +95,39 @@ describe('useSettings', () => {
     expect(api.updateUserSettings).toHaveBeenCalledWith({ defaultModel: null });
     expect(result.current.settings).toEqual({});
   });
+
+  it('saves displayName optimistically and trims whitespace', async () => {
+    vi.mocked(api.updateUserSettings).mockResolvedValue({
+      userId: 'alice',
+      settings: { defaultModel: 'kimi-k2.6', displayName: 'Bob' },
+    });
+    const { result } = renderHook(() => useSettings(true));
+    await waitFor(() => expect(result.current.status).toBe('loaded'));
+
+    await act(async () => {
+      await result.current.updateSettings({ displayName: '  Bob  ' });
+    });
+
+    expect(api.updateUserSettings).toHaveBeenCalledWith({ displayName: '  Bob  ' });
+    expect(result.current.settings).toEqual({ defaultModel: 'kimi-k2.6', displayName: 'Bob' });
+  });
+
+  it('clears displayName optimistically when patched with null or empty', async () => {
+    vi.mocked(api.fetchUserSettings).mockResolvedValue({
+      userId: 'alice',
+      settings: { displayName: 'Alice' },
+    });
+    vi.mocked(api.updateUserSettings).mockResolvedValue({
+      userId: 'alice',
+      settings: {},
+    });
+    const { result } = renderHook(() => useSettings(true));
+    await waitFor(() => expect(result.current.status).toBe('loaded'));
+    expect(result.current.settings).toEqual({ displayName: 'Alice' });
+
+    await act(async () => {
+      await result.current.updateSettings({ displayName: null });
+    });
+    expect(result.current.settings).toEqual({});
+  });
 });

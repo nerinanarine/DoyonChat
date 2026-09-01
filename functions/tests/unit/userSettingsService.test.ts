@@ -66,6 +66,39 @@ describe('Functions user settings service', () => {
     expect(updated.settings).toEqual({ defaultModel: 'kimi-k2.6' });
   });
 
+  it('saves and trims displayName', async () => {
+    const updated = await service.updateSettings('alice', { displayName: '  Bob  ' });
+    expect(updated.settings).toEqual({ displayName: 'Bob' });
+    await expect(service.getSettings('alice')).resolves.toEqual(updated);
+  });
+
+  it('removes displayName when patched with null or empty', async () => {
+    await service.updateSettings('alice', { displayName: 'Alice' });
+    const clearedNull = await service.updateSettings('alice', { displayName: null });
+    expect(clearedNull.settings).toEqual({});
+    await service.updateSettings('alice', { displayName: 'Alice' });
+    const clearedEmpty = await service.updateSettings('alice', { displayName: '' });
+    expect(clearedEmpty.settings).toEqual({});
+  });
+
+  it('sanitizes displayName (trims and excludes blank)', async () => {
+    await service.updateSettings('alice', { displayName: '  Alice  ' });
+    const stored = await service.getSettings('alice');
+    expect(stored.settings).toEqual({ displayName: 'Alice' });
+
+    // Blank displayName should not appear in response
+    await service.updateSettings('bob', { displayName: '   ' });
+    const blank = await service.getSettings('bob');
+    expect(blank.settings).toEqual({});
+  });
+
+  it('keeps displayName alongside defaultModel', async () => {
+    await service.updateSettings('alice', { defaultModel: 'kimi-k2.6', displayName: 'Alice' });
+    // updateSettings only merges known keys one at a time, so test sequential updates
+    const updated = await service.updateSettings('alice', { displayName: 'Bob' });
+    expect(updated.settings).toEqual({ defaultModel: 'kimi-k2.6', displayName: 'Bob' });
+  });
+
   it('keeps an empty patch as a no-op', async () => {
     await service.updateSettings('alice', { defaultModel: 'kimi-k2.6' });
     const before = await service.getSettings('alice');
