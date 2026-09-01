@@ -26,6 +26,7 @@ export interface Message {
   content: string;
   reasoning?: string;
   imageUrl?: string;
+  model?: string;
   createdAt: string;
 }
 
