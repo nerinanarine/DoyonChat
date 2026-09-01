@@ -9,6 +9,7 @@ interface SettingsMenuProps {
   settingsStatus: SettingsStatus;
   settingsError: string | null;
   onChangeDefaultModel: (modelId: string | null) => Promise<void>;
+  onChangeDisplayName: (name: string | null) => Promise<void>;
   onLogout: () => void;
 }
 
@@ -19,10 +20,12 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   settingsStatus,
   settingsError,
   onChangeDefaultModel,
+  onChangeDisplayName,
   onLogout,
 }) => {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [displayNameDraft, setDisplayNameDraft] = useState(settings.displayName ?? '');
 
   const defaultModelId = settings.defaultModel;
   const defaultModelUnavailable =
@@ -33,6 +36,17 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     setSaving(true);
     try {
       await onChangeDefaultModel(value === '' ? null : value);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisplayNameSave = async () => {
+    const trimmed = displayNameDraft.trim();
+    if (trimmed === (settings.displayName ?? '')) return;
+    setSaving(true);
+    try {
+      await onChangeDisplayName(trimmed === '' ? null : trimmed);
     } finally {
       setSaving(false);
     }
@@ -65,6 +79,28 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               >
                 <span aria-hidden>×</span>
               </button>
+            </div>
+
+            <div className="mb-1 text-sm text-gray-700">表示名</div>
+            <div className="mb-1 text-xs text-gray-500">チャット画面であなたの代わりに表示される名前です。</div>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={displayNameDraft}
+                onChange={(e) => setDisplayNameDraft(e.target.value)}
+                onBlur={handleDisplayNameSave}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleDisplayNameSave();
+                  }
+                }}
+                placeholder="あなた"
+                maxLength={50}
+                disabled={settingsUnavailable || saving}
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-400"
+                aria-label="表示名"
+              />
             </div>
 
             <div className="mb-1 text-sm text-gray-700">デフォルトモデル</div>
