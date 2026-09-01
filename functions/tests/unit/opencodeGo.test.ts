@@ -235,10 +235,15 @@ describe('Functions OpenCode Go API Service', () => {
     ['grok-4.6', 'data: {"type":"response.failed","error":{"message":"unavailable"}}\n\n'],
     ['kimi-k2.6', 'data: {"error":{"message":"unavailable"}}\n\n'],
     ['minimax-m3', 'data: {"type":"error","error":{"message":"unavailable"}}\n\n'],
-  ])('surfaces %s protocol error events', async (model, event) => {
+  ])('surfaces %s protocol errors as a safe server code', async (model, event) => {
     mockFetch.mockResolvedValueOnce(streamingResponse(event));
 
-    await expect(collectStream(model)).rejects.toThrow('unavailable');
+    await expect(collectStream(model)).rejects.toMatchObject({
+      name: 'UpstreamError',
+      code: 'server',
+    });
+    // 上流の raw message はエラーオブジェクトへ漏れない
+    await expect(collectStream(model)).rejects.not.toThrow('unavailable');
   });
 
   it('rejects malformed mandatory SSE data', async () => {
@@ -256,16 +261,47 @@ describe('Functions OpenCode Go API Service', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('surfaces HTTP errors', async () => {
+  it('surfaces HTTP errors as a safe rate_limit code without the upstream body', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 429,
-      text: jest.fn().mockResolvedValue('rate limited'),
+      text: jest.fn().mockResolvedValue('rate limited secret body'),
     });
 
-    await expect(collectStream('kimi-k2.6')).rejects.toThrow(
-      'OpenCode Go API error (429)',
-    );
+    await expect(collectStream('kimi-k2.6')).rejects.toMatchObject({
+      name: 'UpstreamError',
+      code: 'rate_limit',
+    });
+  });
+
+  it.each([
+    [429, 'rate_limit'],
+    [408, 'timeout'],
+    [504, 'timeout'],
+    [401, 'authentication'],
+    [403, 'authentication'],
+    [500, 'server'],
+    [503, 'server'],
+  ])('classifies upstream HTTP status %i as %s', async (status, code) => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status,
+      text: jest.fn().mockResolvedValue('error body'),
+    });
+
+    await expect(collectStream('kimi-k2.6')).rejects.toMatchObject({ code });
+  });
+
+  it('classifies AbortError as interrupted and network TypeError as network', async () => {
+    const { classifyUpstreamError } = require('../../src/services/opencodeGo');
+    const abort = new Error('aborted');
+    abort.name = 'AbortError';
+    expect(classifyUpstreamError(abort)).toBe('interrupted');
+    const timeout = new Error('timed out');
+    timeout.name = 'TimeoutError';
+    expect(classifyUpstreamError(timeout)).toBe('timeout');
+    expect(classifyUpstreamError(new TypeError('fetch failed'))).toBe('network');
+    expect(classifyUpstreamError(new Error('unknown'))).toBe('server');
   });
 
   it('uses the catalog protocol for health checks', async () => {

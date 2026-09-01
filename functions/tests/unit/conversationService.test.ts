@@ -106,4 +106,101 @@ describe('Functions conversation service', () => {
       service.updateConversationTitle('conversation-id', 'Renamed', 'alice'),
     ).rejects.toMatchObject({ statusCode: 503 });
   });
+
+  it('adds a client-keyed user message only once across retries', async () => {
+    const conversation = await service.createConversation('Retry chat', 'kimi-k2.6', 'alice');
+
+    const first = await service.addMessageIfAbsent(
+      {
+        id: 'client-message-id',
+        conversationId: conversation.id,
+        role: 'user',
+        content: 'hello',
+      },
+      'alice',
+    );
+    const second = await service.addMessageIfAbsent(
+      {
+        id: 'client-message-id',
+        conversationId: conversation.id,
+        role: 'user',
+        content: 'hello',
+      },
+      'alice',
+    );
+
+    expect(second).toEqual(first);
+    expect((await service.listMessages(conversation.id, 'alice'))).toHaveLength(1);
+  });
+
+  it('scopes idempotent user message saves to the conversation owner', async () => {
+    const conversation = await service.createConversation('Bob retry', 'kimi-k2.6', 'bob');
+
+    await expect(
+      service.addMessageIfAbsent(
+        {
+          id: 'client-message-id',
+          conversationId: conversation.id,
+          role: 'user',
+          content: 'hello',
+        },
+        'alice',
+      ),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.listMessages(conversation.id, 'alice')).resolves.toEqual([]);
+  });
+
+  it('reuses an existing Cosmos message on a 409 create conflict', async () => {
+    jest.resetModules();
+    const conversation = {
+      id: 'conversation-id',
+      userId: 'alice',
+      title: 'Cosmos retry',
+      model: 'kimi-k2.6',
+      createdAt: '2026-08-22T00:00:00.000Z',
+      updatedAt: '2026-08-22T01:00:00.000Z',
+    };
+    const existingMessage = {
+      id: 'client-message-id',
+      conversationId: conversation.id,
+      role: 'user',
+      content: 'hello',
+      createdAt: '2026-08-22T01:00:00.000Z',
+    };
+    const create = jest.fn().mockRejectedValueOnce({ code: 409 });
+    const messageRead = jest.fn().mockResolvedValue({ resource: existingMessage });
+    const messageItem = jest.fn(() => ({ read: messageRead }));
+    const conversationRead = jest.fn().mockResolvedValue({ resource: conversation });
+    const conversationItem = jest.fn(() => ({ read: conversationRead }));
+    const container = {
+      read: jest.fn().mockResolvedValue({}),
+      items: { create },
+      item: conversationItem,
+    };
+    const messageContainer = {
+      read: jest.fn().mockResolvedValue({}),
+      items: { create },
+      item: messageItem,
+    };
+    jest.doMock('../../src/db', () => ({
+      getConversationsContainer: jest.fn(() => container),
+      getMessagesContainer: jest.fn(() => messageContainer),
+    }));
+    const cosmosService = require('../../src/services/conversationService') as typeof service;
+    process.env.COSMOSDB_REQUIRED = 'true';
+
+    const result = await cosmosService.addMessageIfAbsent(
+      {
+        id: 'client-message-id',
+        conversationId: conversation.id,
+        role: 'user',
+        content: 'hello',
+      },
+      'alice',
+    );
+
+    expect(result).toEqual(existingMessage);
+    expect(messageItem).toHaveBeenCalledWith('client-message-id', conversation.id);
+    process.env.COSMOSDB_REQUIRED = 'false';
+  });
 });

@@ -24,6 +24,53 @@ type ProtocolEvent =
   | { kind: 'completed' }
   | { kind: 'error'; message: string };
 
+export type SafeErrorCode =
+  | 'rate_limit'
+  | 'timeout'
+  | 'authentication'
+  | 'server'
+  | 'network';
+
+/**
+ * 上流エラーを安全なコードだけに正規化して伝える。APIキー、上流レスポンス本文、
+ * スタックトレースをメッセージへ含めない。
+ */
+export class UpstreamError extends Error {
+  constructor(
+    public readonly code: SafeErrorCode,
+    message = 'OpenCode Go stream error',
+  ) {
+    super(message);
+    this.name = 'UpstreamError';
+  }
+}
+
+export type UpstreamClassification = SafeErrorCode | 'interrupted';
+
+function codeForStatus(status: number): SafeErrorCode {
+  if (status === 429) return 'rate_limit';
+  if (status === 408 || status === 504) return 'timeout';
+  if (status === 401 || status === 403) return 'authentication';
+  return 'server';
+}
+
+/**
+ * 上流エラーを分類する。ユーザー停止や接続断によるキャンセル（AbortError 相当）は
+ * 'interrupted' とし、chat.ts の中断保存フローへ委譲する。
+ */
+export function classifyUpstreamError(error: unknown): UpstreamClassification {
+  if (error instanceof UpstreamError) return error.code;
+  if (error instanceof Error && error.name === 'TimeoutError') return 'timeout';
+  if (error instanceof Error && error.name === 'AbortError') return 'interrupted';
+  if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
+    if (error.name === 'TimeoutError') return 'timeout';
+    if (error.name === 'AbortError') return 'interrupted';
+    return 'network';
+  }
+  if (error instanceof TypeError) return 'network';
+  return 'server';
+}
+
 type ResponsesInputPart =
   | { type: 'input_text' | 'output_text'; text: string }
   | { type: 'input_image'; image_url: string };
@@ -217,8 +264,11 @@ async function fetchProtocolStream(
   const request = createRequest(protocol, messages, model, options, apiKey);
   const response = await fetch(request.url, request.init);
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => 'Unknown error');
-    throw new Error(`OpenCode Go API error (${response.status}): ${errorBody}`);
+    // 上流レスポンス本文はログ・SSE・UIへ出さない（P2-003 安全なエラー契約）。
+    throw new UpstreamError(
+      codeForStatus(response.status),
+      `OpenCode Go API error (${response.status})`,
+    );
   }
   return response;
 }
@@ -380,7 +430,7 @@ async function* normalizeProtocolStream(
         for (const line of buffer.split('\n')) {
           const event = parseLine(line);
           if (!event) continue;
-          if (event.kind === 'error') throw new Error(event.message);
+          if (event.kind === 'error') throw new UpstreamError('server');
           if (event.kind === 'delta') {
             const chunk = createStreamChunk(event.content, event.reasoning);
             if (chunk) yield chunk;
@@ -392,7 +442,7 @@ async function* normalizeProtocolStream(
             return;
           }
         }
-        throw new Error('OpenCode Go stream ended before completion marker');
+        throw new UpstreamError('server', 'stream ended before completion marker');
       }
 
       buffer += decoder.decode(value, { stream: true });
@@ -402,7 +452,7 @@ async function* normalizeProtocolStream(
       for (const line of lines) {
         const event = parseLine(line);
         if (!event) continue;
-        if (event.kind === 'error') throw new Error(event.message);
+        if (event.kind === 'error') throw new UpstreamError('server');
         if (event.kind === 'delta') {
           const chunk = createStreamChunk(event.content, event.reasoning);
           if (chunk) yield chunk;

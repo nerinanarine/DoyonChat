@@ -1,5 +1,9 @@
 import { Conversation, Message, ModelInfo, UserSettingsResponse } from '../types';
 import { get, post, del, put, patch, getToken } from './api';
+import { ChatStreamError, isSafeCode } from './errorMessages';
+import { msalInstance } from '../auth/msalConfig';
+
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
 export async function fetchModels(): Promise<ModelInfo[]> {
   return get<ModelInfo[]>('/models');
@@ -50,6 +54,11 @@ export interface ChatStreamChunk {
   reasoning?: string;
 }
 
+export interface ChatStreamOptions {
+  /** 再試行で同一ユーザーメッセージの重複保存を防ぐクライアント発行ID */
+  userMessageId?: string;
+}
+
 export function streamChat(
   conversationId: string,
   message: string,
@@ -57,6 +66,7 @@ export function streamChat(
   onChunk: (chunk: ChatStreamChunk) => void = () => {},
   onDone: () => void = () => {},
   onError: (err: Error) => void = () => {},
+  options: ChatStreamOptions = {},
 ): AbortController {
   const controller = new AbortController();
   const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -80,17 +90,31 @@ export function streamChat(
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ conversationId, message, imageBase64 }),
+        body: JSON.stringify({
+          conversationId,
+          message,
+          imageBase64,
+          userMessageId: options.userMessageId,
+        }),
         signal: controller.signal,
       });
 
+      // トークン付き 401 = セッション期限切れ → 既存のログアウト・再ログインフローへ
+      if (response.status === 401 && authEnabled && token) {
+        await msalInstance.logoutRedirect();
+        return;
+      }
+
       if (!response.ok) {
-        const text = await response.text().catch(() => 'Unknown error');
-        throw new Error(`HTTP ${response.status}: ${text}`);
+        const status = response.status;
+        if (status === 429) throw new ChatStreamError('rate_limit');
+        if (status === 408 || status === 504) throw new ChatStreamError('timeout');
+        if (status >= 500) throw new ChatStreamError('server');
+        throw new ChatStreamError('network');
       }
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
+      if (!reader) throw new ChatStreamError('network', 'No response body');
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -100,23 +124,37 @@ export function streamChat(
         const jsonStr = trimmed.slice(6);
         if (jsonStr === '[DONE]') return;
 
+        let parsed: {
+          content?: unknown;
+          reasoning?: unknown;
+          done?: unknown;
+          error?: unknown;
+        };
         try {
-          const parsed = JSON.parse(jsonStr) as {
+          parsed = JSON.parse(jsonStr) as {
             content?: unknown;
             reasoning?: unknown;
             done?: unknown;
+            error?: unknown;
           };
-          if (parsed.done === true) {
-            complete();
-            return;
-          }
-
-          const content = typeof parsed.content === 'string' ? parsed.content : '';
-          const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning : '';
-          if (content || reasoning) onChunk({ content, reasoning });
         } catch {
-          // Ignore malformed SSE data and continue reading the stream.
+          // 壊れたSSE dataは無視して読み続ける
+          return;
         }
+
+        // ストリーミング中にバックエンドが安全なerror codeを送信した場合
+        if (parsed.error && typeof parsed.error === 'object') {
+          const code = (parsed.error as { code?: unknown }).code;
+          throw new ChatStreamError(isSafeCode(code) ? code : 'server');
+        }
+        if (parsed.done === true) {
+          complete();
+          return;
+        }
+
+        const content = typeof parsed.content === 'string' ? parsed.content : '';
+        const reasoning = typeof parsed.reasoning === 'string' ? parsed.reasoning : '';
+        if (content || reasoning) onChunk({ content, reasoning });
       };
 
       let reading = true;

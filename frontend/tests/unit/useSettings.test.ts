@@ -37,7 +37,9 @@ describe('useSettings', () => {
     const { result } = renderHook(() => useSettings(true));
 
     await waitFor(() => expect(result.current.status).toBe('error'));
-    expect(result.current.error).toBe('fetch failed');
+    expect(result.current.error).toBe(
+      '通信に失敗しました。接続を確認して再試行してください。',
+    );
     expect(result.current.settings).toEqual({});
   });
 
@@ -73,7 +75,9 @@ describe('useSettings', () => {
 
     expect(thrown).toEqual(new Error('save failed'));
     expect(result.current.settings).toEqual({ defaultModel: 'kimi-k2.6' });
-    expect(result.current.error).toBe('save failed');
+    expect(result.current.error).toBe(
+      '通信に失敗しました。接続を確認して再試行してください。',
+    );
   });
 
   it('clears defaultModel optimistically when patched with null', async () => {

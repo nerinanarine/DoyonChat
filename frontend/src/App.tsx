@@ -7,10 +7,15 @@ import AppLayout from './components/Layout/AppLayout';
 import ChatMessageList from './components/Chat/ChatMessageList';
 import ChatInput from './components/Chat/ChatInput';
 import LoginPage from './components/Auth/LoginPage';
+import LoadingState from './components/Common/LoadingState';
+import ErrorMessage from './components/Common/ErrorMessage';
 import { ModelInfo, ModelsStatus } from './types';
 import * as api from './services/chatApi';
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+
+const BOOTSTRAP_ERROR_MESSAGE =
+  '初期データの読み込みに失敗しました。接続を確認して再試行してください。';
 
 function App() {
   const isAuthenticated = useIsAuthenticated();
@@ -18,6 +23,8 @@ function App() {
   const {
     conversations,
     loading: convLoading,
+    error: convError,
+    load: reloadConversations,
     create,
     remove,
     updateModel,
@@ -34,16 +41,20 @@ function App() {
     streamingText,
     streamingReasoning,
     isStreaming,
+    error: chatError,
+    messagesLoading,
+    loadError,
     loadMessages,
     sendMessage,
+    retrySend,
     stop,
+    dismissError,
   } = useChat(activeConversationId);
 
-  const { settings, status: settingsStatus, error: settingsError, updateSettings } =
+  const { settings, status: settingsStatus, error: settingsError, updateSettings, reload: reloadSettings } =
     useSettings(dataEnabled);
 
-  // Load models once authenticated
-  useEffect(() => {
+  const loadModels = useCallback(() => {
     if (!dataEnabled) return;
     setModelsStatus('loading');
     api
@@ -55,12 +66,23 @@ function App() {
       .catch(() => setModelsStatus('error'));
   }, [dataEnabled]);
 
+  // Load models once authenticated
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
+
   // Load messages when conversation changes
   useEffect(() => {
     if (activeConversationId) {
       loadMessages(activeConversationId);
     }
   }, [activeConversationId, loadMessages]);
+
+  const retryBootstrap = useCallback(() => {
+    if (modelsStatus === 'error') loadModels();
+    if (convError !== null) void reloadConversations();
+    if (settingsStatus === 'error') void reloadSettings();
+  }, [modelsStatus, convError, settingsStatus, loadModels, reloadConversations, reloadSettings]);
 
   const handleNewChat = useCallback(async () => {
     const conv = settings.defaultModel
@@ -101,7 +123,7 @@ function App() {
         setActiveConversationId(conv.id);
         // Wait a tick for state to update, then send
         setTimeout(() => {
-          sendMessage(text, imageBase64);
+          sendMessage(text, imageBase64, conv.id);
         }, 50);
         if (text.trim()) {
           autoTitle(conv.id, text);
@@ -147,6 +169,30 @@ function App() {
     return <LoginPage />;
   }
 
+  // P2-013: 初期データ取得中のローディング表示
+  const bootstrapLoading =
+    dataEnabled &&
+    (modelsStatus === 'loading' || convLoading || settingsStatus === 'loading');
+  // P2-003: 初期取得エラーは共通エラー表示＋再試行へ接続する
+  const bootstrapError =
+    dataEnabled &&
+    (modelsStatus === 'error' || settingsStatus === 'error' || convError !== null);
+
+  if (bootstrapLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <LoadingState label="データを読み込み中..." />
+      </div>
+    );
+  }
+  if (bootstrapError) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <ErrorMessage message={BOOTSTRAP_ERROR_MESSAGE} onRetry={retryBootstrap} />
+      </div>
+    );
+  }
+
   return (
     <AppLayout
       conversations={conversations}
@@ -163,17 +209,31 @@ function App() {
       onNewChat={handleNewChat}
       onChangeModel={handleChangeModel}
     >
+      {chatError && (
+        <ErrorMessage
+          message={chatError}
+          onRetry={retrySend}
+          onDismiss={dismissError}
+        />
+      )}
+      {loadError && activeConversationId && (
+        <ErrorMessage
+          message={loadError}
+          onRetry={() => void loadMessages(activeConversationId)}
+        />
+      )}
       <ChatMessageList
         messages={messages}
         streamingText={streamingText}
         streamingReasoning={streamingReasoning}
         isStreaming={isStreaming}
+        loading={messagesLoading}
       />
       <ChatInput
         onSend={handleSend}
         onStop={stop}
         isStreaming={isStreaming}
-        disabled={convLoading || Boolean(modelDisabledReason)}
+        disabled={convLoading || messagesLoading || Boolean(modelDisabledReason)}
         disabledReason={modelDisabledReason}
       />
     </AppLayout>
