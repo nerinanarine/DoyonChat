@@ -543,6 +543,8 @@ describe('Functions API contract', () => {
       );
 
       expect(response.status).toBe(503);
+      // P2-015: タイトル生成へ渡すセッションIDは対象会話のIDと一致する。
+      expect(generate).toHaveBeenCalledWith('こんにちは', undefined, id);
       const detail = await conversationHandler(
         request('GET', `/api/conversations/${id}`),
         {} as never,

@@ -23,7 +23,7 @@
 
 ### Phase 0 — 準備
 - [x] backlog P2-015 を作成（🔴 未対応）、本 spec/plan へリンク
-- [ ] ブランチ `feat/p2-015-opencode-session-header` を `main` から作成済み
+- [x] ブランチ `feat/p2-015-opencode-session-header` を `main` から作成済み
 
 ### Phase 1 — Backend (Azure Functions)
 - [x] `functions/src/services/opencodeGo.ts`: `OpenCodeGoOptions` に `sessionId?: string` を追加
@@ -50,6 +50,6 @@
 - [x] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 4 へ進む（verdict: 指摘なし）
 
 ### Phase 4 — 仕上げ
-- [ ] 全体（Phase 1〜3 横断）の `reviewer` レビューを実施し、指摘を解消する
-- [ ] backlog P2-015 の変更履歴を更新（対応済み・コミット記載）
+- [x] 全体（Phase 1〜3 横断）の `reviewer` レビューを実施し、指摘を解消する（verdict: OK with notes。ハンドラ配線のassert 2件追加で解消、残存リスクはP2-017へ切り出し）
+- [x] backlog P2-015 の変更履歴を更新（対応済み・コミット記載）
 - [ ] コミット・プッシュ（要ユーザー承認）

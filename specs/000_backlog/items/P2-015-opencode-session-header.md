@@ -49,7 +49,10 @@ OpenCode Go からの通知に対応し、backend → OpenCode Go の上流リ�
 
 ## 実装メモ
 
-- （未実施）
+- Phase 1（Backend ヘッダ付与）: `sessionId` 追加・3分岐付与・`chat.ts`/`titleAutoHandler` 受け渡し、functions 157/157、reviewer OK（軽微2件をテスト追加で解消）。コミット `0351749`
+- Phase 2（遅延作成）: `handleNewChat` 選択解除のみ・`draftModel`・未選択時メニュー表示、frontend 101/101、reviewer OK（「モデル未選択」フォールバック等で解消）。コミット `0351749`
+- Phase 3（1.3追加）: カタログ27件化・README・`specs/009` 同期・P2-011参照追記、functions 159/159・frontend 101/101、reviewer 指摘なし。live test 26/27（`grok-4.6` 上流キャパシティ、ヘッダ無関係を確定 → P2-016へ分離）。コミット `04f98dc`
+- Phase 4（全体レビュー）: 横断レビュー OK with notes（ハンドラ配線のテストギャップのみ対応）
 
 ---
 
@@ -60,3 +63,4 @@ OpenCode Go からの通知に対応し、backend → OpenCode Go の上流リ�
 | 2026-09-03 | 🔴 未対応 | 初期作成。OpenCode Go からのヘッダ不足通知への対応 |
 | 2026-09-03 | 🔴 未対応 | B案として新規チャット遅延作成をスコープ追加（選択肢1: 一覧に出さず選択解除のみ、モデルはローカル保持、ドラフトは破棄可） |
 | 2026-09-03 | 🔴 未対応 | A案としてモデル1件追加（`muse-spark-1.3-contributor`、`responses`）をスコープ追加。公式27件との差分は本件のみ |
+| 2026-09-03 | 🟡 進行中 | 実装・レビュー完了（Phase 1〜4）。live test 26/27（`grok-4.6` は P2-016へ分離）。デプロイ待ち |

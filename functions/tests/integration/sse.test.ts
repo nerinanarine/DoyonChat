@@ -108,6 +108,8 @@ describe('Functions SSE response', () => {
         }),
       );
       expect(streamSpy).toHaveBeenCalledTimes(1);
+      // P2-015: 安定セッションID（x-opencode-session）はリクエストの会話IDと一致する。
+      expect(streamSpy).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ sessionId: conversationId }));
     } finally {
       streamSpy.mockRestore();
       process.env.OPENCODE_GO_API_KEY = 'sk-test-key';

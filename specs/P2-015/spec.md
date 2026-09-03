@@ -2,7 +2,7 @@
 
 **Feature Branch**: `feat/p2-015-opencode-session-header` | **Spec Folder**: `specs/P2-015` | **Created**: 2026-09-03
 
-**Status**: Draft
+**Status**: Implemented, pending deployment（live test 26/27、`grok-4.6` は上流回復待ち → P2-016）
 
 **Input**: [P2-015 backlog item](../000_backlog/items/P2-015-opencode-session-header.md)
 
