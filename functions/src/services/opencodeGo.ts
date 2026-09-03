@@ -92,6 +92,8 @@ export interface OpenCodeGoOptions {
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
+  /** 会話ごとの安定ID。OpenCode Go の `x-opencode-session` ヘッダへ渡される。 */
+  sessionId?: string;
 }
 
 function toResponsesInput(messages: OpenCodeGoMessage[]) {
@@ -202,6 +204,9 @@ function createRequest(
 ): { url: string; init: RequestInit } {
   const maxTokens = resolveMaxTokens(model, options.maxTokens);
   const signal = options.signal;
+  const extraHeaders: Record<string, string> = options.sessionId
+    ? { 'x-opencode-session': options.sessionId }
+    : {};
 
   if (protocol === 'responses') {
     return {
@@ -211,6 +216,7 @@ function createRequest(
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          ...extraHeaders,
         },
         body: JSON.stringify({
           model,
@@ -231,6 +237,7 @@ function createRequest(
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          ...extraHeaders,
         },
         body: JSON.stringify({
           model,
@@ -253,6 +260,7 @@ function createRequest(
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
+          ...extraHeaders,
         },
         body: JSON.stringify({
           model,
@@ -360,6 +368,7 @@ export function sanitizeGeneratedTitle(raw: string, fallback: string): string {
 export async function generateTitle(
   text: string,
   signal?: AbortSignal,
+  sessionId?: string,
 ): Promise<string> {
   const model = resolveTitleModel();
   const apiKey = await getApiKey().catch(() => '');
@@ -379,7 +388,7 @@ export async function generateTitle(
   let content = '';
   for await (const chunk of streamChat(
     [{ role: 'user', content: prompt }],
-    { model, maxTokens: TITLE_MAX_TOKENS, signal: requestSignal },
+    { model, maxTokens: TITLE_MAX_TOKENS, signal: requestSignal, sessionId },
   )) {
     if (chunk.done) break;
     content += chunk.content;

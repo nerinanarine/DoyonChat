@@ -94,26 +94,82 @@ describe('App model state', () => {
     vi.mocked(api.fetchModels).mockResolvedValue([defaultModel]);
   });
 
-  it('omits model when creating a new conversation', async () => {
+  it('does not create a conversation when the new chat button is clicked', async () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
 
-    await waitFor(() => expect(create).toHaveBeenCalledWith('New Chat'));
-    expect(create.mock.calls[0]).toHaveLength(1);
+    await waitFor(() => expect(create).not.toHaveBeenCalled());
+    // 一覧に仮行は追加されない
+    expect(screen.queryAllByRole('listitem').length).toBe(0);
   });
-  it('uses the saved defaultModel when creating a new conversation', async () => {
-    mockHooks([], 'kimi-k2.6');
+
+  it('uses the saved defaultModel as the initial draft model', async () => {
+    mockHooks([], 'glm-5.1');
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
 
-    await waitFor(() => expect(create).toHaveBeenCalledWith('New Chat', 'kimi-k2.6'));
+    // モデルメニューに draftModel のID（利用不可扱い）が出る
+    expect(await screen.findByRole('button', { name: /glm-5\.1/i })).toBeInTheDocument();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('shows a neutral header label when no conversation and no draft model are set', async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
+
+    // settings が空（defaultModel なし）でも「undefined（利用不可）」ではなく中立ラベルを出す
+    expect(await screen.findByRole('button', { name: 'モデル未選択' })).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
+  it('updates draft model without calling the backend when no conversation is selected', async () => {
+    const updateModel = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useConversations).mockReturnValue({
+      conversations: [],
+      loading: false,
+      error: null,
+      load: vi.fn(),
+      create,
+      remove: vi.fn(),
+      updateModel,
+      updateTitle: vi.fn(),
+      autoTitle,
+      isRenamed,
+    });
+    vi.mocked(useSettings).mockReturnValue({
+      settings: { defaultModel: 'kimi-k2.6' },
+      status: 'loaded',
+      error: null,
+      updateSettings,
+      reload: vi.fn(),
+    });
+    vi.mocked(api.fetchModels).mockResolvedValue([
+      defaultModel,
+      { ...defaultModel, id: 'glm-5.1', name: 'GLM-5.1', description: 'GLM model' },
+    ]);
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Kimi K2.6/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /GLM-5.1/ }));
+
+    await waitFor(() => expect(updateModel).not.toHaveBeenCalled());
+    // draft model が反映され、初回送信に使われる
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    fireEvent.change(input, { target: { value: 'draft message' } });
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledWith('draft message', 'glm-5.1'));
   });
 
   it('uses the saved defaultModel when the first message creates a conversation', async () => {
     mockHooks([], 'glm-5.1');
     render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
     const input = await screen.findByPlaceholderText('メッセージを入力...');
     fireEvent.change(input, { target: { value: '最初のメッセージ' } });
 
@@ -124,6 +180,8 @@ describe('App model state', () => {
 
   it('omits model when the first message creates a conversation', async () => {
     render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
     const input = await screen.findByPlaceholderText('メッセージを入力...');
     await waitFor(() => expect(input).toBeEnabled());
     fireEvent.change(input, { target: { value: '最初のメッセージ' } });
@@ -136,6 +194,8 @@ describe('App model state', () => {
 
   it('sends the first message using the newly created conversation id', async () => {
     render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
     const input = await screen.findByPlaceholderText('メッセージを入力...');
     await waitFor(() => expect(input).toBeEnabled());
     fireEvent.change(input, { target: { value: '最初のメッセージ' } });
@@ -192,6 +252,8 @@ describe('App model state', () => {
 
   it('triggers auto title with the created conversation id after the first message', async () => {
     render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
     const input = await screen.findByPlaceholderText('メッセージを入力...');
     await waitFor(() => expect(input).toBeEnabled());
     fireEvent.change(input, { target: { value: '最初のメッセージ' } });

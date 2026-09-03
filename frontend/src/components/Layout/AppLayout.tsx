@@ -25,6 +25,7 @@ interface AppLayoutProps {
   onRenameConversation: (id: string, title: string) => Promise<void>;
   onNewChat: () => void;
   onChangeModel: (modelId: string) => void;
+  draftModel?: string;
   children: React.ReactNode;
 }
 
@@ -42,6 +43,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onRenameConversation,
   onNewChat,
   onChangeModel,
+  draftModel,
   children,
 }) => {
   const { instance } = useMsal();
@@ -50,13 +52,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
-  const activeModel = models.find((m) => m.id === activeConversation?.model);
+  const selectedModelId = activeConversation?.model ?? draftModel;
+  const activeModel = activeConversation
+    ? models.find((m) => m.id === activeConversation.model)
+    : models.find((m) => m.id === draftModel);
   const modelLabel =
     modelsStatus === 'loading'
       ? 'モデルを読み込み中'
       : modelsStatus === 'error'
         ? 'モデル一覧を取得できません'
-        : activeModel?.name || `${activeConversation?.model}（利用不可）`;
+        : activeModel?.name ||
+          (selectedModelId ? `${selectedModelId}（利用不可）` : 'モデル未選択');
 
   const handleLogout = () => {
     instance.logoutRedirect();
@@ -136,7 +142,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 onLogout={handleLogout}
               />
             )}
-            {activeConversation && (
             <div className="relative">
               <button
                 onClick={() => setModelMenuOpen(!modelMenuOpen)}
@@ -163,7 +168,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                           setModelMenuOpen(false);
                         }}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
-                          model.id === activeConversation.model ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          model.id === selectedModelId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                         }`}
                       >
                         <div className="font-medium">{model.name}</div>
@@ -174,7 +179,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 </>
               )}
             </div>
-            )}
           </div>
         </header>
 

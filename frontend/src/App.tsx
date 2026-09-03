@@ -33,6 +33,7 @@ function App() {
     isRenamed,
   } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [draftModel, setDraftModel] = useState<string | undefined>(undefined);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
 
@@ -66,6 +67,13 @@ function App() {
       .catch(() => setModelsStatus('error'));
   }, [dataEnabled]);
 
+  // P2-015: 未作成ドラフトのモデルは設定のデフォルトで初期化する。リロードで破棄可。
+  useEffect(() => {
+    if (settingsStatus === 'loaded') {
+      setDraftModel(settings.defaultModel ?? undefined);
+    }
+  }, [settings.defaultModel, settingsStatus]);
+
   // Load models once authenticated
   useEffect(() => {
     loadModels();
@@ -84,12 +92,10 @@ function App() {
     if (settingsStatus === 'error') void reloadSettings();
   }, [modelsStatus, convError, settingsStatus, loadModels, reloadConversations, reloadSettings]);
 
-  const handleNewChat = useCallback(async () => {
-    const conv = settings.defaultModel
-      ? await create(NEW_CHAT_TITLE, settings.defaultModel)
-      : await create(NEW_CHAT_TITLE);
-    setActiveConversationId(conv.id);
-  }, [create, settings]);
+  const handleNewChat = useCallback(() => {
+    setDraftModel(settings.defaultModel ?? undefined);
+    setActiveConversationId(null);
+  }, [settings.defaultModel]);
 
   const handleSelect = useCallback((id: string) => {
     setActiveConversationId(id);
@@ -107,7 +113,10 @@ function App() {
 
   const handleChangeModel = useCallback(
     async (modelId: string) => {
-      if (!activeConversationId) return;
+      if (!activeConversationId) {
+        setDraftModel(modelId);
+        return;
+      }
       await updateModel(activeConversationId, modelId);
     },
     [activeConversationId, updateModel],
@@ -117,8 +126,8 @@ function App() {
     async (text: string, imageBase64?: string) => {
       if (!activeConversationId) {
         // Create new conversation if none selected
-        const conv = settings.defaultModel
-          ? await create(text.slice(0, 30), settings.defaultModel)
+        const conv = draftModel
+          ? await create(text.slice(0, 30), draftModel)
           : await create(text.slice(0, 30));
         setActiveConversationId(conv.id);
         // Wait a tick for state to update, then send
@@ -139,7 +148,7 @@ function App() {
         autoTitle(activeConversationId, text);
       }
     },
-    [activeConversationId, conversations, create, sendMessage, settings, autoTitle, isRenamed],
+    [activeConversationId, conversations, create, sendMessage, draftModel, autoTitle, isRenamed],
   );
 
   const handleChangeDefaultModel = useCallback(
@@ -208,6 +217,7 @@ function App() {
       onRenameConversation={updateTitle}
       onNewChat={handleNewChat}
       onChangeModel={handleChangeModel}
+      draftModel={draftModel}
     >
       {chatError && (
         <ErrorMessage

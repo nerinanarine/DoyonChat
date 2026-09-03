@@ -26,20 +26,20 @@
 - [ ] ブランチ `feat/p2-015-opencode-session-header` を `main` から作成済み
 
 ### Phase 1 — Backend (Azure Functions)
-- [ ] `functions/src/services/opencodeGo.ts`: `OpenCodeGoOptions` に `sessionId?: string` を追加
-- [ ] `functions/src/services/opencodeGo.ts`: `createRequest()` の3分岐に `x-opencode-session` 付与
-- [ ] `functions/src/functions/chat.ts`: `streamChat()` 呼び出しに `sessionId: conversationId` を追加
-- [ ] `functions/src/functions/conversations.ts` + `generateTitle()`: `conversation.id` の受け渡しを追加
-- [ ] functions テスト追加（3プロトコルのヘッダ有無・値一致、会話ごとの安定性）
-- [ ] 既存テスト・ビルドが green であることを確認
-- [ ] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 2 へ進む
+- [x] `functions/src/services/opencodeGo.ts`: `OpenCodeGoOptions` に `sessionId?: string` を追加
+- [x] `functions/src/services/opencodeGo.ts`: `createRequest()` の3分岐に `x-opencode-session` 付与
+- [x] `functions/src/functions/chat.ts`: `streamChat()` 呼び出しに `sessionId: conversationId` を追加
+- [x] `functions/src/functions/conversations.ts` + `generateTitle()`: `conversation.id` の受け渡しを追加
+- [x] functions テスト追加（3プロトコルのヘッダ有無・値一致、会話ごとの安定性）
+- [x] 既存テスト・ビルドが green であることを確認（157/157 pass、tsc 成功）
+- [x] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 2 へ進む（verdict: OK with notes、軽微2件をテスト追加で解消）
 
 ### Phase 2 — Frontend（新規チャット遅延作成）
-- [ ] `frontend/src/App.tsx`: `handleNewChat` を選択解除＋`draftModel` 初期化に変更（`create()` 呼び出し削除）
-- [ ] `frontend/src/App.tsx`: `draftModel` state 追加、未選択中のヘッダー表示・`handleChangeModel`・`handleSend` 遅延パスへ接続
-- [ ] frontend テスト追加（ボタン押下で `POST /conversations` なし・一覧不変、初回送信で `draftModel` 作成＋送信）
-- [ ] 既存会話の送受信・モデル変更・自動タイトルに退行がないことを確認。未送信ドラフトのリロード破棄は手動確認
-- [ ] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 3 へ進む
+- [x] `frontend/src/App.tsx`: `handleNewChat` を選択解除＋`draftModel` 初期化に変更（`create()` 呼び出し削除）
+- [x] `frontend/src/App.tsx`: `draftModel` state 追加、未選択中のヘッダー表示・`handleChangeModel`・`handleSend` 遅延パスへ接続
+- [x] frontend テスト追加（ボタン押下で `POST /conversations` なし・一覧不変、初回送信で `draftModel` 作成＋送信）
+- [x] 既存会話の送受信・モデル変更・自動タイトルに退行がないことを確認。未送信ドラフトのリロード破棄は手動確認
+- [x] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 3 へ進む（verdict: OK with notes。「undefined（利用不可）」→「モデル未選択」フォールバック＋テスト追加、裸JSX除去で解消。`X` 警告は既存確認済み）
 
 ### Phase 3 — モデルカタログ1件追加
 - [ ] `functions/src/config/modelCatalog.ts`: `muse-spark-1.3-contributor` を `responses` で追加（中立メタデータ＋1.2 同文 description）
