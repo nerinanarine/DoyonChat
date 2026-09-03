@@ -170,6 +170,32 @@ export function useChat(conversationId: string | null) {
 
   const dismissError = useCallback(() => setError(null), []);
 
+  /**
+   * 新規チャット（ドラフト）選択時に旧会話の表示状態を破棄する。
+   * 進行中の上流ストリームは abort して、旧画面への onDone 再読込・500ms 収束を防ぐ
+   * （サーバー側は既存の中断保存フローで部分保存される）。
+   */
+  const clearChat = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    if (stopReloadTimerRef.current) {
+      clearTimeout(stopReloadTimerRef.current);
+      stopReloadTimerRef.current = null;
+    }
+    loadIdRef.current = null;
+    streamingActiveRef.current = false;
+    accumulatedRef.current = { text: '', reasoning: '' };
+    setMessages([]);
+    setStreamingText('');
+    setStreamingReasoning('');
+    setIsStreaming(false);
+    setError(null);
+    setLoadError(null);
+    setMessagesLoading(false);
+  }, []);
+
   return {
     messages,
     streamingText,
@@ -183,5 +209,6 @@ export function useChat(conversationId: string | null) {
     retrySend,
     stop,
     dismissError,
+    clearChat,
   };
 }

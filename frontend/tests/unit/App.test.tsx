@@ -44,6 +44,8 @@ const sendMessage = vi.fn();
 const autoTitle = vi.fn();
 const isRenamed = vi.fn();
 const updateSettings = vi.fn().mockResolvedValue(undefined);
+const loadMessages = vi.fn();
+const clearChat = vi.fn();
 
 function mockHooks(
   conversations: Conversation[] = [],
@@ -69,11 +71,12 @@ function mockHooks(
     error: null,
     messagesLoading: false,
     loadError: null,
-    loadMessages: vi.fn(),
+    loadMessages,
     sendMessage,
     retrySend: vi.fn(),
     stop: vi.fn(),
     dismissError: vi.fn(),
+    clearChat,
   });
   vi.mocked(useSettings).mockReturnValue({
     settings: settings === undefined ? {} : { defaultModel: settings },
@@ -92,6 +95,22 @@ describe('App model state', () => {
     isRenamed.mockReturnValue(false);
     mockHooks();
     vi.mocked(api.fetchModels).mockResolvedValue([defaultModel]);
+  });
+
+  it('clears the chat view when starting a new chat from an existing conversation', async () => {
+    mockHooks([{ ...createdConversation, id: 'existing-conversation', title: '既存トーク' }]);
+    render(<App />);
+    fireEvent.click(
+      (await screen.findByRole('button', { name: '既存トーク' })).parentElement as HTMLElement,
+    );
+    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('existing-conversation'));
+
+    clearChat.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: '新規チャット' }));
+
+    await waitFor(() => expect(clearChat).toHaveBeenCalled());
+    // 新規チャットでは過去会話の再読込を行わない
+    expect(loadMessages).toHaveBeenCalledTimes(1);
   });
 
   it('does not create a conversation when the new chat button is clicked', async () => {
