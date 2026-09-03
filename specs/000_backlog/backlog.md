@@ -49,6 +49,7 @@
 | [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟡 進行中 | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 26モデル・3プロトコル対応へ更新（2026-08-31、grok-4.5/ox-alpha-free廃止）。26/26 live test成功、本番デプロイ待ち |
 | [P2-012](items/P2-012-mobile-line-break-send.md) | モバイル入力の改行とCtrl+Enter送信 | P2 | 🔴 未対応 | UX改善 | — | [Issue #33](https://github.com/nerinanarine/DoyonChat/issues/33) |
 | [P2-013](items/P2-013-loading-state.md) | データ取得中のローディング画面 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-013/spec.md) | 実装・自動テスト完了、bootstrap/メッセージloading。本番デプロイまで管理済み、[Issue #34](https://github.com/nerinanarine/DoyonChat/issues/34) |
+| [P2-015](items/P2-015-opencode-session-header.md) | x-opencode-session・遅延作成・モデル1件追加 | P2 | 🔴 未対応 | 品質・安定性 | [仕様](../P2-015/spec.md) | OpenCode Go通知対応＋空会話解消＋muse-spark-1.3追加 |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |
 | [P3-002](items/P3-002-search.md) | 会話の検索 | P3 | 🔴 未対応 | 利便性 | — | クライアントサイド検索 |
 | [P3-003](items/P3-003-export.md) | 会話のエクスポート | P3 | 🔴 未対応 | 利便性 | — | Markdown / JSON |
