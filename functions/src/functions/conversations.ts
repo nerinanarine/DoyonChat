@@ -128,7 +128,7 @@ export async function titleAutoHandler(
 
     let generated: string;
     try {
-      generated = await generateTitle(text);
+      generated = await generateTitle(text, undefined, conversation.id);
     } catch (error) {
       console.error('[functions/conversations] title generation failed:', error);
       throw new AppError(503, 'Title generation failed');

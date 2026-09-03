@@ -86,7 +86,7 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
-    expect(models.jsonBody).toHaveLength(26);
+    expect(models.jsonBody).toHaveLength(27);
     expect((models.jsonBody as Array<{ id: string }>).map(({ id }) => id)).toEqual([
       'grok-4.6',
       'gpt-5.6-luna',
@@ -106,6 +106,7 @@ describe('Functions API contract', () => {
       'minimax-m3',
       'minimax-m2.7',
       'minimax-m2.5',
+      'muse-spark-1.3-contributor',
       'muse-spark-1.2-contributor',
       'qwen3.8-max',
       'qwen3.8-flash',
@@ -569,6 +570,8 @@ describe('Functions API contract', () => {
       );
 
       expect(response.status).toBe(503);
+      // P2-015: タイトル生成へ渡すセッションIDは対象会話のIDと一致する。
+      expect(generate).toHaveBeenCalledWith('こんにちは', undefined, id);
       const detail = await conversationHandler(
         request('GET', `/api/conversations/${id}`),
         {} as never,

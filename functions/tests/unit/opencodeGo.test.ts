@@ -220,6 +220,56 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
+    ['grok-4.6', 'responses' as const],
+    ['kimi-k2.6', 'chat-completions' as const],
+    ['minimax-m3', 'messages' as const],
+  ])('sends x-opencode-session header for %s when sessionId is provided', async (model, protocol) => {
+    const sessionId = 'conversation-abc-123';
+    mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent(protocol)));
+
+    await collectStream(model, undefined, { sessionId });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expectedUrl(protocol),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-opencode-session': sessionId,
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    ['grok-4.6', 'responses' as const],
+    ['kimi-k2.6', 'chat-completions' as const],
+    ['minimax-m3', 'messages' as const],
+  ])('omits x-opencode-session header for %s when sessionId is absent', async (model, protocol) => {
+    mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent(protocol)));
+
+    await collectStream(model, undefined, {});
+
+    const headers = mockFetch.mock.calls[0][1].headers;
+    expect(headers).not.toHaveProperty('x-opencode-session');
+  });
+
+  it.each([
+    ['grok-4.6', 'responses' as const],
+    ['kimi-k2.6', 'chat-completions' as const],
+    ['minimax-m3', 'messages' as const],
+  ])('keeps x-opencode-session stable across two requests for %s', async (model, protocol) => {
+    const sessionId = 'conversation-stable-001';
+    mockFetch
+      .mockResolvedValueOnce(streamingResponse(completionEvent(protocol)))
+      .mockResolvedValueOnce(streamingResponse(completionEvent(protocol)));
+
+    await collectStream(model, undefined, { sessionId });
+    await collectStream(model, undefined, { sessionId });
+
+    expect(mockFetch.mock.calls[0][1].headers['x-opencode-session']).toBe(sessionId);
+    expect(mockFetch.mock.calls[1][1].headers['x-opencode-session']).toBe(sessionId);
+  });
+
+  it.each([
     ['grok-4.6', 'data: {"type":"response.output_text.delta","delta":"partial"}\n\n'],
     ['kimi-k2.6', 'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'],
     ['minimax-m3', 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"partial"}}\n\n'],
@@ -320,6 +370,7 @@ describe('Functions OpenCode Go API Service', () => {
         }),
       }),
     );
+    expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('x-opencode-session');
     expect(cancel).toHaveBeenCalledTimes(1);
   });
 
@@ -503,6 +554,30 @@ describe('generateTitle', () => {
     await generateTitle('テストメッセージ', signal);
 
     expect(mockFetch.mock.calls[0][1].signal).toBe(signal);
+  });
+
+  it('forwards sessionId to the upstream request for title generation', async () => {
+    const sessionId = 'title-conversation-xyz';
+    mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent('chat-completions')));
+
+    await generateTitle('テストメッセージ', undefined, sessionId);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://opencode.ai/zen/go/v1/chat/completions',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-opencode-session': sessionId,
+        }),
+      }),
+    );
+  });
+
+  it('omits x-opencode-session header for title generation when sessionId is absent', async () => {
+    mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent('chat-completions')));
+
+    await generateTitle('テストメッセージ');
+
+    expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('x-opencode-session');
   });
 });
 

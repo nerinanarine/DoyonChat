@@ -117,6 +117,7 @@ async function* createResponseStream(
       for await (const chunk of streamChat(history, {
         model,
         signal: upstreamAbortController.signal,
+        sessionId: conversationId,
       })) {
         if (chunk.done) break;
         fullContent += chunk.content;

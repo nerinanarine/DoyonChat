@@ -106,8 +106,8 @@ describe('AppLayout model state', () => {
     expect(screen.queryByText(/利用不可/)).not.toBeInTheDocument();
   });
 
-  it('shows all 26 loaded models once each', () => {
-    const models: ModelInfo[] = Array.from({ length: 26 }, (_, index) => ({
+  it('shows all 27 loaded models once each', () => {
+    const models: ModelInfo[] = Array.from({ length: 27 }, (_, index) => ({
       id: `model-${index + 1}`,
       name: `Model ${index + 1}`,
       description: `Model ${index + 1} description`,
@@ -122,8 +122,8 @@ describe('AppLayout model state', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Model 1/ }));
     const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
-    expect(items).toHaveLength(26);
-    expect(new Set(items.map((item) => item.textContent)).size).toBe(26);
+    expect(items).toHaveLength(27);
+    expect(new Set(items.map((item) => item.textContent)).size).toBe(27);
   });
 });
 
