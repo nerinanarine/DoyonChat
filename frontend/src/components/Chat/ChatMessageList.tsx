@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Message } from '../../types';
+import { Message, ModelInfo, UserSettings } from '../../types';
 import ChatMessage from './ChatMessage';
 import CollapsibleReasoning from './CollapsibleReasoning';
 import MarkdownRenderer from '../Markdown/MarkdownRenderer';
@@ -12,6 +12,9 @@ interface ChatMessageListProps {
   streamingReasoning: string;
   isStreaming: boolean;
   loading?: boolean;
+  models?: ModelInfo[];
+  settings?: UserSettings;
+  currentModel?: string;
 }
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
@@ -20,6 +23,9 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   streamingReasoning,
   isStreaming,
   loading = false,
+  models = [],
+  settings,
+  currentModel,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +56,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   return (
     <div className="flex-1 overflow-y-auto">
       {messages.map((msg) => (
-        <ChatMessage key={msg.id} message={msg} />
+        <ChatMessage key={msg.id} message={msg} models={models} settings={settings} currentModel={currentModel} />
       ))}
       {isStreaming && (
         <div className="flex gap-3 px-4 py-5 bg-gray-50">
@@ -60,7 +66,9 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold mb-1 text-gray-900">AI</div>
+            <div className="text-sm font-semibold mb-1 text-gray-900">
+              {models.find((m) => m.id === currentModel)?.name || currentModel || 'AI'}
+            </div>
             <CollapsibleReasoning reasoning={streamingReasoning} />
             {streamingText && (
               <div className="text-gray-800 text-[15px] leading-relaxed">

@@ -26,6 +26,7 @@ export interface Message {
   content: string;
   reasoning?: string;
   imageUrl?: string;
+  model?: string;
   createdAt: string;
 }
 
@@ -37,6 +38,7 @@ export interface ChatRequest {
 
 export interface UserSettings {
   defaultModel?: string;
+  displayName?: string;
 }
 
 export interface UserSettingsDocument {

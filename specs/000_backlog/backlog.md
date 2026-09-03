@@ -49,6 +49,7 @@
 | [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟡 進行中 | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 26モデル・3プロトコル対応へ更新（2026-08-31、grok-4.5/ox-alpha-free廃止）。26/26 live test成功、本番デプロイ待ち |
 | [P2-012](items/P2-012-mobile-line-break-send.md) | モバイル入力の改行とCtrl+Enter送信 | P2 | 🔴 未対応 | UX改善 | — | [Issue #33](https://github.com/nerinanarine/DoyonChat/issues/33) |
 | [P2-013](items/P2-013-loading-state.md) | データ取得中のローディング画面 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-013/spec.md) | 実装・自動テスト完了、bootstrap/メッセージloading。本番デプロイまで管理済み、[Issue #34](https://github.com/nerinanarine/DoyonChat/issues/34) |
+| [P2-014](items/P2-014-display-names.md) | チャット画面の発言者名をカスタマイズ | P2 | 🟢 対応済み | UX改善 | — | AI側はモデル名、ユーザー側は設定した名前を表示。P2-008・P2-010と連携、本番デプロイまで管理済み |
 | [P2-015](items/P2-015-opencode-session-header.md) | x-opencode-session・遅延作成・モデル1件追加 | P2 | 🟡 進行中 | 品質・安定性 | [仕様](../P2-015/spec.md) | 実装・レビュー完了、live test 26/27（grokはP2-016）。デプロイ待ち |
 | [P2-016](items/P2-016-grok-4-6-capacity.md) | grok-4.6 上流キャパシティ不足の追従 | P2 | 🔴 未対応 | 品質・安定性 | — | P2-015 live test 26/27の残件。上流回復後に27/27再確認 |
 | [P2-017](items/P2-017-draft-send-failure.md) | 新規作成失敗時の入力保持・エラー表示 | P2 | 🔴 未対応 | UX改善 | — | P2-015残存リスク。作成失敗で入力が消える問題 |

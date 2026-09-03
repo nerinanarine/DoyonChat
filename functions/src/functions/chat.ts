@@ -92,6 +92,7 @@ async function* createResponseStream(
       conversationId,
       role: 'assistant',
       content,
+      model,
     };
     if (reasoning) {
       assistantMessage.reasoning = truncateReasoning(reasoning);

@@ -29,18 +29,25 @@ export function useSettings(enabled = true) {
   }, [enabled, load]);
 
   const updateSettings = useCallback(
-    async (partial: { defaultModel?: string | null }) => {
+    async (partial: { defaultModel?: string | null; displayName?: string | null }) => {
       const previous = settings;
+      // Optimistic update; rollback on failure.
+      const next = { ...settings };
       if (Object.prototype.hasOwnProperty.call(partial, 'defaultModel')) {
-        // Optimistic update; rollback on failure.
-        const next = { ...settings };
         if (partial.defaultModel === null || partial.defaultModel === undefined) {
           delete next.defaultModel;
         } else if (typeof partial.defaultModel === 'string') {
           next.defaultModel = partial.defaultModel;
         }
-        setSettings(next);
       }
+      if (Object.prototype.hasOwnProperty.call(partial, 'displayName')) {
+        if (partial.displayName === null || partial.displayName === '' || partial.displayName === undefined) {
+          delete next.displayName;
+        } else if (typeof partial.displayName === 'string') {
+          next.displayName = partial.displayName.trim();
+        }
+      }
+      setSettings(next);
       try {
         const response = await api.updateUserSettings(partial);
         setSettings(response.settings);
