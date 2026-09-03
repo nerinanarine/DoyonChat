@@ -6,7 +6,7 @@
 
 - 💬 **テキストチャット** — 複数の AI モデルと自然な対話
 - ⚡ **ストリーミング応答** — AI の回答がリアルタイムに文字単位で表示される
-- 🔄 **モデル切り替え** — OpenCode Go公式Endpoints表の26モデルを会話ごとに選択
+- 🔄 **モデル切り替え** — OpenCode Go公式Endpoints表の27モデルを会話ごとに選択
 - 🖼️ **画像入力** — ファイル選択・ドラッグ＆ドロップ・プレビュー・5MB上限検証
 - 🧠 **Reasoning表示** — モデルの思考過程と最終回答を分けて表示
 - 📂 **複数会話管理** — サイドバーで会話の作成・切り替え・リネーム・削除
@@ -233,6 +233,7 @@ Function App名、API URL、Static Web App URLはBicepのdeployment outputsか�
 | Messages | `minimax-m3` | ❌ | 長文・汎用タスク |
 | Messages | `minimax-m2.7` | ❌ | 品質とコストのバランス |
 | Messages | `minimax-m2.5` | ❌ | OpenCode Go model |
+| Responses | `muse-spark-1.3-contributor` | ❌ | 地域制限・学習利用に関する公式注意あり |
 | Responses | `muse-spark-1.2-contributor` | ❌ | 地域制限・学習利用に関する公式注意あり |
 | Messages | `qwen3.8-max` | ❌ | 高品質、汎用タスク |
 | Messages | `qwen3.8-flash` | ❌ | OpenCode Go model |
@@ -242,11 +243,11 @@ Function App名、API URL、Static Web App URLはBicepのdeployment outputsか�
 | Chat Completions | `hy4-preview` | ❌ | OpenCode Go model |
 | Chat Completions | `hy3` | ❌ | 実験的モデル |
 
-> モデルID・protocol・提供状況は [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-08-31確認）を基準にしています。提供モデルは変更される可能性があります。
+> モデルID・protocol・提供状況は [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-09-03確認）を基準にしています。提供モデルは変更される可能性があります。
 >
 > **注意:** 画像入力UIは利用できますが、Messagesモデルへの新規画像送信は非対応のため、送信前に別protocolの画像対応モデルを選択してください。
 
-### 全26モデルの実API確認
+### 全27モデルの実API確認
 
 `functions/local.settings.json`の`Values.OPENCODE_GO_API_KEY`へ実キーを設定し、明示的に次を実行します。
 
@@ -255,7 +256,7 @@ cd functions
 npm run test:live:models
 ```
 
-このコマンドは26モデルを直列に各1回、512 tokens上限・120秒timeout・retryなしで呼びます。通常の`npm test`やCIからは実行されません。APIキー、リクエスト・回答本文、上流エラー本文はログへ出力しません。
+このコマンドは27モデルを直列に各1回、512 tokens上限・120秒timeout・retryなしで呼びます。通常の`npm test`やCIからは実行されません。APIキー、リクエスト・回答本文、上流エラー本文はログへ出力しません。
 
 ## バックログ（未実装機能）
 

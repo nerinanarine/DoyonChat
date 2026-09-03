@@ -27,6 +27,7 @@ const EXPECTED_MODELS = [
   ['minimax-m3', 'messages'],
   ['minimax-m2.7', 'messages'],
   ['minimax-m2.5', 'messages'],
+  ['muse-spark-1.3-contributor', 'responses'],
   ['muse-spark-1.2-contributor', 'responses'],
   ['qwen3.8-max', 'messages'],
   ['qwen3.8-flash', 'messages'],
@@ -58,18 +59,18 @@ const EXISTING_METADATA: Record<string, Omit<ModelInfo, 'id'>> = {
 };
 
 describe('OpenCode Go model catalog contract', () => {
-  it('contains the canonical 26 models in fixed protocol order', () => {
+  it('contains the canonical 27 models in fixed protocol order', () => {
     expect(MODEL_CATALOG.map(({ info, protocol }) => [info.id, protocol])).toEqual(EXPECTED_MODELS);
-    expect(new Set(MODEL_CATALOG.map(({ info }) => info.id)).size).toBe(26);
+    expect(new Set(MODEL_CATALOG.map(({ info }) => info.id)).size).toBe(27);
   });
 
-  it('contains 3 Responses, 15 Chat Completions, and 8 Messages models', () => {
+  it('contains 4 Responses, 15 Chat Completions, and 8 Messages models', () => {
     const counts = MODEL_CATALOG.reduce<Record<string, number>>((result, model) => {
       result[model.protocol] = (result[model.protocol] ?? 0) + 1;
       return result;
     }, {});
 
-    expect(counts).toEqual({ responses: 3, 'chat-completions': 15, messages: 8 });
+    expect(counts).toEqual({ responses: 4, 'chat-completions': 15, messages: 8 });
   });
 
   it('keeps the public metadata of the existing 17 models', () => {
@@ -77,6 +78,20 @@ describe('OpenCode Go model catalog contract', () => {
     for (const [id, metadata] of Object.entries(EXISTING_METADATA)) {
       expect(getModelConfig(id)?.info).toEqual({ id, ...metadata });
     }
+  });
+
+  it('uses neutral metadata matching the 1.2 description for muse-spark-1.3-contributor', () => {
+    expect(getModelConfig('muse-spark-1.3-contributor')?.info).toEqual({
+      id: 'muse-spark-1.3-contributor',
+      name: 'Muse Spark 1.3 Contributor',
+      description: 'OpenCode Go model. Regional restrictions apply; prompts and outputs may be used for training.',
+      quality: 3,
+      speed: 'Unknown',
+      cost: 'See OpenCode Go',
+      supportsMultimodal: false,
+      contextLength: 'Unknown',
+      bestFor: 'General use',
+    });
   });
 
   it('uses neutral metadata for the earlier neutral models', () => {

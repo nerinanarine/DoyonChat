@@ -86,6 +86,10 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'messages',
   },
   {
+    info: { id: 'muse-spark-1.3-contributor', name: 'Muse Spark 1.3 Contributor', description: 'OpenCode Go model. Regional restrictions apply; prompts and outputs may be used for training.', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'responses',
+  },
+  {
     info: { id: 'muse-spark-1.2-contributor', name: 'Muse Spark 1.2 Contributor', description: 'OpenCode Go model. Regional restrictions apply; prompts and outputs may be used for training.', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'responses',
   },

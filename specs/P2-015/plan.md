@@ -42,12 +42,12 @@
 - [x] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 3 へ進む（verdict: OK with notes。「undefined（利用不可）」→「モデル未選択」フォールバック＋テスト追加、裸JSX除去で解消。`X` 警告は既存確認済み）
 
 ### Phase 3 — モデルカタログ1件追加
-- [ ] `functions/src/config/modelCatalog.ts`: `muse-spark-1.3-contributor` を `responses` で追加（中立メタデータ＋1.2 同文 description）
-- [ ] 件数・ルーティングのテストを 26→27（responses 3→4）へ更新、`GET /api/models` の27件・固定順序を固定
-- [ ] README のモデル表と `specs/009-opencode-go-models/spec.md` の正規表を27件化
-- [ ] 通常テスト・ビルドが green であることを確認し、live test（`npm run test:live:models`）で27/27成功を確認
-- [ ] backlog P2-011 の備考・履歴へ「27件化は P2-015 で実施」の参照を追記
-- [ ] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 4 へ進む
+- [x] `functions/src/config/modelCatalog.ts`: `muse-spark-1.3-contributor` を `responses` で追加（中立メタデータ＋1.2 同文 description）
+- [x] 件数・ルーティングのテストを 26→27（responses 3→4）へ更新、`GET /api/models` の27件・固定順序を固定
+- [x] README のモデル表と `specs/009-opencode-go-models/spec.md` の正規表を27件化
+- [x] 通常テスト・ビルドが green であることを確認（親確認済み：functions 159/159、frontend 101/101）。live test は26/27：`grok-4.6` のみ上流キャパシティ不足で失敗（B案調査でヘッダあり・なし同一エラーを確認、今回変更は無関係と確定）。27/27は上流回復後に再実行
+- [x] backlog P2-011 の備考・履歴へ「27件化は P2-015 で実施」の参照を追記
+- [x] `reviewer` による成果物レビューを実施し、指摘を解消してから Phase 4 へ進む（verdict: 指摘なし）
 
 ### Phase 4 — 仕上げ
 - [ ] 全体（Phase 1〜3 横断）の `reviewer` レビューを実施し、指摘を解消する
