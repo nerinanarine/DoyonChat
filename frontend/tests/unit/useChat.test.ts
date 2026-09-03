@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useChat } from '../../src/hooks/useChat';
 import * as api from '../../src/services/chatApi';
 import { ChatStreamError } from '../../src/services/errorMessages';
+import { Message } from '../../src/types';
 
 vi.mock('../../src/services/chatApi', () => ({
   streamChat: vi.fn(),
@@ -14,6 +15,7 @@ interface StreamHandlers {
   onDone: () => void;
   onError: (error: Error) => void;
   options: { userMessageId?: string };
+  controller: AbortController;
 }
 
 describe('useChat stop and retry', () => {
@@ -24,13 +26,15 @@ describe('useChat stop and retry', () => {
     vi.clearAllMocks();
     vi.mocked(api.streamChat).mockImplementation(
       (_id, _msg, _img, onChunk, onDone, onError, options) => {
+        const controller = new AbortController();
         handlers = {
           onChunk: onChunk ?? (() => {}),
           onDone: onDone ?? (() => {}),
           onError: onError ?? (() => {}),
           options: options ?? {},
+          controller,
         };
-        return new AbortController();
+        return controller;
       },
     );
   });
@@ -124,6 +128,68 @@ describe('useChat stop and retry', () => {
       result.current.retrySend();
     });
     expect(vi.mocked(api.streamChat)).not.toHaveBeenCalled();
+  });
+
+  it('clears messages and aborts the in-flight stream', async () => {
+    const { result } = renderHook(() => useChat('conversation-1'));
+    await act(async () => {
+      await result.current.sendMessage('hello');
+    });
+    act(() => {
+      handlers?.onChunk({ content: 'partial' });
+    });
+    expect(result.current.messages).toHaveLength(1);
+
+    act(() => {
+      result.current.clearChat();
+    });
+
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.streamingText).toBe('');
+    expect(result.current.streamingReasoning).toBe('');
+    expect(result.current.isStreaming).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.loadError).toBeNull();
+    expect(result.current.messagesLoading).toBe(false);
+    expect(handlers?.controller.signal.aborted).toBe(true);
+  });
+
+  it('ignores an in-flight load result after clearing the chat', async () => {
+    let resolveFetch: (value: { conversation: never; messages: Message[] }) => void = () => {};
+    vi.mocked(api.fetchConversationWithMessages).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve as (value: { conversation: never; messages: Message[] }) => void;
+        }) as Promise<{ conversation: never; messages: Message[] }>,
+    );
+    const { result } = renderHook(() => useChat('conversation-1'));
+
+    act(() => {
+      void result.current.loadMessages('conversation-1');
+    });
+    expect(result.current.messagesLoading).toBe(true);
+
+    act(() => {
+      result.current.clearChat();
+    });
+    expect(result.current.messagesLoading).toBe(false);
+
+    await act(async () => {
+      resolveFetch({
+        conversation: {} as never,
+        messages: [
+          {
+            id: 'stale',
+            conversationId: 'conversation-1',
+            role: 'user',
+            content: 'stale',
+            createdAt: '2026-09-03T00:00:00.000Z',
+          },
+        ],
+      });
+    });
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.messagesLoading).toBe(false);
   });
 
   it('reloads the persisted history after stopping the stream', async () => {

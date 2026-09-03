@@ -50,6 +50,7 @@ function App() {
     retrySend,
     stop,
     dismissError,
+    clearChat,
   } = useChat(activeConversationId);
 
   const { settings, status: settingsStatus, error: settingsError, updateSettings, reload: reloadSettings } =
@@ -79,12 +80,14 @@ function App() {
     loadModels();
   }, [loadModels]);
 
-  // Load messages when conversation changes
+  // Load messages when conversation changes; clear the previous chat when entering a draft
   useEffect(() => {
     if (activeConversationId) {
       loadMessages(activeConversationId);
+    } else {
+      clearChat();
     }
-  }, [activeConversationId, loadMessages]);
+  }, [activeConversationId, loadMessages, clearChat]);
 
   const retryBootstrap = useCallback(() => {
     if (modelsStatus === 'error') loadModels();
