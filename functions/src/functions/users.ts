@@ -46,6 +46,36 @@ export async function userSettingsHandler(
         throw new AppError(400, 'displayName must be 50 characters or less');
       }
     }
+    if (
+      Object.prototype.hasOwnProperty.call(body, 'agentApprovalLevel') &&
+      body.agentApprovalLevel !== null
+    ) {
+      const level = body.agentApprovalLevel;
+      if (!service.isAgentApprovalLevel(level)) {
+        throw new AppError(
+          400,
+          'agentApprovalLevel must be one of auto, dangerous-only, always',
+        );
+      }
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(body, 'agentModel') &&
+      body.agentModel !== null &&
+      body.agentModel !== ''
+    ) {
+      if (typeof body.agentModel !== 'string') {
+        throw new AppError(400, 'agentModel must be a string');
+      }
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(body, 'agentSubagentModel') &&
+      body.agentSubagentModel !== null &&
+      body.agentSubagentModel !== ''
+    ) {
+      if (typeof body.agentSubagentModel !== 'string') {
+        throw new AppError(400, 'agentSubagentModel must be a string');
+      }
+    }
     return { status: 200, jsonBody: await service.updateSettings(userId, body) };
   } catch (error) {
     return toHttpResponse(error);

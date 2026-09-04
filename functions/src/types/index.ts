@@ -36,9 +36,14 @@ export interface ChatRequest {
   imageBase64?: string;
 }
 
+export type AgentApprovalLevel = 'auto' | 'dangerous-only' | 'always';
+
 export interface UserSettings {
   defaultModel?: string;
   displayName?: string;
+  agentApprovalLevel?: AgentApprovalLevel;
+  agentModel?: string;
+  agentSubagentModel?: string;
 }
 
 export interface UserSettingsDocument {
