@@ -9,7 +9,7 @@ import ChatInput from './components/Chat/ChatInput';
 import LoginPage from './components/Auth/LoginPage';
 import LoadingState from './components/Common/LoadingState';
 import ErrorMessage from './components/Common/ErrorMessage';
-import { ModelInfo, ModelsStatus } from './types';
+import { ModelInfo, ModelsStatus, AgentApprovalLevel } from './types';
 import * as api from './services/chatApi';
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
@@ -41,6 +41,9 @@ function App() {
     messages,
     streamingText,
     streamingReasoning,
+    agentProgress,
+    approvalRequest,
+    approvalBusy,
     isStreaming,
     error: chatError,
     messagesLoading,
@@ -50,6 +53,7 @@ function App() {
     retrySend,
     stop,
     dismissError,
+    respondApproval,
     clearChat,
   } = useChat(activeConversationId);
 
@@ -168,6 +172,27 @@ function App() {
     [updateSettings],
   );
 
+  const handleChangeAgentApprovalLevel = useCallback(
+    async (level: AgentApprovalLevel | null) => {
+      await updateSettings({ agentApprovalLevel: level ?? null });
+    },
+    [updateSettings],
+  );
+
+  const handleChangeAgentModel = useCallback(
+    async (modelId: string | null) => {
+      await updateSettings({ agentModel: modelId ?? null });
+    },
+    [updateSettings],
+  );
+
+  const handleChangeAgentSubagentModel = useCallback(
+    async (modelId: string | null) => {
+      await updateSettings({ agentSubagentModel: modelId ?? null });
+    },
+    [updateSettings],
+  );
+
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
@@ -223,6 +248,9 @@ function App() {
       settingsError={settingsError}
       onChangeDefaultModel={handleChangeDefaultModel}
       onChangeDisplayName={handleChangeDisplayName}
+      onChangeAgentApprovalLevel={handleChangeAgentApprovalLevel}
+      onChangeAgentModel={handleChangeAgentModel}
+      onChangeAgentSubagentModel={handleChangeAgentSubagentModel}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}
@@ -252,6 +280,10 @@ function App() {
         models={models}
         settings={settings}
         currentModel={activeConversation?.model}
+        agentProgress={agentProgress}
+        approvalRequest={approvalRequest}
+        approvalBusy={approvalBusy}
+        onRespondApproval={(approved) => void respondApproval(approved)}
       />
       <ChatInput
         onSend={handleSend}

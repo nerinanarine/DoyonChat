@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ChatMessageList from '../../src/components/Chat/ChatMessageList';
 
 const models = [
@@ -36,6 +36,77 @@ describe('ChatMessageList', () => {
     expect(screen.getByRole('button', { name: /思考プロセス/ })).toBeInTheDocument();
     expect(screen.getByText('最終回答')).toBeInTheDocument();
     expect(screen.queryByText('思考中')).not.toBeInTheDocument();
+  });
+
+  it('renders agent progress tool events while streaming', () => {
+    render(
+      <ChatMessageList
+        messages={[]}
+        streamingText=""
+        streamingReasoning=""
+        isStreaming
+        agentProgress={[
+          { kind: 'agent_start' },
+          { kind: 'tool_start', toolName: 'read', args: { path: 'a.ts' } },
+          { kind: 'tool_end', toolName: 'read' },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('エージェント進捗')).toBeInTheDocument();
+    expect(screen.getByText(/エージェントを開始しました/)).toBeInTheDocument();
+    expect(screen.getAllByText('read')).toHaveLength(2);
+    expect(screen.getByText(/path: a\.ts/)).toBeInTheDocument();
+  });
+
+  it('shows the approval dialog and relays approve/reject', () => {
+    const onRespondApproval = vi.fn();
+    render(
+      <ChatMessageList
+        messages={[]}
+        streamingText=""
+        streamingReasoning=""
+        isStreaming
+        approvalRequest={{
+          id: 'appr-1',
+          runId: 'run-1',
+          method: 'confirm',
+          title: 'ツール実行の確認: write',
+          message: 'write a.ts',
+        }}
+        approvalBusy={false}
+        onRespondApproval={onRespondApproval}
+      />,
+    );
+
+    expect(
+      screen.getByRole('alertdialog', { name: 'ツール実行の確認' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '許可' }));
+    expect(onRespondApproval).toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByRole('button', { name: '拒否' }));
+    expect(onRespondApproval).toHaveBeenCalledWith(false);
+  });
+
+  it('does not show the approval dialog for an expired request', () => {
+    render(
+      <ChatMessageList
+        messages={[]}
+        streamingText=""
+        streamingReasoning=""
+        isStreaming
+        approvalRequest={{
+          id: 'appr-1',
+          runId: 'run-1',
+          method: 'confirm',
+          expired: true,
+        }}
+        onRespondApproval={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole('alertdialog', { name: 'ツール実行の確認' }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows an accessible loading state while messages are being fetched', () => {

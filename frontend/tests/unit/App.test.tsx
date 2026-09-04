@@ -67,6 +67,9 @@ function mockHooks(
     messages: [],
     streamingText: '',
     streamingReasoning: '',
+    agentProgress: [],
+    approvalRequest: null,
+    approvalBusy: false,
     isStreaming: false,
     error: null,
     messagesLoading: false,
@@ -76,6 +79,7 @@ function mockHooks(
     retrySend: vi.fn(),
     stop: vi.fn(),
     dismissError: vi.fn(),
+    respondApproval: vi.fn(),
     clearChat,
   });
   vi.mocked(useSettings).mockReturnValue({

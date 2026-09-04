@@ -36,10 +36,35 @@ export interface ChatRequest {
   imageBase64?: string;
 }
 
+export type AgentApprovalLevel = 'auto' | 'dangerous-only' | 'always';
+
 export interface UserSettings {
   defaultModel?: string;
   displayName?: string;
+  agentApprovalLevel?: AgentApprovalLevel;
+  agentModel?: string;
+  agentSubagentModel?: string;
 }
+
+/** gateway の承認要求 SSE（`{approvalRequest: {...}}`）を表す。 */
+export interface AgentApprovalRequest {
+  id: string;
+  runId: string;
+  method: string;
+  title?: string;
+  message?: string;
+  expired?: boolean;
+}
+
+/** エージェント実行中の進捗イベント（ChatMessageList のタイムライン表示用）。 */
+export type AgentStreamEvent =
+  | { kind: 'agent_start' }
+  | { kind: 'agent_settled' }
+  | { kind: 'tool_start'; toolCallId?: string; toolName?: string; args?: unknown }
+  | { kind: 'tool_update'; toolCallId?: string; toolName?: string }
+  | { kind: 'tool_end'; toolCallId?: string; toolName?: string; isError?: boolean }
+  | { kind: 'approval_request' }
+  | { kind: 'approval_resolved'; approved: boolean };
 
 export interface UserSettingsResponse {
   userId: string;

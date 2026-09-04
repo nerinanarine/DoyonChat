@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import {
+  AgentApprovalLevel,
   Conversation,
   ModelInfo,
   UserSettings,
@@ -21,6 +22,9 @@ interface AppLayoutProps {
   settingsError: string | null;
   onChangeDefaultModel: (modelId: string | null) => Promise<void>;
   onChangeDisplayName: (name: string | null) => Promise<void>;
+  onChangeAgentApprovalLevel?: (level: AgentApprovalLevel | null) => Promise<void>;
+  onChangeAgentModel?: (modelId: string | null) => Promise<void>;
+  onChangeAgentSubagentModel?: (modelId: string | null) => Promise<void>;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => Promise<void>;
@@ -40,6 +44,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   settingsError,
   onChangeDefaultModel,
   onChangeDisplayName,
+  onChangeAgentApprovalLevel,
+  onChangeAgentModel,
+  onChangeAgentSubagentModel,
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
@@ -142,6 +149,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 settingsError={settingsError}
                 onChangeDefaultModel={onChangeDefaultModel}
                 onChangeDisplayName={onChangeDisplayName}
+                onChangeAgentApprovalLevel={onChangeAgentApprovalLevel}
+                onChangeAgentModel={onChangeAgentModel}
+                onChangeAgentSubagentModel={onChangeAgentSubagentModel}
                 onLogout={handleLogout}
               />
             )}
