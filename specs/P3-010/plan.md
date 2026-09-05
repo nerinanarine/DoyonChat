@@ -88,11 +88,12 @@ Q7 決定通り全ユーザー対象。ただし `AGENT_ENABLED=false`（Functio
 
 ## Phase 2 - セッション対応＋ツールレジストリ＋pi-subagents
 
-- [ ] 会話 ID↔pi セッション対応付け（`new_session`/`switch_session`、短期保持、会話削除時破棄、replica=1＋sticky）
+- [x] 会話 ID↔pi セッション対応付け（`switch_session`・短期保持、replica=1＋sticky。存在しないパスへの切替成功を実機確認済み。68件 green）
 - [ ] Functions エージェント経路：`/chat` エージェント分岐（gateway `POST /prompt` へ承認レベル・危険ツール表付きで中継、SSE 契約は既存流用）＋中断部分テキストの P1-003 保存フロー接続＋ユーザー設定 `agentApprovalLevel` の gateway 反映（RG-1 F1/F9 残部）
 - [ ] ツール allowlist レジストリ（既定空＝全無効）と `dangerous` 分類テーブル。pi 実ツール名との一致を実機・一次情報で確認（RG-1 F10）
-- [ ] `pi-subagents` 同梱と `agentSubagentModel` の配線。着手前に「デフォルトサブエージェントモデルの指定方法」を実機・一次情報で確認する（レビュー未確認事項）
-- [ ] エージェント用モデル一覧の取得方式を実機確認する（`get_available_models` が `--models`/`enabledModels` スコープを反映するかの裏付け。反映されない場合はスコープ解決側で絞る）（レビュー未確認事項）
+- [x] Phase 2 事前確認（delegate 実機調査で確定）：① `agentSubagentModel` の渡し方は pi 起動前の settings.json `subagents.defaultModel` 書込のみ（env・フックなし）。multi-user 分離は `PI_CODING_AGENT_DIR` による per-user 設定ディレクトリ化。未設定時は親セッションモデル継承。② `get_available_models` は `--models` スコープを**反映しない**（実測33件完全一致）。gateway 側で minimatch フィルタ＋`set_model` 中継時検証が必須（`set_model` 自体はスコープ非チェック、`--model` は scope 優先のため `agentModel` も検証対象）
+- [x] `pi-subagents` 同梱の下地（`PI_CODING_AGENT_DIR` per-user 設定ディレクトリ＋settings.json `subagents.defaultModel`/`packages` 書込。イメージへの npm 同梱は Phase 3 bicep/デプロイ時に確定）
+- [x] エージェント用モデル一覧：gateway が `get_available_models`（全カタログ）を取得し `--models`/`enabledModels` パターンで minimatch フィルタ。`set_model` 中継時もスコープ内検証を実施（`GET /models`＋`/prompt model` 付き、59件 green）
 - [ ] 上限（ターン数・時間・トークン）の既定値の数値確定と超過時打ち切り＋回収。承認待ち時間の扱い（promptTimeout 算入の是非）・RunRecord.events 件数上限も合わせて設計（RG-1 F2/F8）
 - [ ] 会話モデル（`conversation.model`）とエージェントモデル（`agentModel`）の優先関係を定義する（エージェント会話では pi 側モデル優先・会話モデル UI の扱いを含む）
 - [ ] 検証：同一会話で文脈引継ぎ・別会話で非引継ぎ、allowlist 外ツールが実行されないこと、上限超過時の回収、confirm 待ち中の abort 受理可否の実機確認（RG-1 F11）
