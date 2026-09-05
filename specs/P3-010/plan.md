@@ -103,7 +103,7 @@ Q7 決定通り全ユーザー対象。ただし `AGENT_ENABLED=false`（Functio
 
 **方針確定（2026-09-05）**: Dev環境に先行デプロイ（stagingは未運用のため使わない）→疎通・E2E→prod展開。新規ACA環境（min=max=1・方式A固定、既存と同居・同リージョン）。Functions→gateway間認証は Managed Identity。F1はFunctions側照合。公開手順は kill switch OFFでデプロイ→検証→有効化→全ユーザー。Q6本番初期値（scope空/maxRuns4/default未設定/承認120s・実行180s）は提案のまま、確定待ち。
 
-- [x] `infra/modules/agentPool.bicep` 化と環境変数・シークレット（Key Vault）配線。gateway 側の認証検証実装を含める（RG-1 F5。露出前必須。方式は Managed Identity・Entra JWT 検証。90件 green）。サーバー鍵は env（`OPENCODE_API_KEY`）経由で供給し、per-user dir へ認証コピーしない（live test 副次発見3）
+- [x] `infra/modules/agentPool.bicep` 化と環境変数・シークレット（Key Vault）配線。gateway 側の認証検証実装を含める（RG-1 F5。露出前必須。方式は Managed Identity・Entra JWT 検証。90件 green）。サーバー鍵は env（`OPENCODE_API_KEY`）経由で供給し、per-user dir へ認証コピーしない（live test 副次発見3）。最終レビュー対応：AcrPull正値・CPU/メモリ組合せ・node22・dependsOn追加
 - [ ] App Insights への実行メトリクス（実行数・所要時間・トークン・承認率・打ち切り率）
 - [x] Dev デプロイ・疎通確認（2026-09-05 実施済み：agentpool Succeeded、gateway /health ok・revision Healthy、未認証 401 確認、kill switch OFF・AGENT_ENABLED=false 確認。デプロイ中の修正：AcrPull GUID訂正・CPU/メモリ組合せ・node22）。残りは有効化・E2E・公開判断
 - [ ] 初回起動 latency 対策：ツール有効化時の per-user npm 展開を初回のみにし、イメージ事前展開・進捗表示を検討（live test 副次発見2）。pi-subagents 由来サブプロセスへのゲート適用をツール有効化前に実機検証（RG-2 F8）
