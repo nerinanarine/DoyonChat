@@ -89,23 +89,24 @@ Q7 決定通り全ユーザー対象。ただし `AGENT_ENABLED=false`（Functio
 ## Phase 2 - セッション対応＋ツールレジストリ＋pi-subagents
 
 - [x] 会話 ID↔pi セッション対応付け（`switch_session`・短期保持、replica=1＋sticky。存在しないパスへの切替成功を実機確認済み。68件 green）
-- [ ] Functions エージェント経路：`/chat` エージェント分岐（gateway `POST /prompt` へ承認レベル・危険ツール表付きで中継、SSE 契約は既存流用）＋中断部分テキストの P1-003 保存フロー接続＋ユーザー設定 `agentApprovalLevel` の gateway 反映（RG-1 F1/F9 残部）
+- [x] Functions エージェント経路：`/chat` エージェント分岐（gateway `POST /prompt` へ承認レベル付きで中継、危険ツール表は allowlist 既定に委譲＝単一真実源。SSE 契約は既存流用）＋中断部分テキストの P1-003 保存フロー接続＋ユーザー設定 `agentApprovalLevel` の gateway 反映（RG-1 F1/F9 残部・RG-2 F5 確定）
 - [x] ツール allowlist レジストリ（`agent/tools.allowlist.json`、既定空＝全無効）と `dangerous` 分類テーブル（`--tools` 付加・`APPROVAL_DANGEROUS_TOOLS` 既定・壊JSONは fail-closed）。pi 実ツール名との一致を確認（pi 付属 settings.md のビルトイン `read, bash, powershell, edit, write, grep, find, ls` とゲート既定が整合。73件 green）
 - [x] Phase 2 事前確認（delegate 実機調査で確定）：① `agentSubagentModel` の渡し方は pi 起動前の settings.json `subagents.defaultModel` 書込のみ（env・フックなし）。multi-user 分離は `PI_CODING_AGENT_DIR` による per-user 設定ディレクトリ化。未設定時は親セッションモデル継承。② `get_available_models` は `--models` スコープを**反映しない**（実測33件完全一致）。gateway 側で minimatch フィルタ＋`set_model` 中継時検証が必須（`set_model` 自体はスコープ非チェック、`--model` は scope 優先のため `agentModel` も検証対象）
 - [x] `pi-subagents` 同梱の下地（`PI_CODING_AGENT_DIR` per-user 設定ディレクトリ＋settings.json `subagents.defaultModel`/`packages` 書込。イメージへの npm 同梱は Phase 3 bicep/デプロイ時に確定）
 - [x] エージェント用モデル一覧：gateway が `get_available_models`（全カタログ）を取得し `--models`/`enabledModels` パターンで minimatch フィルタ。`set_model` 中継時もスコープ内検証を実施（`GET /models`＋`/prompt model` 付き、59件 green）
-- [ ] 上限（ターン数・時間・トークン）の既定値の数値確定と超過時打ち切り＋回収。承認待ち時間の扱い（promptTimeout 算入の是非）・RunRecord.events 件数上限も合わせて設計（RG-1 F2/F8）
-- [ ] 会話モデル（`conversation.model`）とエージェントモデル（`agentModel`）の優先関係を定義する（エージェント会話では pi 側モデル優先・会話モデル UI の扱いを含む）
-- [ ] 検証：同一会話で文脈引継ぎ・別会話で非引継ぎ、allowlist 外ツールが実行されないこと、上限超過時の回収、confirm 待ち中の abort 受理可否の実機確認（RG-1 F11）
-- [ ] レビューゲート RG-2（§Review Gates）
+- [x] 上限（ターン数・時間・トークン）の既定値の数値確定と超過時打ち切り＋回収。承認待ち時間の扱い（promptTimeout 算入の是非）・RunRecord.events 件数上限も合わせて設計（RG-1 F2/F8）。方針確定：承認待ちは実行予算外（タイマー停止・2000件上限）。ターン数・トークン上限は将来の allowlist 有効化時（Phase 3 運用）に再評価
+- [x] 会話モデル（`conversation.model`）とエージェントモデル（`agentModel`）の優先関係を定義する（リクエスト model ＞ `AGENT_DEFAULT_MODEL` ＞ 未指定。`conversation.model` は表示・妥当性チェックのみ→`memo-phase2.md`）
+- [x] 検証：同一会話で文脈引継ぎ・別会話で非引継ぎ、allowlist 外ツールが実行されないこと、上限超過時の回収、confirm 待ち中の abort 受理可否の実機確認（RG-1 F11)。live test 完了→`memo-phase2.md`（別会話非引継ぎ・allowlist 外実行不可は自動テスト済み）
+- [x] レビューゲート RG-2（§Review Gates。verdict: 条件付きGO（Phase 3 着手可）。F1 must-fix は RG-3 までの条件→Phase 3・memo 残件に明記→`memo-phase2.md`）
 
 ## Phase 3 - デプロイ・運用・公開
 
-- [ ] `infra/modules/agentPool.bicep` 化と環境変数・シークレット（Key Vault）配線。gateway 側の `Authorization`（AGENT_GATEWAY_KEY）検証実装を含める（RG-1 F5。露出前必須）
+- [ ] `infra/modules/agentPool.bicep` 化と環境変数・シークレット（Key Vault）配線。gateway 側の `Authorization`（AGENT_GATEWAY_KEY）検証実装を含める（RG-1 F5。露出前必須）。サーバー鍵は env（`OPENCODE_API_KEY`）経由で供給し、per-user dir へ認証コピーしない（live test 副次発見3）
 - [ ] App Insights への実行メトリクス（実行数・所要時間・トークン・承認率・打ち切り率）
-- [ ] kill switch（`AGENT_ENABLED`）と無効時 UI 非表示の E2E 確認
+- [ ] kill switch（`AGENT_ENABLED`）と無効時 UI 非表示の E2E 確認。フロントへのフラグ配線（トグル非表示）を含む（RG-2 F4）
+- [ ] 初回起動 latency 対策：ツール有効化時の per-user npm 展開を初回のみにし、イメージ事前展開・進捗表示を検討（live test 副次発見2）。pi-subagents 由来サブプロセスへのゲート適用をツール有効化前に実機検証（RG-2 F8）
 - [ ] 全ユーザー公開、backlog P3-010 の実装メモ・ステータス更新
-- [ ] レビューゲート RG-3（§Review Gates・公開前最終関門）
+- [ ] レビューゲート RG-3（§Review Gates・公開前最終関門）。必須条件：run 所有者検証の実装（RG-2 F1 must-fix：RunRecord userId 保持＋Functions/gateway 照合）。会話削除時のセッション破棄接続（RG-2 F2）、エージェント会話のモデル不在表示除外（RG-2 F3）もここで処理
 
 ## Review Gates（必須プロセス）
 
