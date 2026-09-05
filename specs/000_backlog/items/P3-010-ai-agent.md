@@ -38,7 +38,13 @@ AIを単なるチャット応答者から、ツールを使いこなし自律的
 
 ## 実装メモ
 
-> 対応後にここに実装内容・マージコミット・注意点を記載してください。
+## 実装メモ（抜粋。詳細は specs/P3-010/memo-phase*.md）
+
+- 方針: pi coding agent を別基盤（Container Apps・replica=1）の pi --mode rpc で駆動。ツール既定全無効、承認ゲート＋ユーザー選択レベル。
+- モデル: opencode-go/muse-spark-1.3-contributor を既定 pin。gateway 側スコープ検証。
+- 検証: 自動テスト＋実 pi live test＋Dev 実デプロイ E2E。
+- 注意: Flex への Functions デプロイは func publish が正規。MI トークンの iss は v1 形式（gateway 両対応済み）。per-user dir に認証を置かずサーバー env で供給。
+- ブランチ: feat/p3-010-ai-agent
 
 ---
 
@@ -47,3 +53,4 @@ AIを単なるチャット応答者から、ツールを使いこなし自律的
 | 日付 | ステータス | 備考 |
 |------|-----------|------|
 | 2026-07-05 | 🔴 未対応 | 初期作成
+| 2026-09-05 | 🟡 進行中 | spec/plan 確定・Phase 0〜3 実装・Dev 検証完了。本番公開待ち |

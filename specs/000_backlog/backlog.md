@@ -62,7 +62,7 @@
 | [P3-007](items/P3-007-tests.md) | ユニットテスト強化 | P3 | 🔴 未対応 | 品質 | — | カバレッジ 80% 目標、LLM各モデルの実API疎通テストは別途実施 |
 | [P3-008](items/P3-008-cicd-docs-fix.md) | CI/CD 関連ドキュメントの誤記修正 | P3 | 🔴 未対応 | ドキュメント | — | spec.md FR-003、setup-guide 手順3.1 |
 | [P3-009](items/P3-009-cicd-security-hardening.md) | CI/CD セキュリティハードニング | P3 | 🔴 未対応 | セキュリティ | — | SHA ピン化、permissions 宣言の一貫化 |
-| [P3-010](items/P3-010-ai-agent.md) | AIのエージェント化 | P3 | 🔴 未対応 | 機能追加 | — | Function Calling・ツール連携検討 |
+| [P3-010](items/P3-010-ai-agent.md) | AIのエージェント化 | P3 | 🟡 進行中 | 機能追加 | [仕様](../P3-010/spec.md) | pi RPC連携・承認フロー・Dev検証済み。本番公開待ち |
 | [P3-011](items/P3-011-pwa-android-ios.md) | PWA対応（AndroidとiPhone両方） | P3 | 🟢 対応済み | 利便性 | [仕様](../P3-011/spec.md) | vite-plugin-pwa、実機確認、デプロイ完了 |
 | [P3-012](items/P3-012-chat-name-edit-ux.md) | チャット名編集UXの改善 | P3 | 🔴 未対応 | UX改善 | — | [Issue #28](https://github.com/nerinanarine/DoyonChat/issues/28)、Issue本文なし |
 | [P4-002](items/P4-002-templates.md) | プロンプトテンプレート | P4 | 🔴 未対応 | 機能追加 | — | localStorage 保存 |
