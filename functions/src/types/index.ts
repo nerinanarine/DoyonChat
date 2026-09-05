@@ -3,6 +3,8 @@ export interface Conversation {
   userId?: string;
   title: string;
   model: string;
+  /** エージェントモード（P3-010）。未定義=false。 */
+  agentMode?: boolean;
   createdAt: string;
   updatedAt: string;
 }

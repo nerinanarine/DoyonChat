@@ -145,6 +145,29 @@ export async function titleAutoHandler(
   }
 }
 
+export async function agentModeHandler(
+  request: HttpRequest,
+  _context: InvocationContext,
+): Promise<HttpResponseInit> {
+  try {
+    const userId = await authenticateRequest(request);
+    const body = await readJsonBody(request);
+    // enabled は boolean のみ採用。それ以外は 400（微妙な真偽の黙殺を避ける）。
+    if (!Object.prototype.hasOwnProperty.call(body, 'enabled') || typeof body.enabled !== 'boolean') {
+      throw new AppError(400, 'enabled must be a boolean');
+    }
+    const updated = await service.updateConversationAgentMode(
+      getConversationId(request),
+      body.enabled as boolean,
+      userId,
+    );
+    if (!updated) throw new AppError(404, 'Conversation not found');
+    return { status: 200, jsonBody: updated };
+  } catch (error) {
+    return toHttpResponse(error);
+  }
+}
+
 app.http('conversations', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -178,4 +201,11 @@ app.http('conversation-title-auto', {
   authLevel: 'anonymous',
   route: 'conversations/{id}/title/auto',
   handler: titleAutoHandler,
+});
+
+app.http('conversation-agent-mode', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  route: 'conversations/{id}/agent-mode',
+  handler: agentModeHandler,
 });

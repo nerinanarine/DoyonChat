@@ -1,4 +1,6 @@
 import { AppError } from '../middleware/errorHandler';
+import { UpstreamError } from './opencodeGo';
+import type { AgentApprovalLevel } from '../types';
 
 /**
  * Agent gateway（`agent/` の PiClient HTTP サーバー）へのプロキシ。
@@ -116,4 +118,101 @@ export function forwardGetRun(
     const body = await response.json().catch(() => undefined);
     return { status: response.status, body };
   });
+}
+
+export interface GatewayPromptPayload {
+  message: string;
+  userId: string;
+  conversationId: string;
+  approvalLevel?: AgentApprovalLevel;
+  model?: string;
+  subagentModel?: string;
+}
+
+/** gateway から届く SSE `data:` 1行分のパース結果。 */
+export type GatewayStreamEvent = Record<string, unknown>;
+
+function parseSseDataLine(line: string): GatewayStreamEvent | null {
+  const trimmed = line.trim();
+  // heartbeat（`: ping`）・空行・`data:` 以外は無視する
+  if (!trimmed.startsWith('data: ')) return null;
+  const jsonStr = trimmed.slice(6);
+  if (jsonStr === '[DONE]') return null;
+  try {
+    const parsed = JSON.parse(jsonStr) as unknown;
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+    return parsed as GatewayStreamEvent;
+  } catch {
+    // 壊れた SSE data は無視して読み続ける（opencodeGo.normalizeProtocolStream と同じ流儀）
+    return null;
+  }
+}
+
+/**
+ * gateway `POST /prompt` の SSE ストリームをパース済みイベントとして供給する。
+ * - 非 200 応答は mapGatewayStatus の安全な AppError に変換（429 は rate_limit へ）
+ * - 完了マーカー（done）なしでストリームが終わった場合は server エラーにする（通常チャットと同流儀）
+ * - 呼び出し側の signal（クライアント切断）で abort されると AbortError が伝播する
+ */
+export async function* forwardPromptStream(
+  config: AgentGatewayConfig,
+  payload: GatewayPromptPayload,
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch,
+): AsyncGenerator<GatewayStreamEvent> {
+  if (!config.baseUrl) throw new AppError(503, 'Agent service is not configured');
+
+  let response: Response;
+  try {
+    response = await fetchImpl(buildUrl(config.baseUrl, '/prompt'), {
+      method: 'POST',
+      headers: buildHeaders(config.key),
+      body: JSON.stringify(payload),
+      signal,
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError(503, 'Agent service unavailable');
+  }
+  if (!response.ok) throw mapGatewayStatus(response.status);
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new AppError(503, 'Agent service unavailable');
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let sawCompletion = false;
+  let reachedEof = false;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        reachedEof = true;
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const event = parseSseDataLine(line);
+        if (!event) continue;
+        if (event.done === true) sawCompletion = true;
+        yield event;
+      }
+    }
+    if (buffer.trim()) {
+      const event = parseSseDataLine(buffer.trim());
+      if (event) {
+        if (event.done === true) sawCompletion = true;
+        yield event;
+      }
+    }
+  } finally {
+    if (!reachedEof) {
+      await reader.cancel().catch(() => undefined);
+    }
+    reader.releaseLock();
+  }
+  if (!sawCompletion) {
+    throw new UpstreamError('server', 'Agent stream ended before completion marker');
+  }
 }
