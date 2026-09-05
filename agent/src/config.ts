@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { parseScopeEnv } from './models';
+import { isModelAllowed, parseModelRef, parseScopeEnv } from './models';
 
 export interface ToolsAllowlist {
   /** 有効化するツール名。空は全無効（`--no-tools` のまま）。 */
@@ -70,8 +70,12 @@ export interface GatewayOptions {
   maxRuns: number;
   /** モデルスコープパターン（`provider/id` または bare id のグロブ）。空は全許可。 */
   modelScope: string[];
+  /** 既定モデル（`provider/id`）。リクエスト未指定時に switch 後に pin する。空は pin しない。 */
+  defaultModel?: string;
   /** allowlist 由来の危険ツール表（`dangerous-only` の既定。リクエスト上書き可）。 */
   toolsDangerous: string[];
+  /** allowlist 由来の有効ツール名（空は全無効）。pi-subagents 登録要否の判定に使う。 */
+  tools: string[];
   /** 実行データディレクトリ（セッション・per-user 設定）。既定 `./data`。 */
   dataDir: string;
 }
@@ -157,6 +161,15 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
   const piBin = env.PI_BIN || 'pi';
   const entry = resolvePiEntry(piBin);
   const useNode = entry.endsWith('.js') && existsSync(entry);
+  const modelScope = parseScopeEnv(env.AGENT_MODEL_SCOPE);
+  const defaultModel = env.AGENT_DEFAULT_MODEL || undefined;
+  // 既定モデルは起動時に検証する（fail fast。セッション復元時の pin に使うため）。
+  if (defaultModel !== undefined) {
+    const ref = parseModelRef(defaultModel);
+    if (!ref || !isModelAllowed(ref.provider, ref.modelId, modelScope)) {
+      throw new Error(`Invalid AGENT_DEFAULT_MODEL: ${defaultModel}`);
+    }
+  }
   const baseArgs = useNode ? [entry, ...DEFAULT_PI_ARGS] : [...DEFAULT_PI_ARGS];
   const allowlist = loadToolsAllowlist(
     env.AGENT_TOOLS_FILE || path.join(__dirname, '..', 'tools.allowlist.json'),
@@ -183,8 +196,10 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
       runTtlMs: num(env.GATEWAY_RUN_TTL_MS, 600_000),
       registryMax: num(env.GATEWAY_REGISTRY_MAX, 200),
       maxRuns: num(env.GATEWAY_MAX_RUNS, 4),
-      modelScope: parseScopeEnv(env.AGENT_MODEL_SCOPE),
+      modelScope,
+      defaultModel: env.AGENT_DEFAULT_MODEL || undefined,
       toolsDangerous: allowlist.dangerous,
+      tools: allowlist.tools,
       dataDir: env.AGENT_DATA_DIR || './data',
     },
   };

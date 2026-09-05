@@ -19,7 +19,7 @@ async function startServer(
     host: '127.0.0.1',
     port: 0,
     pi: { piBin: process.execPath, piArgs, promptTimeoutMs, approvalTimeoutMs: 5000 },
-    gateway: { heartbeatMs: 60_000, runTtlMs: 600_000, registryMax: 50, maxRuns: 4, modelScope: [], toolsDangerous: [], dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')) },
+    gateway: { heartbeatMs: 60_000, runTtlMs: 600_000, registryMax: 50, maxRuns: 4, modelScope: [], defaultModel: undefined, toolsDangerous: [], tools: [], dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')) },
   };
   const server = createGatewayServer(config, onLog);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));

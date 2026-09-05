@@ -289,9 +289,10 @@ async function handlePrompt(
     runEnv.APPROVAL_DANGEROUS_TOOLS = dangerousDefault.join(',');
   }
 
-  // 実行モデルは `provider/id` 形式で受け、スコープ内のみ許可する
-  const modelRef = bodyRecord.model !== undefined ? parseModelRef(bodyRecord.model) : undefined;
-  if (bodyRecord.model !== undefined && !modelRef) {
+  // 実行モデルは `provider/id` 形式で受け、スコープ内のみ許可する。
+  // 未指定時は AGENT_DEFAULT_MODEL に pin する（セッション復元の旧モデル対策。F2）。
+  const modelRef = parseModelRef(bodyRecord.model ?? config.gateway.defaultModel);
+  if ((bodyRecord.model !== undefined || config.gateway.defaultModel !== undefined) && !modelRef) {
     writeJson(res, 400, { error: { code: 'network' } });
     return;
   }
@@ -334,10 +335,12 @@ async function handlePrompt(
       sessionPath = sessionFilePath(config.gateway.dataDir, safeUserId, safeConversationId);
       fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
       // per-user 設定は毎回マージ書込する（packages 保証のため。既存キーは保持される）。
+      // pi-subagents の登録はツール有効時のみ（初回 npm インストールの latency 回避）。
       writeUserAgentSettings(
         config.gateway.dataDir,
         safeUserId,
         subagentModel !== undefined ? { subagentModel } : {},
+        config.gateway.tools.length > 0,
       );
       runEnv.PI_CODING_AGENT_DIR = userConfigDir(config.gateway.dataDir, safeUserId);
     } catch {

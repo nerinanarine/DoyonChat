@@ -36,11 +36,14 @@ export interface UserAgentSettings {
 /**
  * per-user 設定を読み、エージェント関連キーをマージして書き戻す。
  * 既存キー（auth 等）は保持する。subagentModel 未指定時は defaultModel に触れない。
+ * pi-subagents の packages 登録はツール有効時のみ行う。無効時（既定）に登録すると
+ * pi が初回起動で npm インストール（数千ファイル・数分）を実行し初回 latency が悪化するため。
  */
 export function writeUserAgentSettings(
   dataDir: string,
   userId: string,
   settings: UserAgentSettings,
+  includePackages = false,
 ): string {
   const dir = userConfigDir(dataDir, userId);
   fs.mkdirSync(dir, { recursive: true });
@@ -70,10 +73,13 @@ export function writeUserAgentSettings(
   const packages = Array.isArray(document.packages)
     ? [...document.packages]
     : [];
-  if (!packages.includes('npm:pi-subagents')) packages.push('npm:pi-subagents');
+  // packages は宣言的に同期する。無効時に残すと pi が毎起動 npm インストールを試みる。
+  const pkgIndex = packages.indexOf('npm:pi-subagents');
+  if (includePackages && pkgIndex === -1) packages.push('npm:pi-subagents');
+  if (!includePackages && pkgIndex !== -1) packages.splice(pkgIndex, 1);
   document.packages = packages;
   // 原子書込（temp+rename）。中断時の半端ファイルで既存設定を壊さない。
-  const tmpFile = `${file}.tmp-${process.pid}`;
+  const tmpFile = `${file}.tmp-${process.pid}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
   fs.writeFileSync(tmpFile, `${JSON.stringify(document, null, 2)}\n`);
   fs.renameSync(tmpFile, file);
   return dir;

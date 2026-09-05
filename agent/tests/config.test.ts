@@ -29,6 +29,15 @@ describe('loadAgentConfig', () => {
     expect(loadAgentConfig({}).host).toBe('127.0.0.1');
     expect(loadAgentConfig({ GATEWAY_HOST: '0.0.0.0' }).host).toBe('0.0.0.0');
   });
+
+  it('validates the default model at startup', () => {
+    expect(loadAgentConfig({}).gateway.defaultModel).toBeUndefined();
+    expect(
+      loadAgentConfig({ AGENT_DEFAULT_MODEL: 'p1/a', AGENT_MODEL_SCOPE: 'p1/*' }).gateway.defaultModel,
+    ).toBe('p1/a');
+    expect(() => loadAgentConfig({ AGENT_DEFAULT_MODEL: 'bare' })).toThrow();
+    expect(() => loadAgentConfig({ AGENT_DEFAULT_MODEL: 'p2/a', AGENT_MODEL_SCOPE: 'p1/*' })).toThrow();
+  });
 });
 
 describe('loadToolsAllowlist', () => {

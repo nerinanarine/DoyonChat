@@ -33,10 +33,27 @@ describe('session paths', () => {
 describe('writeUserAgentSettings', () => {
   it('writes defaultModel and pi-subagents package', () => {
     const dir = tempDir();
-    const configDir = writeUserAgentSettings(dir, 'u1', { subagentModel: 'p1/m1' });
+    const configDir = writeUserAgentSettings(dir, 'u1', { subagentModel: 'p1/m1' }, true);
     const document = JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'));
     expect(document.subagents.defaultModel).toBe('p1/m1');
     expect(document.packages).toEqual(['npm:pi-subagents']);
+  });
+
+  it('omits pi-subagents packages when tools are disabled', () => {
+    const dir = tempDir();
+    const configDir = writeUserAgentSettings(dir, 'u1', { subagentModel: 'p1/m1' }, false);
+    const document = JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'));
+    expect(document.subagents.defaultModel).toBe('p1/m1');
+    expect(document.packages).toEqual([]);
+  });
+
+  it('removes stale pi-subagents packages when tools are disabled', () => {
+    const dir = tempDir();
+    writeUserAgentSettings(dir, 'u1', { subagentModel: 'p1/m1' }, true);
+    const configDir = writeUserAgentSettings(dir, 'u1', {}, false);
+    const document = JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'));
+    expect(document.packages).toEqual([]);
+    expect(document.subagents.defaultModel).toBe('p1/m1');
   });
 
   it('preserves existing keys and dedupes packages', () => {
@@ -45,13 +62,13 @@ describe('writeUserAgentSettings', () => {
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(
       path.join(configDir, 'settings.json'),
-      JSON.stringify({ auth: { token: 'x' }, packages: ['npm:pi-subagents', 'npm:other'] }),
+      JSON.stringify({ auth: { token: 'x' }, packages: ['npm:other'] }),
     );
-    writeUserAgentSettings(dir, 'u1', { subagentModel: 'p1/m2' });
+    writeUserAgentSettings(dir, 'u1', { subagentModel: 'p1/m2' }, true);
     const document = JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'));
     expect(document.auth).toEqual({ token: 'x' });
     expect(document.subagents.defaultModel).toBe('p1/m2');
-    expect(document.packages).toEqual(['npm:pi-subagents', 'npm:other']);
+    expect(document.packages).toEqual(['npm:other', 'npm:pi-subagents']);
   });
 
   it('does not touch defaultModel when unspecified', () => {

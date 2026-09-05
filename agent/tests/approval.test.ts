@@ -18,7 +18,9 @@ interface GatewayTestOptions {
   heartbeatMs?: number;
   maxRuns?: number;
   modelScope?: string[];
+  defaultModel?: string;
   toolsDangerous?: string[];
+  tools?: string[];
   dataDir?: string;
   onLog?: (message: string) => void;
   piEnv?: Record<string, string>;
@@ -44,7 +46,9 @@ async function startServer(
       registryMax: 50,
       maxRuns: opts.maxRuns ?? 4,
       modelScope: opts.modelScope ?? [],
+      defaultModel: opts.defaultModel,
       toolsDangerous: opts.toolsDangerous ?? [],
+      tools: opts.tools ?? [],
       dataDir: opts.dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')),
     },
   };
@@ -472,12 +476,50 @@ describe('gateway model catalog and selection', () => {
       server.close();
     }
   });
+
+  it('pins the configured default model when the request omits it', async () => {
+    const { server, url } = await startServer([MODELS], {
+      modelScope: ['test-provider/*'],
+      defaultModel: 'test-provider/fail-model',
+    });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi' }),
+      });
+      // fail-model への set_model が送られた証拠に server エラーになる
+      const text = await res.text();
+      expect(text).toContain('"error":{"code":"server"}');
+    } finally {
+      server.close();
+    }
+  });
+
+  it('prefers the request model over the configured default', async () => {
+    const { server, url } = await startServer([MODELS], {
+      modelScope: ['test-provider/*'],
+      defaultModel: 'test-provider/fail-model',
+    });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', model: 'test-provider/good-model' }),
+      });
+      const text = await res.text();
+      expect(text).toContain('model-ok');
+      expect(text).toContain('"done":true');
+    } finally {
+      server.close();
+    }
+  });
 });
 
 describe('gateway conversation sessions', () => {
   it('writes per-user settings and settles prompts with ids', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-'));
-    const { server, url } = await startServer([MODELS], { dataDir });
+    const { server, url } = await startServer([MODELS], { dataDir, tools: ['read'] });
     try {
       const res = await fetch(`${url}/prompt`, {
         method: 'POST',
