@@ -77,8 +77,7 @@ curl -s https://<agent-container-app-fqdn>/health
 ## 注意
 
 - `agentAuthTenant` / `agentAuthAudience` が空だと gateway は認証なしで起動する
-  （loopback 開発のみ想定）。CI（`.github/workflows/deploy.yml`）は引き続き
-  旧パラメータのままのため、**公開前に CI へ `agentAuthTenant`・`agentAuthAudience`・
-  `agentEnabled` の受け渡しを追加すること**（本スコープ外・要件記録として残す）。
+  （loopback 開発のみ想定）。CI（`.github/workflows/deploy.yml`）は受け渡し＋必須化済み
+  （`AGENT_ENABLED=true` 時は AUTH 同時必須もガード）。
 - 運用系（App Insights メトリクス、kill switch E2E、初回 npm 展開 latency）は
   `specs/P3-010/plan.md` Phase 3 の残課題。

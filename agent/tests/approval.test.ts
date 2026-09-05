@@ -399,6 +399,22 @@ describe('gateway per-run approval env injection', () => {
       server.close();
     }
   });
+
+  it('intersects request dangerous tools with enabled tools', async () => {
+    const { server, url } = await startServer([ENV_ECHO], { tools: ['read'] });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'echo env', dangerousTools: ['read', 'write'] }),
+      });
+      const text = await res.text();
+      expect(text).toContain('tools=read');
+      expect(text).not.toContain('write');
+    } finally {
+      server.close();
+    }
+  });
 });
 
 describe('gateway model catalog and selection', () => {

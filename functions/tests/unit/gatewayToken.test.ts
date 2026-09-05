@@ -8,11 +8,10 @@ import {
   loadGatewayTokenConfig,
 } from '../../src/services/gatewayToken';
 
-/** expiresOnTimestamp は秒。テストの now は ms。一致させるためのヘルパ。 */
-const EXPIRY_SECONDS = 1_800_000_000; // 2027年頃
-const EXPIRY_MS = EXPIRY_SECONDS * 1000;
+/** expiresOnTimestamp はミリ秒（@azure/core-auth 契約）。now と同単位で比較する。 */
+const EXPIRY_MS = 1_800_000_000_000; // 2027年頃
 
-function accessToken(token: string, expiresOnTimestamp: number = EXPIRY_SECONDS): AccessToken {
+function accessToken(token: string, expiresOnTimestamp: number = EXPIRY_MS): AccessToken {
   return { token, expiresOnTimestamp };
 }
 

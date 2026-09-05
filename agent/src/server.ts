@@ -304,11 +304,13 @@ async function handlePrompt(
     : undefined;
   const runEnv: Record<string, string> = { ...config.pi.env };
   if (approvalLevel) runEnv.APPROVAL_LEVEL = approvalLevel;
-  // dangerous 表の優先順位: リクエスト指定 > allowlist 既定 > ゲート内蔵既定
-  const dangerousDefault =
-    dangerousTools && dangerousTools.length > 0
-      ? dangerousTools
-      : config.gateway.toolsDangerous;
+  // dangerous 表の優先順位: リクエスト指定 > allowlist 既定 > ゲート内蔵既定。
+  // ただしリクエスト指定は有効ツール集合との積集合に限定し、分類の弱体化を防ぐ。
+  const enabledTools = config.gateway.tools;
+  const requested = dangerousTools ?? config.gateway.toolsDangerous;
+  const dangerousDefault = requested.filter(
+    (name) => enabledTools.length === 0 || enabledTools.includes(name),
+  );
   if (dangerousDefault.length > 0) {
     runEnv.APPROVAL_DANGEROUS_TOOLS = dangerousDefault.join(',');
   }

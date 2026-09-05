@@ -133,6 +133,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   tags: tags
   dependsOn: [
     keyVaultAccessPolicy
+    acrPullAssignment
   ]
   identity: {
     type: 'UserAssigned'

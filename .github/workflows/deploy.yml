@@ -80,10 +80,12 @@ jobs:
             test -n "$ENTRA_API_CLIENT_ID" || { echo "::error::ENTRA_API_CLIENT_ID is required when authentication is enabled"; exit 1; }
           fi
 
-          # Agent gateway is exposed via ingress. Managed Identity JWT auth is mandatory.
+          # Agent gateway is exposed via ingress. Managed Identity JWT auth is mandatory
+          # whenever the gateway is deployed, regardless of AGENT_ENABLED
+          # (AGENT_ENABLED=false only stops Functions; the gateway itself stays reachable).
+          test -n "$AGENT_AUTH_TENANT" || { echo "::error::AGENT_AUTH_TENANT is required (gateway is exposed)"; exit 1; }
+          test -n "$AGENT_AUTH_AUDIENCE" || { echo "::error::AGENT_AUTH_AUDIENCE is required (gateway Managed Identity audience)"; exit 1; }
           if [ "$AGENT_ENABLED" = "true" ]; then
-            test -n "$AGENT_AUTH_TENANT" || { echo "::error::AGENT_AUTH_TENANT is required when the agent is enabled (gateway is exposed)"; exit 1; }
-            test -n "$AGENT_AUTH_AUDIENCE" || { echo "::error::AGENT_AUTH_AUDIENCE is required when the agent is enabled (gateway Managed Identity audience)"; exit 1; }
             # Functions must run with user auth enabled too, otherwise agent endpoints run as dev-user.
             test "$AUTH_ENABLED" = "true" || { echo "::error::AUTH_ENABLED must be true when the agent is enabled"; exit 1; }
             test -n "$ENTRA_TENANT_ID" || { echo "::error::ENTRA_TENANT_ID is required when the agent is enabled"; exit 1; }

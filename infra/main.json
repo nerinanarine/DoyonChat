@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "7738631655450138781"
+      "templateHash": "1106835248042787258"
     }
   },
   "parameters": {
@@ -641,7 +641,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "10656997473426814700"
+              "templateHash": "12963811357809837493"
             }
           },
           "parameters": {
@@ -920,6 +920,7 @@
                 }
               },
               "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), 'Microsoft.Authorization/roleAssignments', guid(format('acr-pull-{0}-{1}', parameters('containerRegistryName'), parameters('userAssignedIdentityName'))))]",
                 "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
                 "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
                 "[resourceId('Microsoft.KeyVault/vaults/accessPolicies', parameters('keyVaultName'), 'add')]",

@@ -31,6 +31,8 @@ jobs:
           filters: |
             functions:
               - 'functions/**'
+            agent:
+              - 'agent/**'
             infra:
               - 'infra/**'
             workflows:
@@ -52,6 +54,24 @@ jobs:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test -- --runInBand
+
+  test-agent:
+    needs: changes
+    if: needs.changes.outputs.agent == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: agent/package-lock.json
       - run: npm ci
       - run: npm run build
       - run: npm test -- --runInBand

@@ -60,8 +60,8 @@ export class GatewayTokenProvider {
     if (!accessToken || !accessToken.token || !accessToken.expiresOnTimestamp) {
       throw new Error('Failed to acquire gateway token');
     }
-    // expiresOnTimestamp は秒。Date.now() の ms と比較するため 1000 倍する。
-    const expiresOn = accessToken.expiresOnTimestamp * 1000;
+    // expiresOnTimestamp はミリ秒 (UNIX epoch)。@azure/core-auth の契約どおりそのまま使う。
+    const expiresOn = accessToken.expiresOnTimestamp;
     this.cached = { token: accessToken.token, expiresOn };
     return accessToken.token;
   }
