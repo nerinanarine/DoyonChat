@@ -89,7 +89,7 @@ Q7 決定通り全ユーザー対象。ただし `AGENT_ENABLED=false`（Functio
 ## Phase 2 - セッション対応＋ツールレジストリ＋pi-subagents
 
 - [x] 会話 ID↔pi セッション対応付け（`switch_session`・短期保持、replica=1＋sticky。存在しないパスへの切替成功を実機確認済み。68件 green）
-- [x] Functions エージェント経路：`/chat` エージェント分岐（gateway `POST /prompt` へ承認レベル付きで中継、危険ツール表は allowlist 既定に委譲＝単一真実源。SSE 契約は既存流用）＋中断部分テキストの P1-003 保存フロー接続＋ユーザー設定 `agentApprovalLevel` の gateway 反映（RG-1 F1/F9 残部・RG-2 F5 確定）
+- [x] Functions エージェント経路：`/chat` エージェント分岐（gateway `POST /prompt` へ承認レベル付きで中継、危険ツール表は allowlist 既定に委譲＝単一真実源。SSE 契約は既存流用）＋中断部分テキストの P1-003 保存フロー接続＋ユーザー設定 `agentApprovalLevel` の gateway 反映（RG-1 F1/F9 残部・RG-2 F5 確定）。run 所有者検証（RG-2 F1 must-fix 対応：run→会話→所有者照合）・削除時破棄接続（RG-2 F2）も実装済み
 - [x] ツール allowlist レジストリ（`agent/tools.allowlist.json`、既定空＝全無効）と `dangerous` 分類テーブル（`--tools` 付加・`APPROVAL_DANGEROUS_TOOLS` 既定・壊JSONは fail-closed）。pi 実ツール名との一致を確認（pi 付属 settings.md のビルトイン `read, bash, powershell, edit, write, grep, find, ls` とゲート既定が整合。73件 green）
 - [x] Phase 2 事前確認（delegate 実機調査で確定）：① `agentSubagentModel` の渡し方は pi 起動前の settings.json `subagents.defaultModel` 書込のみ（env・フックなし）。multi-user 分離は `PI_CODING_AGENT_DIR` による per-user 設定ディレクトリ化。未設定時は親セッションモデル継承。② `get_available_models` は `--models` スコープを**反映しない**（実測33件完全一致）。gateway 側で minimatch フィルタ＋`set_model` 中継時検証が必須（`set_model` 自体はスコープ非チェック、`--model` は scope 優先のため `agentModel` も検証対象）
 - [x] `pi-subagents` 同梱の下地（`PI_CODING_AGENT_DIR` per-user 設定ディレクトリ＋settings.json `subagents.defaultModel`/`packages` 書込。イメージへの npm 同梱は Phase 3 bicep/デプロイ時に確定）
@@ -101,7 +101,9 @@ Q7 決定通り全ユーザー対象。ただし `AGENT_ENABLED=false`（Functio
 
 ## Phase 3 - デプロイ・運用・公開
 
-- [ ] `infra/modules/agentPool.bicep` 化と環境変数・シークレット（Key Vault）配線。gateway 側の `Authorization`（AGENT_GATEWAY_KEY）検証実装を含める（RG-1 F5。露出前必須）。サーバー鍵は env（`OPENCODE_API_KEY`）経由で供給し、per-user dir へ認証コピーしない（live test 副次発見3）
+**方針確定（2026-09-05）**: Dev環境に先行デプロイ（stagingは未運用のため使わない）→疎通・E2E→prod展開。新規ACA環境（min=max=1・方式A固定、既存と同居・同リージョン）。Functions→gateway間認証は Managed Identity。F1はFunctions側照合。公開手順は kill switch OFFでデプロイ→検証→有効化→全ユーザー。Q6本番初期値（scope空/maxRuns4/default未設定/承認120s・実行180s）は提案のまま、確定待ち。
+
+- [x] `infra/modules/agentPool.bicep` 化と環境変数・シークレット（Key Vault）配線。gateway 側の認証検証実装を含める（RG-1 F5。露出前必須。方式は Managed Identity・Entra JWT 検証。90件 green）。サーバー鍵は env（`OPENCODE_API_KEY`）経由で供給し、per-user dir へ認証コピーしない（live test 副次発見3）
 - [ ] App Insights への実行メトリクス（実行数・所要時間・トークン・承認率・打ち切り率）
 - [ ] kill switch（`AGENT_ENABLED`）と無効時 UI 非表示の E2E 確認。フロントへのフラグ配線（トグル非表示）を含む（RG-2 F4）
 - [ ] 初回起動 latency 対策：ツール有効化時の per-user npm 展開を初回のみにし、イメージ事前展開・進捗表示を検討（live test 副次発見2）。pi-subagents 由来サブプロセスへのゲート適用をツール有効化前に実機検証（RG-2 F8）

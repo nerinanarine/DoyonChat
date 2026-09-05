@@ -8,6 +8,7 @@ import { PiClient } from './piClient';
 import { RunRegistry } from './registry';
 import { normalizePiEventForSSE } from './normalize';
 import { CatalogModel, filterModelsByScope, isModelAllowed, parseModelRef } from './models';
+import { createVerifier, extractBearer, loadAuthConfig, VerifyAuth } from './auth';
 import {
   assertSafeId,
   deleteSessionFile,
@@ -69,13 +70,16 @@ const MODELS_CACHE_TTL_MS = 3_600_000;
 export function createGatewayServer(
   config: AgentConfig,
   onLog: (message: string) => void = () => undefined,
+  verifyAuth?: VerifyAuth,
 ) {
   const registry = new RunRegistry(config.gateway.registryMax, config.gateway.runTtlMs);
   const approvals = new Map<string, ApprovalTarget>();
   const limiter = { activeRuns: 0, maxRuns: config.gateway.maxRuns };
+  const auth = loadAuthConfig(process.env);
+  const verifier = verifyAuth ?? (auth ? createVerifier(auth) : null);
   const modelStore: { cache: { at: number; models: CatalogModel[] } | null } = { cache: null };
   const server = createServer((req, res) => {
-    void handleRequest(req, res, config, registry, approvals, limiter, modelStore, onLog);
+    void handleRequest(req, res, config, registry, approvals, limiter, modelStore, verifier, onLog);
   });
 
   server.on('clientError', (_err, socket) => {
@@ -93,6 +97,7 @@ async function handleRequest(
   approvals: Map<string, ApprovalTarget>,
   limiter: { activeRuns: number; maxRuns: number },
   modelStore: { cache: { at: number; models: CatalogModel[] } | null },
+  verifier: VerifyAuth | null,
   onLog: (message: string) => void,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost');
@@ -107,6 +112,21 @@ async function handleRequest(
         piArgs: config.pi.piArgs,
       });
       return;
+    }
+
+    // /health 以外は Managed Identity 認証（設定時のみ）。欠落・不正は 401。
+    if (verifier) {
+      const token = extractBearer(req.headers);
+      if (!token) {
+        writeJson(res, 401, { error: { code: 'authentication' } });
+        return;
+      }
+      try {
+        await verifier(token);
+      } catch {
+        writeJson(res, 401, { error: { code: 'authentication' } });
+        return;
+      }
     }
 
     if (req.method === 'POST' && url.pathname === '/prompt') {
