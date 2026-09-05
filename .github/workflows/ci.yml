@@ -79,12 +79,20 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Validate Deployment (What-If)
+        env:
+          AGENT_AUTH_TENANT: ${{ secrets.AGENT_AUTH_TENANT || '' }}
+          AGENT_AUTH_AUDIENCE: ${{ secrets.AGENT_AUTH_AUDIENCE || '' }}
         run: |
           echo "🔍 Running deployment validation..."
+          test -n "$AGENT_AUTH_TENANT" || { echo "::error::AGENT_AUTH_TENANT is required (Bicep now requires gateway auth tenant)"; exit 1; }
+          test -n "$AGENT_AUTH_AUDIENCE" || { echo "::error::AGENT_AUTH_AUDIENCE is required (Bicep now requires gateway auth audience)"; exit 1; }
           az deployment group validate \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/prod.parameters.json \
             openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
-            cosmosDbKey=${{ secrets.COSMOSDB_KEY }}
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
+            agentAuthTenant="$AGENT_AUTH_TENANT" \
+            agentAuthAudience="$AGENT_AUTH_AUDIENCE" \
+            agentEnabled="${{ vars.AGENT_ENABLED || 'false' }}"
           echo "✅ Deployment validation passed"

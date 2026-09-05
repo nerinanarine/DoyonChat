@@ -1,6 +1,7 @@
 import { AppError } from '../middleware/errorHandler';
 import { UpstreamError } from './opencodeGo';
 import type { AgentApprovalLevel } from '../types';
+import { GatewayTokenProvider } from './gatewayToken';
 
 /**
  * Agent gateway（`agent/` の PiClient HTTP サーバー）へのプロキシ。
@@ -10,19 +11,24 @@ import type { AgentApprovalLevel } from '../types';
 export interface AgentGatewayConfig {
   /** AGENT_GATEWAY_URL。未設定なら 503。 */
   baseUrl: string;
-  /** AGENT_GATEWAY_KEY。未設定なら Authorization ヘッダを付与しない。 */
-  key?: string;
+  /** AGENT_GATEWAY_AUDIENCE。未設定なら Authorization ヘッダを付与しない（開発 loopback）。 */
+  audience: string;
   /** AGENT_ENABLED。既定は有効。false なら kill switch。 */
   enabled: boolean;
+  /** Managed Identity トークン供給器（テスト注入用。省略時は環境変数から生成）。 */
+  tokenProvider?: GatewayTokenProvider;
 }
 
 export function loadAgentGatewayConfig(
   env: NodeJS.ProcessEnv = process.env,
+  tokenProvider?: GatewayTokenProvider,
 ): AgentGatewayConfig {
+  const audience = env.AGENT_GATEWAY_AUDIENCE || '';
   return {
     baseUrl: env.AGENT_GATEWAY_URL || '',
-    key: env.AGENT_GATEWAY_KEY || undefined,
+    audience,
     enabled: env.AGENT_ENABLED !== 'false',
+    tokenProvider: tokenProvider ?? new GatewayTokenProvider(audience),
   };
 }
 
@@ -37,9 +43,14 @@ function buildUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/, '')}${path}`;
 }
 
-function buildHeaders(key?: string): Record<string, string> {
+/**
+ * 認証ヘッダを組み立てる。audience 未設定（トークン null）なら Authorization を付けない。
+ * トークン取得失敗は呼び出し側の forward で 503 'Agent service unavailable' に変換される。
+ */
+async function buildHeaders(config: AgentGatewayConfig): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (key) headers.Authorization = `Bearer ${key}`;
+  const token = await config.tokenProvider?.get();
+  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
@@ -87,7 +98,7 @@ export function forwardApprove(
     if (!config.baseUrl) throw new AppError(503, 'Agent service is not configured');
     const response = await fetchImpl(buildUrl(config.baseUrl, '/approve'), {
       method: 'POST',
-      headers: buildHeaders(config.key),
+      headers: await buildHeaders(config),
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -110,7 +121,7 @@ export function forwardGetRun(
       buildUrl(config.baseUrl, `/runs/${encodeURIComponent(runId)}`),
       {
         method: 'GET',
-        headers: buildHeaders(config.key),
+        headers: await buildHeaders(config),
         signal: AbortSignal.timeout(timeoutMs),
       },
     );
@@ -134,7 +145,7 @@ export function deleteGatewaySession(
     if (!config.baseUrl) throw new AppError(503, 'Agent service is not configured');
     const response = await fetchImpl(buildUrl(config.baseUrl, '/sessions'), {
       method: 'DELETE',
-      headers: buildHeaders(config.key),
+      headers: await buildHeaders(config),
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -188,7 +199,7 @@ export async function* forwardPromptStream(
   try {
     response = await fetchImpl(buildUrl(config.baseUrl, '/prompt'), {
       method: 'POST',
-      headers: buildHeaders(config.key),
+      headers: await buildHeaders(config),
       body: JSON.stringify(payload),
       signal,
     });

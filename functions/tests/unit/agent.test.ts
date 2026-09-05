@@ -3,6 +3,19 @@ import { agentApproveHandler, agentRunHandler } from '../../src/functions/agent'
 import * as service from '../../src/services/conversationService';
 import { Conversation } from '../../src/types';
 
+// MI トークン供給器をフェイクに差し替える（実 DefaultAzureCredential はネットワークに触るため）。
+// audience 設定時は決まったトークンを返し、未設定時は null（無認証）を返す。
+jest.mock('../../src/services/gatewayToken', () => {
+  return {
+    GatewayTokenProvider: jest.fn().mockImplementation(
+      function (this: { audience: string; get: () => Promise<string | null> }, audience: string) {
+        this.audience = audience;
+        this.get = jest.fn(async () => (audience ? 'mocked-mi-token' : null));
+      },
+    ),
+  };
+});
+
 const CONVERSATION: Conversation = {
   id: 'conv-1',
   userId: 'dev-user',
@@ -42,7 +55,7 @@ describe('Functions agent proxy handlers', () => {
     process.env = { ...originalEnv };
     process.env.AUTH_ENABLED = 'false';
     delete process.env.AGENT_GATEWAY_URL;
-    delete process.env.AGENT_GATEWAY_KEY;
+    delete process.env.AGENT_GATEWAY_AUDIENCE;
     process.env.AGENT_ENABLED = 'true';
     // 所有 checking の基底：dev-user が conv-1 を所有している
     jest.spyOn(service, 'getConversation').mockResolvedValue(CONVERSATION);
@@ -81,9 +94,9 @@ describe('Functions agent proxy handlers', () => {
     return fetchMock;
   }
 
-  it('forwards approve and includes the shared key header when configured', async () => {
+  it('forwards approve with a Managed Identity token header when an audience is configured', async () => {
     process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
-    process.env.AGENT_GATEWAY_KEY = 'shared-secret';
+    process.env.AGENT_GATEWAY_AUDIENCE = 'api://agent-gateway';
     const fetchMock = mockApproveFlow(200, { ok: true, approvalId: 'appr-1', approved: true });
 
     const response = await agentApproveHandler(
@@ -108,13 +121,13 @@ describe('Functions agent proxy handlers', () => {
       'http://gateway:8787/approve',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer shared-secret' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer mocked-mi-token' }),
         body: JSON.stringify({ approvalId: 'appr-1', runId: 'run-1', approved: true }),
       }),
     );
   });
 
-  it('forwards approve without an auth header when no key is configured', async () => {
+  it('forwards approve without an auth header when no audience is configured', async () => {
     process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
     const fetchMock = mockApproveFlow(200, { ok: true, approvalId: 'appr-1', approved: false });
 

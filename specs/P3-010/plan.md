@@ -108,7 +108,7 @@ Q7 決定通り全ユーザー対象。ただし `AGENT_ENABLED=false`（Functio
 - [ ] kill switch（`AGENT_ENABLED`）と無効時 UI 非表示の E2E 確認。フロントへのフラグ配線（トグル非表示）を含む（RG-2 F4）
 - [ ] 初回起動 latency 対策：ツール有効化時の per-user npm 展開を初回のみにし、イメージ事前展開・進捗表示を検討（live test 副次発見2）。pi-subagents 由来サブプロセスへのゲート適用をツール有効化前に実機検証（RG-2 F8）
 - [ ] 全ユーザー公開、backlog P3-010 の実装メモ・ステータス更新
-- [ ] レビューゲート RG-3（§Review Gates・公開前最終関門）。必須条件：run 所有者検証の実装（RG-2 F1 must-fix：RunRecord userId 保持＋Functions/gateway 照合）。会話削除時のセッション破棄接続（RG-2 F2）、エージェント会話のモデル不在表示除外（RG-2 F3）もここで処理
+- [x] レビューゲート RG-3（§Review Gates・公開前最終関門）。RG-3 must-fix 対応済み：F-1 MIトークン一本化（`gatewayToken.ts`・静的キー削除）・F-2 CI/スクリプトのfail-closed＋bicep必須化・F-3 AUTH同時必須ガード・F-4 dependsOn。残りは実デプロイ・疎通・E2E（ユーザー手順）
 
 ## Review Gates（必須プロセス）
 

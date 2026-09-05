@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "10245103985083079095"
+      "templateHash": "17306892767908901332"
     }
   },
   "parameters": {
@@ -85,6 +85,39 @@
       "metadata": {
         "description": "Entra ID API application client ID used as the JWT audience"
       }
+    },
+    "agentAuthTenant": {
+      "type": "string",
+      "metadata": {
+        "description": "Agent gateway auth tenant (Managed Identity JWT issuer). Required for exposed gateways."
+      }
+    },
+    "agentAuthAudience": {
+      "type": "string",
+      "metadata": {
+        "description": "Agent gateway auth audience (Entra App registration application ID). Required for exposed gateways."
+      }
+    },
+    "agentEnabled": {
+      "type": "string",
+      "defaultValue": "false",
+      "metadata": {
+        "description": "Agent feature kill switch (false = disabled)"
+      }
+    },
+    "agentModelScope": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Agent model scope pattern (comma separated, empty = all allowed)"
+      }
+    },
+    "agentDefaultModel": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Agent default model (provider/id). Verified against scope at gateway startup."
+      }
     }
   },
   "variables": {
@@ -97,7 +130,11 @@
     "staticWebAppName": "[format('swa-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "keyVaultName": "[format('kv-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "appInsightsName": "[format('appi-{0}', parameters('environment'))]",
-    "logAnalyticsWorkspaceName": "[format('log-{0}', parameters('environment'))]"
+    "logAnalyticsWorkspaceName": "[format('log-{0}', parameters('environment'))]",
+    "containerAppEnvironmentName": "[format('cae-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "containerAppName": "[format('agent-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "containerRegistryName": "[format('acr{0}{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "userAssignedIdentityName": "[format('uami-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]"
   },
   "resources": [
     {
@@ -203,7 +240,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "14859799531112905852"
+              "templateHash": "9104917795883862514"
             }
           },
           "parameters": {
@@ -289,6 +326,25 @@
                   "partitionKey": {
                     "paths": [
                       "/conversationId"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDbAccountName'), parameters('cosmosDbDatabaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2023-11-15",
+              "name": "[format('{0}/{1}/{2}', parameters('cosmosDbAccountName'), parameters('cosmosDbDatabaseName'), 'userSettings')]",
+              "properties": {
+                "resource": {
+                  "id": "userSettings",
+                  "partitionKey": {
+                    "paths": [
+                      "/userId"
                     ],
                     "kind": "Hash"
                   }
@@ -421,6 +477,9 @@
           },
           "objectId": {
             "value": "[parameters('objectId')]"
+          },
+          "openCodeGoApiKey": {
+            "value": "[parameters('openCodeGoApiKey')]"
           }
         },
         "template": {
@@ -430,7 +489,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "15115126282233750523"
+              "templateHash": "5908387964145398908"
             }
           },
           "parameters": {
@@ -448,6 +507,14 @@
             },
             "objectId": {
               "type": "string"
+            },
+            "openCodeApiKeySecretName": {
+              "type": "string",
+              "defaultValue": "opencode-api-key"
+            },
+            "openCodeGoApiKey": {
+              "type": "securestring",
+              "defaultValue": ""
             }
           },
           "resources": [
@@ -480,6 +547,18 @@
                 "softDeleteRetentionInDays": 7,
                 "enablePurgeProtection": true
               }
+            },
+            {
+              "condition": "[not(equals(parameters('openCodeGoApiKey'), ''))]",
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), parameters('openCodeApiKeySecretName'))]",
+              "properties": {
+                "value": "[parameters('openCodeGoApiKey')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -490,10 +569,394 @@
             "keyVaultUri": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+            },
+            "openCodeApiKeySecretName": {
+              "type": "string",
+              "value": "[parameters('openCodeApiKeySecretName')]"
             }
           }
         }
       }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "agentpool-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "containerAppEnvironmentName": {
+            "value": "[variables('containerAppEnvironmentName')]"
+          },
+          "containerAppName": {
+            "value": "[variables('containerAppName')]"
+          },
+          "containerRegistryName": {
+            "value": "[variables('containerRegistryName')]"
+          },
+          "userAssignedIdentityName": {
+            "value": "[variables('userAssignedIdentityName')]"
+          },
+          "keyVaultName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-module'), '2025-04-01').outputs.keyVaultName.value]"
+          },
+          "keyVaultUri": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-module'), '2025-04-01').outputs.keyVaultUri.value]"
+          },
+          "openCodeApiKeySecretName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-module'), '2025-04-01').outputs.openCodeApiKeySecretName.value]"
+          },
+          "tenantId": {
+            "value": "[parameters('tenantId')]"
+          },
+          "agentAuthTenant": {
+            "value": "[parameters('agentAuthTenant')]"
+          },
+          "agentAuthAudience": {
+            "value": "[parameters('agentAuthAudience')]"
+          },
+          "agentModelScope": {
+            "value": "[parameters('agentModelScope')]"
+          },
+          "agentDefaultModel": {
+            "value": "[parameters('agentDefaultModel')]"
+          },
+          "appInsightsConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-module'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "4885316044629802955"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "containerAppEnvironmentName": {
+              "type": "string"
+            },
+            "containerAppName": {
+              "type": "string"
+            },
+            "containerRegistryName": {
+              "type": "string"
+            },
+            "userAssignedIdentityName": {
+              "type": "string"
+            },
+            "keyVaultName": {
+              "type": "string"
+            },
+            "keyVaultUri": {
+              "type": "string"
+            },
+            "openCodeApiKeySecretName": {
+              "type": "string",
+              "defaultValue": "opencode-api-key"
+            },
+            "tenantId": {
+              "type": "string"
+            },
+            "agentAuthTenant": {
+              "type": "string",
+              "metadata": {
+                "description": "Gateway JWT issuer tenant (exposed gateway requires Managed Identity auth)"
+              }
+            },
+            "agentAuthAudience": {
+              "type": "string",
+              "metadata": {
+                "description": "Gateway JWT audience = Entra App registration application ID (exposed gateway requires it)"
+              }
+            },
+            "agentModelScope": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "agentDefaultModel": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "agentMaxRuns": {
+              "type": "int",
+              "defaultValue": 4
+            },
+            "agentPromptTimeoutMs": {
+              "type": "int",
+              "defaultValue": 180000
+            },
+            "agentApprovalTimeoutMs": {
+              "type": "int",
+              "defaultValue": 120000
+            },
+            "gatewayHeartbeatMs": {
+              "type": "int",
+              "defaultValue": 15000
+            },
+            "gatewayRunTtlMs": {
+              "type": "int",
+              "defaultValue": 600000
+            },
+            "gatewayRegistryMax": {
+              "type": "int",
+              "defaultValue": 200
+            },
+            "dataDir": {
+              "type": "string",
+              "defaultValue": "/app/data"
+            },
+            "toolsFile": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "imageName": {
+              "type": "string",
+              "defaultValue": "doyonchat-agent-gateway:latest"
+            },
+            "cpu": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "1.0Gi"
+            },
+            "appInsightsConnectionString": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "envCore": [
+              {
+                "name": "GATEWAY_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "GATEWAY_PORT",
+                "value": "8787"
+              },
+              {
+                "name": "OPENCODE_API_KEY",
+                "secretRef": "opencode-api-key"
+              },
+              {
+                "name": "AGENT_DATA_DIR",
+                "value": "[parameters('dataDir')]"
+              },
+              {
+                "name": "AGENT_PROMPT_TIMEOUT_MS",
+                "value": "[format('{0}', parameters('agentPromptTimeoutMs'))]"
+              },
+              {
+                "name": "AGENT_APPROVAL_TIMEOUT_MS",
+                "value": "[format('{0}', parameters('agentApprovalTimeoutMs'))]"
+              },
+              {
+                "name": "GATEWAY_HEARTBEAT_MS",
+                "value": "[format('{0}', parameters('gatewayHeartbeatMs'))]"
+              },
+              {
+                "name": "GATEWAY_RUN_TTL_MS",
+                "value": "[format('{0}', parameters('gatewayRunTtlMs'))]"
+              },
+              {
+                "name": "GATEWAY_REGISTRY_MAX",
+                "value": "[format('{0}', parameters('gatewayRegistryMax'))]"
+              },
+              {
+                "name": "GATEWAY_MAX_RUNS",
+                "value": "[format('{0}', parameters('agentMaxRuns'))]"
+              },
+              {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "value": "[parameters('appInsightsConnectionString')]"
+              }
+            ],
+            "envOptional": "[concat(if(not(equals(parameters('agentModelScope'), '')), createArray(createObject('name', 'AGENT_MODEL_SCOPE', 'value', parameters('agentModelScope'))), createArray()), if(not(equals(parameters('agentDefaultModel'), '')), createArray(createObject('name', 'AGENT_DEFAULT_MODEL', 'value', parameters('agentDefaultModel'))), createArray()), if(not(equals(parameters('agentAuthTenant'), '')), createArray(createObject('name', 'GATEWAY_AUTH_TENANT', 'value', parameters('agentAuthTenant'))), createArray()), if(not(equals(parameters('agentAuthAudience'), '')), createArray(createObject('name', 'GATEWAY_AUTH_AUDIENCE', 'value', parameters('agentAuthAudience'))), createArray()), if(not(equals(parameters('toolsFile'), '')), createArray(createObject('name', 'AGENT_TOOLS_FILE', 'value', parameters('toolsFile'))), createArray()))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('userAssignedIdentityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('containerRegistryName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Basic"
+              },
+              "properties": {
+                "adminUserEnabled": false
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+              "name": "[guid(format('acr-pull-{0}-{1}', parameters('containerRegistryName'), parameters('userAssignedIdentityName')))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f781d1c-7f45-4d98-b7e5-1cfd4c4a9b02')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/accessPolicies",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'add')]",
+              "properties": {
+                "accessPolicies": [
+                  {
+                    "tenantId": "[parameters('tenantId')]",
+                    "objectId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName')), '2023-01-31').principalId]",
+                    "permissions": {
+                      "secrets": [
+                        "get"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('containerAppEnvironmentName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "workloadProfiles": [
+                  {
+                    "name": "Consumption",
+                    "workloadProfileType": "Consumption",
+                    "minimumCount": 0,
+                    "maximumCount": 1
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('containerAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName')))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8787,
+                    "transport": "auto",
+                    "allowInsecure": false
+                  },
+                  "registries": [
+                    {
+                      "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName'))]"
+                    }
+                  ],
+                  "secrets": [
+                    {
+                      "name": "opencode-api-key",
+                      "keyVaultUrl": "[format('{0}secrets/{1}', parameters('keyVaultUri'), parameters('openCodeApiKeySecretName'))]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName'))]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "agent-gateway",
+                      "image": "[format('{0}/{1}', reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer, parameters('imageName'))]",
+                      "resources": {
+                        "cpu": "[parameters('cpu')]",
+                        "memory": "[parameters('memory')]"
+                      },
+                      "env": "[concat(variables('envCore'), variables('envOptional'))]"
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 1
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
+                "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+                "[resourceId('Microsoft.KeyVault/vaults/accessPolicies', parameters('keyVaultName'), 'add')]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "agentGatewayUrl": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName')), '2024-03-01').configuration.ingress.fqdn)]"
+            },
+            "agentContainerAppName": {
+              "type": "string",
+              "value": "[parameters('containerAppName')]"
+            },
+            "containerRegistryName": {
+              "type": "string",
+              "value": "[parameters('containerRegistryName')]"
+            },
+            "containerRegistryLoginServer": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer]"
+            },
+            "userAssignedIdentityPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName')), '2023-01-31').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'appinsights-module')]",
+        "[resourceId('Microsoft.Resources/deployments', 'keyvault-module')]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deployments",
@@ -615,6 +1078,15 @@
           },
           "appInsightsConnectionString": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-module'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+          },
+          "agentGatewayUrl": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'agentpool-module'), '2025-04-01').outputs.agentGatewayUrl.value]"
+          },
+          "agentGatewayAudience": {
+            "value": "[parameters('agentAuthAudience')]"
+          },
+          "agentEnabled": {
+            "value": "[parameters('agentEnabled')]"
           }
         },
         "template": {
@@ -624,7 +1096,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "13458400672630645273"
+              "templateHash": "15577299983734637525"
             }
           },
           "parameters": {
@@ -676,6 +1148,10 @@
               "type": "string",
               "defaultValue": "kimi-k2.6"
             },
+            "openCodeGoTitleModel": {
+              "type": "string",
+              "defaultValue": "deepseek-v4-flash"
+            },
             "authEnabled": {
               "type": "string",
               "defaultValue": "false"
@@ -697,6 +1173,18 @@
             },
             "appInsightsConnectionString": {
               "type": "string"
+            },
+            "agentGatewayUrl": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "agentGatewayAudience": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "agentEnabled": {
+              "type": "string",
+              "defaultValue": "false"
             }
           },
           "resources": [
@@ -757,6 +1245,9 @@
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
               "kind": "functionapp,linux",
+              "identity": {
+                "type": "SystemAssigned"
+              },
               "properties": {
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('functionPlanName'))]",
                 "httpsOnly": true,
@@ -807,11 +1298,15 @@
                 "COSMOSDB_REQUIRED": "[parameters('cosmosDbRequired')]",
                 "OPENCODE_GO_API_KEY": "[parameters('openCodeGoApiKey')]",
                 "OPENCODE_GO_MODEL": "[parameters('openCodeGoModel')]",
+                "OPENCODE_GO_TITLE_MODEL": "[parameters('openCodeGoTitleModel')]",
                 "AUTH_ENABLED": "[parameters('authEnabled')]",
                 "ENTRA_TENANT_ID": "[parameters('entraTenantId')]",
                 "ENTRA_API_CLIENT_ID": "[parameters('entraApiClientId')]",
                 "FRONTEND_URL": "[parameters('frontendUrl')]",
-                "APPLICATIONINSIGHTS_CONNECTION_STRING": "[parameters('appInsightsConnectionString')]"
+                "APPLICATIONINSIGHTS_CONNECTION_STRING": "[parameters('appInsightsConnectionString')]",
+                "AGENT_GATEWAY_URL": "[parameters('agentGatewayUrl')]",
+                "AGENT_GATEWAY_AUDIENCE": "[parameters('agentGatewayAudience')]",
+                "AGENT_ENABLED": "[parameters('agentEnabled')]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
@@ -840,6 +1335,7 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'agentpool-module')]",
         "[resourceId('Microsoft.Resources/deployments', 'appinsights-module')]",
         "[resourceId('Microsoft.Resources/deployments', 'cosmosdb-module')]",
         "[resourceId('Microsoft.Resources/deployments', 'staticwebapp-module')]"
@@ -870,6 +1366,18 @@
     "appInsightsConnectionString": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-module'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+    },
+    "agentGatewayUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'agentpool-module'), '2025-04-01').outputs.agentGatewayUrl.value]"
+    },
+    "agentContainerAppName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'agentpool-module'), '2025-04-01').outputs.agentContainerAppName.value]"
+    },
+    "containerRegistryName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'agentpool-module'), '2025-04-01').outputs.containerRegistryName.value]"
     }
   }
 }

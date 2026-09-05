@@ -39,6 +39,21 @@ param entraTenantId string = ''
 @description('Entra ID API application client ID used as the JWT audience')
 param entraApiClientId string = ''
 
+@description('Agent gateway auth tenant (Managed Identity JWT issuer). Required for exposed gateways.')
+param agentAuthTenant string
+
+@description('Agent gateway auth audience (Entra App registration application ID). Required for exposed gateways.')
+param agentAuthAudience string
+
+@description('Agent feature kill switch (false = disabled)')
+param agentEnabled string = 'false'
+
+@description('Agent model scope pattern (comma separated, empty = all allowed)')
+param agentModelScope string = ''
+
+@description('Agent default model (provider/id). Verified against scope at gateway startup.')
+param agentDefaultModel string = ''
+
 // Resource names with environment suffix
 var cosmosDbAccountName = 'cosmos-${environment}-${uniqueString(resourceGroup().id)}'
 var functionPlanName = 'fcp-${environment}-${uniqueString(resourceGroup().id)}'
@@ -50,6 +65,10 @@ var staticWebAppName = 'swa-${environment}-${uniqueString(resourceGroup().id)}'
 var keyVaultName = 'kv-${environment}-${uniqueString(resourceGroup().id)}'
 var appInsightsName = 'appi-${environment}'
 var logAnalyticsWorkspaceName = 'log-${environment}'
+var containerAppEnvironmentName = 'cae-${environment}-${uniqueString(resourceGroup().id)}'
+var containerAppName = 'agent-${environment}-${uniqueString(resourceGroup().id)}'
+var containerRegistryName = 'acr${environment}${uniqueString(resourceGroup().id)}'
+var userAssignedIdentityName = 'uami-${environment}-${uniqueString(resourceGroup().id)}'
 
 module monitor './modules/monitor.bicep' = {
   name: 'monitor-module'
@@ -88,6 +107,28 @@ module keyVault './modules/keyVault.bicep' = {
     keyVaultName: keyVaultName
     tenantId: tenantId
     objectId: objectId
+    openCodeGoApiKey: openCodeGoApiKey
+  }
+}
+
+module agentPool './modules/agentPool.bicep' = {
+  name: 'agentpool-module'
+  params: {
+    location: location
+    tags: tags
+    containerAppEnvironmentName: containerAppEnvironmentName
+    containerAppName: containerAppName
+    containerRegistryName: containerRegistryName
+    userAssignedIdentityName: userAssignedIdentityName
+    keyVaultName: keyVault.outputs.keyVaultName
+    keyVaultUri: keyVault.outputs.keyVaultUri
+    openCodeApiKeySecretName: keyVault.outputs.openCodeApiKeySecretName
+    tenantId: tenantId
+    agentAuthTenant: agentAuthTenant
+    agentAuthAudience: agentAuthAudience
+    agentModelScope: agentModelScope
+    agentDefaultModel: agentDefaultModel
+    appInsightsConnectionString: appInsights.outputs.appInsightsConnectionString
   }
 }
 
@@ -118,6 +159,9 @@ module functions './modules/functions.bicep' = {
     frontendUrl: staticWebApp.outputs.staticWebAppUrl
     cosmosDbRequired: cosmosDbRequired
     appInsightsConnectionString: appInsights.outputs.appInsightsConnectionString
+    agentGatewayUrl: agentPool.outputs.agentGatewayUrl
+    agentGatewayAudience: agentAuthAudience
+    agentEnabled: agentEnabled
   }
 }
 
@@ -127,3 +171,6 @@ output functionPlanName string = functions.outputs.functionPlanName
 output frontendUrl string = staticWebApp.outputs.staticWebAppUrl
 output cosmosDbEndpoint string = cosmosdb.outputs.cosmosDbEndpoint
 output appInsightsConnectionString string = appInsights.outputs.appInsightsConnectionString
+output agentGatewayUrl string = agentPool.outputs.agentGatewayUrl
+output agentContainerAppName string = agentPool.outputs.agentContainerAppName
+output containerRegistryName string = agentPool.outputs.containerRegistryName

@@ -71,10 +71,23 @@ jobs:
           AUTH_ENABLED: ${{ vars.AUTH_ENABLED || 'false' }}
           ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID || '' }}
           ENTRA_API_CLIENT_ID: ${{ vars.ENTRA_API_CLIENT_ID || '' }}
+          AGENT_ENABLED: ${{ vars.AGENT_ENABLED || 'false' }}
+          AGENT_AUTH_TENANT: ${{ vars.AGENT_AUTH_TENANT || '' }}
+          AGENT_AUTH_AUDIENCE: ${{ vars.AGENT_AUTH_AUDIENCE || '' }}
         run: |
           if [ "$AUTH_ENABLED" = "true" ]; then
             test -n "$ENTRA_TENANT_ID" || { echo "::error::ENTRA_TENANT_ID is required when authentication is enabled"; exit 1; }
             test -n "$ENTRA_API_CLIENT_ID" || { echo "::error::ENTRA_API_CLIENT_ID is required when authentication is enabled"; exit 1; }
+          fi
+
+          # Agent gateway is exposed via ingress. Managed Identity JWT auth is mandatory.
+          if [ "$AGENT_ENABLED" = "true" ]; then
+            test -n "$AGENT_AUTH_TENANT" || { echo "::error::AGENT_AUTH_TENANT is required when the agent is enabled (gateway is exposed)"; exit 1; }
+            test -n "$AGENT_AUTH_AUDIENCE" || { echo "::error::AGENT_AUTH_AUDIENCE is required when the agent is enabled (gateway Managed Identity audience)"; exit 1; }
+            # Functions must run with user auth enabled too, otherwise agent endpoints run as dev-user.
+            test "$AUTH_ENABLED" = "true" || { echo "::error::AUTH_ENABLED must be true when the agent is enabled"; exit 1; }
+            test -n "$ENTRA_TENANT_ID" || { echo "::error::ENTRA_TENANT_ID is required when the agent is enabled"; exit 1; }
+            test -n "$ENTRA_API_CLIENT_ID" || { echo "::error::ENTRA_API_CLIENT_ID is required when the agent is enabled"; exit 1; }
           fi
 
           OUTPUTS=$(az deployment group create \
@@ -86,6 +99,9 @@ jobs:
             authEnabled="$AUTH_ENABLED" \
             entraTenantId="$ENTRA_TENANT_ID" \
             entraApiClientId="$ENTRA_API_CLIENT_ID" \
+            agentAuthTenant="$AGENT_AUTH_TENANT" \
+            agentAuthAudience="$AGENT_AUTH_AUDIENCE" \
+            agentEnabled="$AGENT_ENABLED" \
             --query 'properties.outputs' \
             -o json)
           FUNCTION_APP_NAME=$(echo "$OUTPUTS" | jq -r '.functionAppName.value')

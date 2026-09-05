@@ -284,6 +284,7 @@ describe('Functions /chat agent branch', () => {
 describe('createAgentResponseStream partial save on stop', () => {
   const config: AgentGatewayConfig = {
     baseUrl: 'http://gateway:8787',
+    audience: '',
     enabled: true,
   };
   const payload = {
