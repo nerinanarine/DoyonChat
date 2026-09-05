@@ -52,7 +52,7 @@ param agentEnabled string = 'false'
 param agentModelScope string = ''
 
 @description('Agent default model (provider/id). Verified against scope at gateway startup.')
-param agentDefaultModel string = ''
+param agentDefaultModel string = 'opencode-go/muse-spark-1.3-contributor'
 
 // Resource names with environment suffix
 var cosmosDbAccountName = 'cosmos-${environment}-${uniqueString(resourceGroup().id)}'
