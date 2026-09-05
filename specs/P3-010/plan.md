@@ -90,7 +90,7 @@ Q7 決定通り全ユーザー対象。ただし `AGENT_ENABLED=false`（Functio
 
 - [x] 会話 ID↔pi セッション対応付け（`switch_session`・短期保持、replica=1＋sticky。存在しないパスへの切替成功を実機確認済み。68件 green）
 - [ ] Functions エージェント経路：`/chat` エージェント分岐（gateway `POST /prompt` へ承認レベル・危険ツール表付きで中継、SSE 契約は既存流用）＋中断部分テキストの P1-003 保存フロー接続＋ユーザー設定 `agentApprovalLevel` の gateway 反映（RG-1 F1/F9 残部）
-- [ ] ツール allowlist レジストリ（既定空＝全無効）と `dangerous` 分類テーブル。pi 実ツール名との一致を実機・一次情報で確認（RG-1 F10）
+- [x] ツール allowlist レジストリ（`agent/tools.allowlist.json`、既定空＝全無効）と `dangerous` 分類テーブル（`--tools` 付加・`APPROVAL_DANGEROUS_TOOLS` 既定・壊JSONは fail-closed）。pi 実ツール名との一致を確認（pi 付属 settings.md のビルトイン `read, bash, powershell, edit, write, grep, find, ls` とゲート既定が整合。73件 green）
 - [x] Phase 2 事前確認（delegate 実機調査で確定）：① `agentSubagentModel` の渡し方は pi 起動前の settings.json `subagents.defaultModel` 書込のみ（env・フックなし）。multi-user 分離は `PI_CODING_AGENT_DIR` による per-user 設定ディレクトリ化。未設定時は親セッションモデル継承。② `get_available_models` は `--models` スコープを**反映しない**（実測33件完全一致）。gateway 側で minimatch フィルタ＋`set_model` 中継時検証が必須（`set_model` 自体はスコープ非チェック、`--model` は scope 優先のため `agentModel` も検証対象）
 - [x] `pi-subagents` 同梱の下地（`PI_CODING_AGENT_DIR` per-user 設定ディレクトリ＋settings.json `subagents.defaultModel`/`packages` 書込。イメージへの npm 同梱は Phase 3 bicep/デプロイ時に確定）
 - [x] エージェント用モデル一覧：gateway が `get_available_models`（全カタログ）を取得し `--models`/`enabledModels` パターンで minimatch フィルタ。`set_model` 中継時もスコープ内検証を実施（`GET /models`＋`/prompt model` 付き、59件 green）
