@@ -67,6 +67,13 @@ export async function updateConversationModel(id: string, model: string): Promis
   return put<Conversation>(`/conversations/${id}/model`, { model });
 }
 
+export async function updateConversationAgentMode(
+  id: string,
+  enabled: boolean,
+): Promise<Conversation> {
+  return put<Conversation>(`/conversations/${id}/agent-mode`, { enabled });
+}
+
 export async function updateConversationTitle(id: string, title: string): Promise<Conversation> {
   return put<Conversation>(`/conversations/${id}/title`, { title: title.trim() });
 }

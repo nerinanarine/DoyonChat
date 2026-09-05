@@ -59,6 +59,7 @@ function mockHooks(
     create,
     remove: vi.fn(),
     updateModel: vi.fn(),
+    updateAgentMode: vi.fn(),
     updateTitle: vi.fn(),
     autoTitle,
     isRenamed,
@@ -159,6 +160,7 @@ describe('App model state', () => {
       remove: vi.fn(),
       updateModel,
       updateTitle: vi.fn(),
+      updateAgentMode: vi.fn(),
       autoTitle,
       isRenamed,
     });
@@ -335,5 +337,80 @@ describe('App model state', () => {
     fireEvent.click(screen.getByRole('button', { name: '送信' }));
 
     expect(autoTitle).not.toHaveBeenCalled();
+  });
+});
+
+describe('App agent mode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    create.mockResolvedValue(createdConversation);
+    autoTitle.mockResolvedValue(undefined);
+    isRenamed.mockReturnValue(false);
+    mockHooks();
+    vi.mocked(api.fetchModels).mockResolvedValue([defaultModel]);
+  });
+
+  it('disables image attach and shows the switch for agent mode conversations', async () => {
+    mockHooks([
+      { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
+    ]);
+    vi.mocked(useConversations).mockReturnValue({
+      conversations: [
+        { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
+      ],
+      loading: false,
+      error: null,
+      load: vi.fn(),
+      create,
+      remove: vi.fn(),
+      updateModel: vi.fn(),
+      updateAgentMode: vi.fn(),
+      updateTitle: vi.fn(),
+      autoTitle,
+      isRenamed,
+    });
+    render(<App />);
+    fireEvent.click(
+      (await screen.findByRole('button', { name: 'エージェント会話' })).parentElement as HTMLElement,
+    );
+
+    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('agent-conv'));
+    expect(screen.getByRole('switch', { name: /エージェント/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: '画像をアップロード' })).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/エージェントモードはテキストのみ対応/);
+    expect(screen.getByLabelText('エージェントモード')).toBeInTheDocument();
+  });
+
+  it('toggles agent mode off through the header switch', async () => {
+    const updateAgentMode = vi.fn().mockResolvedValue(undefined);
+    mockHooks([
+      { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
+    ]);
+    vi.mocked(useConversations).mockReturnValue({
+      conversations: [
+        { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
+      ],
+      loading: false,
+      error: null,
+      load: vi.fn(),
+      create,
+      remove: vi.fn(),
+      updateModel: vi.fn(),
+      updateAgentMode,
+      updateTitle: vi.fn(),
+      autoTitle,
+      isRenamed,
+    });
+    render(<App />);
+    fireEvent.click(
+      (await screen.findByRole('button', { name: 'エージェント会話' })).parentElement as HTMLElement,
+    );
+
+    const toggle = await screen.findByRole('switch', { name: /エージェント/ });
+    fireEvent.click(toggle);
+    await waitFor(() => expect(updateAgentMode).toHaveBeenCalledWith('agent-conv', false));
   });
 });

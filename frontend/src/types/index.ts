@@ -3,6 +3,8 @@ export interface Conversation {
   userId?: string;
   title: string;
   model: string;
+  /** 会話ごとのエージェントモード（未保存時は通常チャット）。 */
+  agentMode?: boolean;
   createdAt: string;
   updatedAt: string;
 }

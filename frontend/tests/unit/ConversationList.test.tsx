@@ -186,3 +186,34 @@ describe('ConversationList rename', () => {
     expect(screen.getByRole('textbox', { name: '会話タイトルを編集' })).toHaveValue('次の会話');
   });
 });
+
+describe('ConversationList agent mode badge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('shows an Agent badge only for agent mode conversations', () => {
+    const agentModeConversations = [
+      { ...conversations[0], agentMode: true },
+      conversations[1],
+    ];
+    render(
+      <ConversationList
+        conversations={agentModeConversations}
+        activeId="conversation-1"
+        onSelect={onSelect}
+        onDelete={onDelete}
+        onRename={vi.fn().mockResolvedValue(undefined)}
+        onNewChat={onNewChat}
+      />,
+    );
+
+    expect(screen.getAllByLabelText('エージェントモード')).toHaveLength(1);
+    expect(screen.getByLabelText('エージェントモード')).toHaveTextContent('Agent');
+  });
+
+  it('omits the badge when no conversation is in agent mode', () => {
+    renderList();
+    expect(screen.queryByLabelText('エージェントモード')).not.toBeInTheDocument();
+  });
+});

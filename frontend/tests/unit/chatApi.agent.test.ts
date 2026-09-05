@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { respondAgentApproval, streamChat } from '../../src/services/chatApi';
+import { respondAgentApproval, streamChat, updateConversationAgentMode } from '../../src/services/chatApi';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -16,6 +16,37 @@ function streamingResponse(...chunks: string[]) {
   };
   return { ok: true, body: { getReader: () => reader } };
 }
+
+describe('conversation agent mode API', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it('PUTs the enabled flag to the agent-mode endpoint', async () => {
+    const updated = {
+      id: 'conversation-1',
+      title: '会話',
+      model: 'model-1',
+      agentMode: true,
+      createdAt: '2026-08-22T00:00:00.000Z',
+      updatedAt: '2026-08-22T00:00:00.000Z',
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue(updated),
+    });
+
+    await expect(updateConversationAgentMode('conversation-1', true)).resolves.toEqual(updated);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/conversations/conversation-1/agent-mode'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ enabled: true }),
+      }),
+    );
+  });
+});
 
 describe('chat stream agent events', () => {
   beforeEach(() => {

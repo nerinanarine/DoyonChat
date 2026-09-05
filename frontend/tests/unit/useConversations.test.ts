@@ -7,6 +7,7 @@ import { Conversation } from '../../src/types';
 vi.mock('../../src/services/chatApi', () => ({
   fetchConversations: vi.fn(),
   updateConversationTitle: vi.fn(),
+  updateConversationAgentMode: vi.fn(),
   autoGenerateTitle: vi.fn(),
 }));
 
@@ -126,5 +127,65 @@ describe('useConversations auto title', () => {
     expect(warn).toHaveBeenCalled();
     expect(result.current.conversations).toBe(before);
     warn.mockRestore();
+  });
+});
+
+describe('useConversations agent mode toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.fetchConversations).mockResolvedValue(conversations);
+  });
+
+  it('optimistically updates agentMode and replaces with the server response', async () => {
+    const updated = { ...conversations[1], agentMode: true };
+    vi.mocked(api.updateConversationAgentMode).mockResolvedValue(updated);
+    const { result } = renderHook(() => useConversations());
+    await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+    const before = result.current.conversations;
+
+    let updatePromise!: Promise<void>;
+    act(() => {
+      updatePromise = result.current.updateAgentMode('conversation-2', true);
+    });
+    // 楽観更新: API 応答前に対象会話の agentMode が反映される
+    expect(result.current.conversations[1].agentMode).toBe(true);
+
+    await act(async () => {
+      await updatePromise;
+    });
+
+    expect(api.updateConversationAgentMode).toHaveBeenCalledWith('conversation-2', true);
+    expect(result.current.conversations.map((c) => c.id)).toEqual([
+      'conversation-1',
+      'conversation-2',
+    ]);
+    expect(result.current.conversations[0]).toBe(before[0]);
+    expect(result.current.conversations[1]).toBe(updated);
+  });
+
+  it('rolls back agentMode and rethrows when the toggle fails', async () => {
+    const error = new Error('toggle failed');
+    vi.mocked(api.updateConversationAgentMode).mockRejectedValue(error);
+    const { result } = renderHook(() => useConversations());
+    await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+    const before = result.current.conversations[1];
+
+    let updatePromise!: Promise<void>;
+    let thrown: unknown;
+    act(() => {
+      updatePromise = result.current.updateAgentMode('conversation-2', true).catch((caught) => {
+        thrown = caught;
+      });
+    });
+    expect(result.current.conversations[1].agentMode).toBe(true);
+
+    await act(async () => {
+      await updatePromise;
+    });
+
+    expect(thrown).toBe(error);
+    // 失敗時は元の会話オブジェクトへ戻る
+    expect(result.current.conversations[1]).toBe(before);
+    expect(api.updateConversationAgentMode).toHaveBeenCalledWith('conversation-2', true);
   });
 });

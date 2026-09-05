@@ -28,12 +28,15 @@ function App() {
     create,
     remove,
     updateModel,
+    updateAgentMode,
     updateTitle,
     autoTitle,
     isRenamed,
   } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [draftModel, setDraftModel] = useState<string | undefined>(undefined);
+  const [agentModeBusy, setAgentModeBusy] = useState(false);
+  const [agentModeError, setAgentModeError] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
 
@@ -193,6 +196,22 @@ function App() {
     [updateSettings],
   );
 
+  const handleToggleAgentMode = useCallback(
+    async (enabled: boolean) => {
+      if (!activeConversationId) return;
+      setAgentModeBusy(true);
+      setAgentModeError(null);
+      try {
+        await updateAgentMode(activeConversationId, enabled);
+      } catch {
+        setAgentModeError('エージェントモードを切り替えられませんでした。もう一度お試しください。');
+      } finally {
+        setAgentModeBusy(false);
+      }
+    },
+    [activeConversationId, updateAgentMode],
+  );
+
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
@@ -251,6 +270,10 @@ function App() {
       onChangeAgentApprovalLevel={handleChangeAgentApprovalLevel}
       onChangeAgentModel={handleChangeAgentModel}
       onChangeAgentSubagentModel={handleChangeAgentSubagentModel}
+      agentMode={activeConversation?.agentMode === true}
+      agentModeBusy={agentModeBusy}
+      agentModeError={agentModeError}
+      onToggleAgentMode={(enabled) => void handleToggleAgentMode(enabled)}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}
@@ -291,6 +314,11 @@ function App() {
         isStreaming={isStreaming}
         disabled={convLoading || messagesLoading || Boolean(modelDisabledReason)}
         disabledReason={modelDisabledReason}
+        imageDisabledReason={
+          activeConversation?.agentMode
+            ? 'エージェントモードはテキストのみ対応のため、画像は添付できません。'
+            : undefined
+        }
       />
     </AppLayout>
   );

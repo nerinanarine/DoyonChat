@@ -148,3 +148,65 @@ describe('AppLayout settings menu', () => {
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('AppLayout agent mode toggle', () => {
+  it('renders a switch that reflects the conversation agent mode and toggles it', () => {
+    const onToggleAgentMode = vi.fn();
+    const { rerender } = render(
+      <AppLayout
+        {...props}
+        conversations={[{ ...conversation, agentMode: true }]}
+        agentMode
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+
+    const toggle = screen.getByRole('switch', { name: /エージェント/ });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(toggle);
+    expect(onToggleAgentMode).toHaveBeenCalledWith(false);
+
+    rerender(
+      <AppLayout
+        {...props}
+        conversations={[conversation]}
+        agentMode={false}
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+    expect(screen.getByRole('switch', { name: /エージェント/ })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+  });
+
+  it('does not render the switch while busy and shows an error on failure', () => {
+    const onToggleAgentMode = vi.fn();
+    const { rerender } = render(
+      <AppLayout
+        {...props}
+        conversations={[{ ...conversation, agentMode: true }]}
+        agentMode
+        agentModeBusy
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+    expect(screen.getByRole('switch', { name: /エージェント/ })).toBeDisabled();
+
+    rerender(
+      <AppLayout
+        {...props}
+        conversations={[conversation]}
+        agentMode={false}
+        agentModeError="エージェントモードを切り替えられませんでした。もう一度お試しください。"
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('エージェントモードを切り替えられませんでした');
+  });
+
+  it('does not render the switch when no conversation is selected', () => {
+    render(<AppLayout {...props} activeConversationId={null} conversations={[]} />);
+    expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
+  });
+});
