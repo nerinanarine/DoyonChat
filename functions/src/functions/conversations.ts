@@ -9,6 +9,10 @@ import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
 import { DEFAULT_MODEL_ID, hasModel } from '../config/modelCatalog';
 import { generateTitle, sanitizeGeneratedTitle } from '../services/opencodeGo';
+import {
+  deleteGatewaySession,
+  loadAgentGatewayConfig,
+} from '../services/agentGateway';
 import { getOptionalString, getRequiredString, readJsonBody } from './request';
 
 function getConversationId(request: HttpRequest): string {
@@ -45,6 +49,22 @@ export async function conversationsHandler(
   }
 }
 
+/**
+ * 会話削除に伴う pi セッション資産の破棄を gateway へ依頼する（RG-2 F2）。
+ * fire-and-forget 前提：失敗しても削除本体の成否には影響させない。
+ * kill switch（AGENT_ENABLED=false）または gateway 未設定時は何もしない。
+ */
+function notifyGatewaySessionDeleted(userId: string, conversationId: string): void {
+  const config = loadAgentGatewayConfig();
+  if (!config.enabled || !config.baseUrl) return;
+  deleteGatewaySession(config, { userId, conversationId }).catch((error) => {
+    console.error(
+      '[functions/conversations] gateway session delete failed (non-blocking):',
+      error,
+    );
+  });
+}
+
 export async function conversationHandler(
   request: HttpRequest,
   _context: InvocationContext,
@@ -62,6 +82,7 @@ export async function conversationHandler(
 
     const deleted = await service.deleteConversation(id, userId);
     if (!deleted) throw new AppError(404, 'Conversation not found');
+    notifyGatewaySessionDeleted(userId, id);
     return { status: 204 };
   } catch (error) {
     return toHttpResponse(error);

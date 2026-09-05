@@ -1,5 +1,25 @@
 import { HttpRequest } from '@azure/functions';
 import { agentApproveHandler, agentRunHandler } from '../../src/functions/agent';
+import * as service from '../../src/services/conversationService';
+import { Conversation } from '../../src/types';
+
+const CONVERSATION: Conversation = {
+  id: 'conv-1',
+  userId: 'dev-user',
+  title: 'Agent',
+  model: 'kimi-k2.6',
+  createdAt: '2026-09-04T00:00:00.000Z',
+  updatedAt: '2026-09-04T00:00:00.000Z',
+};
+
+const RUN_RECORD = {
+  id: 'run-1',
+  status: 'running',
+  conversationId: 'conv-1',
+  approvals: [],
+  createdAt: 1,
+  updatedAt: 2,
+};
 
 function request(
   method: string,
@@ -24,6 +44,8 @@ describe('Functions agent proxy handlers', () => {
     delete process.env.AGENT_GATEWAY_URL;
     delete process.env.AGENT_GATEWAY_KEY;
     process.env.AGENT_ENABLED = 'true';
+    // 所有 checking の基底：dev-user が conv-1 を所有している
+    jest.spyOn(service, 'getConversation').mockResolvedValue(CONVERSATION);
   });
 
   afterEach(() => {
@@ -41,10 +63,28 @@ describe('Functions agent proxy handlers', () => {
     return fetchMock;
   }
 
+  function mockApproveFlow(status: number, jsonBody: unknown) {
+    // 1) GET /runs/:id（所有検証用） 2) POST /approve
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => RUN_RECORD,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => jsonBody,
+      } as Response);
+    jest.spyOn(global, 'fetch').mockImplementation(fetchMock);
+    return fetchMock;
+  }
+
   it('forwards approve and includes the shared key header when configured', async () => {
     process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
     process.env.AGENT_GATEWAY_KEY = 'shared-secret';
-    const fetchMock = mockFetch(200, { ok: true, approvalId: 'appr-1', approved: true });
+    const fetchMock = mockApproveFlow(200, { ok: true, approvalId: 'appr-1', approved: true });
 
     const response = await agentApproveHandler(
       request('POST', '/api/agent/approve', {
@@ -59,7 +99,12 @@ describe('Functions agent proxy handlers', () => {
       status: 200,
       jsonBody: { ok: true, approvalId: 'appr-1', approved: true },
     });
-    expect(fetchMock).toHaveBeenCalledWith(
+    // 所有検証後にのみ承認が転送される（approve 呼び出しは GET /runs の直後）
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://gateway:8787/runs/run-1',
+      expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       'http://gateway:8787/approve',
       expect.objectContaining({
         method: 'POST',
@@ -71,7 +116,7 @@ describe('Functions agent proxy handlers', () => {
 
   it('forwards approve without an auth header when no key is configured', async () => {
     process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
-    const fetchMock = mockFetch(200, { ok: true, approvalId: 'appr-1', approved: false });
+    const fetchMock = mockApproveFlow(200, { ok: true, approvalId: 'appr-1', approved: false });
 
     await agentApproveHandler(
       request('POST', '/api/agent/approve', {
@@ -82,20 +127,20 @@ describe('Functions agent proxy handlers', () => {
       {} as never,
     );
 
-    const callHeaders = fetchMock.mock.calls[0][1] as { headers: Record<string, string> };
+    const callHeaders = fetchMock.mock.calls[1][1] as { headers: Record<string, string> };
     expect(callHeaders.headers).not.toHaveProperty('Authorization');
   });
 
   it('defaults missing approved to rejection', async () => {
     process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
-    const fetchMock = mockFetch(200, { ok: true, approvalId: 'appr-1', approved: false });
+    const fetchMock = mockApproveFlow(200, { ok: true, approvalId: 'appr-1', approved: false });
 
     await agentApproveHandler(
       request('POST', '/api/agent/approve', { approvalId: 'appr-1', runId: 'run-1' }),
       {} as never,
     );
 
-    expect(JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body)).toEqual({
+    expect(JSON.parse((fetchMock.mock.calls[1][1] as { body: string }).body)).toEqual({
       approvalId: 'appr-1',
       runId: 'run-1',
       approved: false,
@@ -104,7 +149,7 @@ describe('Functions agent proxy handlers', () => {
 
   it('rejects missing approvalId and runId with 400', async () => {
     process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
-    mockFetch(200, { ok: true });
+    mockApproveFlow(200, { ok: true });
 
     const missingApproval = await agentApproveHandler(
       request('POST', '/api/agent/approve', { runId: 'run-1' }),
@@ -122,13 +167,10 @@ describe('Functions agent proxy handlers', () => {
   it('forwards run lookup and relays the gateway record', async () => {
     process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
     const record = {
-      id: 'run-1',
+      ...RUN_RECORD,
       status: 'settled',
       finalText: 'done',
-      approvals: [],
       events: [{ type: 'agent_settled' }],
-      createdAt: 1,
-      updatedAt: 2,
     };
     const fetchMock = mockFetch(200, record);
 
@@ -142,6 +184,7 @@ describe('Functions agent proxy handlers', () => {
       'http://gateway:8787/runs/run-1',
       expect.objectContaining({ method: 'GET' }),
     );
+    expect(service.getConversation).toHaveBeenCalledWith('conv-1', 'dev-user');
   });
 
   it('rejects a missing run id with 400', async () => {
@@ -164,7 +207,7 @@ describe('Functions agent proxy handlers', () => {
     expect(notFound.status).toBe(404);
     expect((notFound.jsonBody as { error: string }).error).not.toContain('gateway');
 
-    mockFetch(429, {});
+    mockApproveFlow(429, {});
     const busy = await agentApproveHandler(
       request('POST', '/api/agent/approve', {
         approvalId: 'appr-1',
@@ -231,5 +274,66 @@ describe('Functions agent proxy handlers', () => {
     expect((response.jsonBody as { error: string }).error).toBe(
       'Agent feature is not available',
     );
+  });
+
+  describe('run ownership verification (RG-2 F1)', () => {
+    it('rejects runs without a conversationId with 404', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      mockFetch(200, { ...RUN_RECORD, conversationId: undefined });
+
+      const response = await agentRunHandler(
+        request('GET', '/api/agent/runs/run-1', undefined, { runId: 'run-1' }),
+        {} as never,
+      );
+      expect(response.status).toBe(404);
+      expect(service.getConversation).not.toHaveBeenCalled();
+    });
+
+    it('rejects runs whose conversation does not exist or is not owned', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      (service.getConversation as jest.Mock).mockResolvedValue(null);
+      mockFetch(200, RUN_RECORD);
+
+      const runResponse = await agentRunHandler(
+        request('GET', '/api/agent/runs/run-1', undefined, { runId: 'run-1' }),
+        {} as never,
+      );
+      expect(runResponse.status).toBe(404);
+
+      mockApproveFlow(200, { ok: true });
+      const approveResponse = await agentApproveHandler(
+        request('POST', '/api/agent/approve', {
+          approvalId: 'appr-1',
+          runId: 'run-1',
+          approved: true,
+        }),
+        {} as never,
+      );
+      expect(approveResponse.status).toBe(404);
+      expect((approveResponse.jsonBody as { error: string }).error).toBe('Agent run not found');
+    });
+
+    it('does not forward the approval when the run is not owned', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      (service.getConversation as jest.Mock).mockResolvedValue(null);
+      const fetchMock = mockApproveFlow(200, { ok: true });
+
+      const response = await agentApproveHandler(
+        request('POST', '/api/agent/approve', {
+          approvalId: 'appr-1',
+          runId: 'run-1',
+          approved: true,
+        }),
+        {} as never,
+      );
+
+      expect(response.status).toBe(404);
+      // 所有検証の GET /runs のみで、POST /approve は送られない
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        'http://gateway:8787/approve',
+        expect.anything(),
+      );
+    });
   });
 });

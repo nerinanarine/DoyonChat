@@ -68,6 +68,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
+  // エージェント機能フラグ：VITE_AGENT_ENABLED=false でトグル・バッジを非表示にする（RG-2 F4）
+  const agentEnabled = import.meta.env.VITE_AGENT_ENABLED !== 'false';
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
   const selectedModelId = activeConversation?.model ?? draftModel;
@@ -149,7 +151,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {activeConversation && (
+            {agentEnabled && activeConversation && (
               <button
                 type="button"
                 role="switch"

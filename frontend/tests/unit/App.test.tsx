@@ -413,4 +413,27 @@ describe('App agent mode', () => {
     fireEvent.click(toggle);
     await waitFor(() => expect(updateAgentMode).toHaveBeenCalledWith('agent-conv', false));
   });
+
+  it('keeps chat input enabled for agent conversations with an unavailable saved model (RG-2 F3)', async () => {
+    mockHooks([
+      {
+        ...createdConversation,
+        id: 'agent-conv-unavailable-model',
+        title: 'エージェント会話（モデル不在）',
+        model: 'retired-model',
+        agentMode: true,
+      },
+    ]);
+    render(<App />);
+    fireEvent.click(
+      (await screen.findByRole('button', { name: 'エージェント会話（モデル不在）' })).parentElement as HTMLElement,
+    );
+
+    const input = await screen.findByPlaceholderText('メッセージを入力...');
+    await waitFor(() => expect(input).toBeEnabled());
+    // モデル不在の警告（role=status）は出ない
+    expect(
+      screen.queryByText(/保存済みモデル「retired-model」は利用不可です/),
+    ).not.toBeInTheDocument();
+  });
 });

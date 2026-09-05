@@ -120,6 +120,28 @@ export function forwardGetRun(
   });
 }
 
+/**
+ * DELETE /sessions を gateway へ転送する（会話削除時の pi セッション資産破棄。RG-2 F2）。
+ * 呼び出し側で fire-and-forget にすること。非 200 は呼び出し元へエラーとして返す。
+ */
+export function deleteGatewaySession(
+  config: AgentGatewayConfig,
+  payload: { userId: string; conversationId: string },
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = 15_000,
+): Promise<void> {
+  return forward(async () => {
+    if (!config.baseUrl) throw new AppError(503, 'Agent service is not configured');
+    const response = await fetchImpl(buildUrl(config.baseUrl, '/sessions'), {
+      method: 'DELETE',
+      headers: buildHeaders(config.key),
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) throw mapGatewayStatus(response.status);
+  });
+}
+
 export interface GatewayPromptPayload {
   message: string;
   userId: string;

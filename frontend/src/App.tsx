@@ -227,6 +227,10 @@ function App() {
         : modelUnavailable
           ? `保存済みモデル「${activeConversation.model}」は利用不可です。利用可能なモデルを再選択してください。`
           : undefined;
+  // エージェントモード会話は保存済みモデルを使わないため、モデル不在・一覧異常による送信停止を適用しない（RG-2 F3）
+  const effectiveModelDisabledReason = activeConversation?.agentMode
+    ? undefined
+    : modelDisabledReason;
 
   if (authEnabled && !isAuthenticated) {
     return <LoginPage />;
@@ -312,8 +316,8 @@ function App() {
         onSend={handleSend}
         onStop={stop}
         isStreaming={isStreaming}
-        disabled={convLoading || messagesLoading || Boolean(modelDisabledReason)}
-        disabledReason={modelDisabledReason}
+        disabled={convLoading || messagesLoading || Boolean(effectiveModelDisabledReason)}
+        disabledReason={effectiveModelDisabledReason}
         imageDisabledReason={
           activeConversation?.agentMode
             ? 'エージェントモードはテキストのみ対応のため、画像は添付できません。'
