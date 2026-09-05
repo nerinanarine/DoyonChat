@@ -406,6 +406,13 @@ export class PiClient {
     });
   }
 
+  /**
+   * 会話対応のセッションへ切り替える（存在しなければ pi が新規扱いにする）。
+   */
+  async switchSession(sessionPath: string): Promise<void> {
+    await this.command({ type: 'switch_session', sessionPath }, 30_000);
+  }
+
   /** プロセスを回収する（SIGKILL→exit 待ち→フェイルセーフ 2s）。再起動可能。 */
   async terminate(): Promise<void> {
     // 承認待ちは実行終了とともに無効になるため取消として解放する

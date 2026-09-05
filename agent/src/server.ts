@@ -1,10 +1,20 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { AgentConfig } from './config';
 import { AgentError } from './errors';
 import { PiClient } from './piClient';
 import { RunRegistry } from './registry';
 import { normalizePiEventForSSE } from './normalize';
+import { CatalogModel, filterModelsByScope, isModelAllowed, parseModelRef } from './models';
+import {
+  assertSafeId,
+  deleteSessionFile,
+  sessionFilePath,
+  userConfigDir,
+  writeUserAgentSettings,
+} from './sessions';
 
 function writeJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
@@ -45,6 +55,8 @@ interface ApprovalTarget {
   runId: string;
 }
 
+const MODELS_CACHE_TTL_MS = 3_600_000;
+
 /**
  * Phase 1 の gateway サーバー:
  * - GET /health: 生存確認
@@ -61,8 +73,9 @@ export function createGatewayServer(
   const registry = new RunRegistry(config.gateway.registryMax, config.gateway.runTtlMs);
   const approvals = new Map<string, ApprovalTarget>();
   const limiter = { activeRuns: 0, maxRuns: config.gateway.maxRuns };
+  const modelStore: { cache: { at: number; models: CatalogModel[] } | null } = { cache: null };
   const server = createServer((req, res) => {
-    void handleRequest(req, res, config, registry, approvals, limiter, onLog);
+    void handleRequest(req, res, config, registry, approvals, limiter, modelStore, onLog);
   });
 
   server.on('clientError', (_err, socket) => {
@@ -79,6 +92,7 @@ async function handleRequest(
   registry: RunRegistry,
   approvals: Map<string, ApprovalTarget>,
   limiter: { activeRuns: number; maxRuns: number },
+  modelStore: { cache: { at: number; models: CatalogModel[] } | null },
   onLog: (message: string) => void,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost');
@@ -114,6 +128,16 @@ async function handleRequest(
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === '/models') {
+      await handleModels(res, config, modelStore);
+      return;
+    }
+
+    if (req.method === 'DELETE' && url.pathname === '/sessions') {
+      await handleDeleteSession(req, res, config);
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname.startsWith('/runs/')) {
       const runId = url.pathname.slice('/runs/'.length);
       const record = runId ? registry.get(runId) : undefined;
@@ -131,6 +155,62 @@ async function handleRequest(
     writeJson(res, error instanceof AgentError && code === 'network' ? 400 : 500, {
       error: { code },
     });
+  }
+}
+
+async function handleModels(
+  res: ServerResponse,
+  config: AgentConfig,
+  modelStore: { cache: { at: number; models: CatalogModel[] } | null },
+): Promise<void> {
+  try {
+    const now = Date.now();
+    if (!modelStore.cache || now - modelStore.cache.at > MODELS_CACHE_TTL_MS) {
+      modelStore.cache = { at: now, models: await fetchModelCatalog(config) };
+    }
+    writeJson(res, 200, {
+      models: filterModelsByScope(modelStore.cache.models, config.gateway.modelScope),
+    });
+  } catch (error) {
+    const code = error instanceof AgentError ? error.code : 'server';
+    writeJson(res, 500, { error: { code } });
+  }
+}
+
+/** pi から全カタログを取得する（短命クライアント。スコープ絞りは呼び出し側）。 */
+async function fetchModelCatalog(config: AgentConfig): Promise<CatalogModel[]> {
+  const client = new PiClient(config.pi);
+  try {
+    await client.start();
+    const response = await client.command<{
+      type: string;
+      data?: { models?: CatalogModel[] };
+    }>({ type: 'get_available_models' }, 30_000);
+    const models = response.data?.models;
+    if (!Array.isArray(models)) return [];
+    return models.filter(
+      (model): model is CatalogModel =>
+        !!model && typeof model === 'object' && typeof (model as CatalogModel).id === 'string',
+    );
+  } finally {
+    await client.terminate().catch(() => undefined);
+  }
+}
+
+async function handleDeleteSession(
+  req: IncomingMessage,
+  res: ServerResponse,
+  config: AgentConfig,
+): Promise<void> {
+  const body = await readJsonBody(req);
+  const record = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  try {
+    const userId = assertSafeId('userId', record.userId);
+    const conversationId = assertSafeId('conversationId', record.conversationId);
+    deleteSessionFile(config.gateway.dataDir, userId, conversationId);
+    writeJson(res, 200, { ok: true });
+  } catch {
+    writeJson(res, 400, { error: { code: 'network' } });
   }
 }
 
@@ -204,6 +284,61 @@ async function handlePrompt(
     runEnv.APPROVAL_DANGEROUS_TOOLS = dangerousTools.join(',');
   }
 
+  // 実行モデルは `provider/id` 形式で受け、スコープ内のみ許可する
+  const modelRef = bodyRecord.model !== undefined ? parseModelRef(bodyRecord.model) : undefined;
+  if (bodyRecord.model !== undefined && !modelRef) {
+    writeJson(res, 400, { error: { code: 'network' } });
+    return;
+  }
+  if (modelRef && !isModelAllowed(modelRef.provider, modelRef.modelId, config.gateway.modelScope)) {
+    writeJson(res, 400, { error: { code: 'network' } });
+    return;
+  }
+
+  // 会話対応（任意）。userId と conversationId は組で指定し、パストラバーサル防止のため検証する。
+  const hasUser = bodyRecord.userId !== undefined;
+  const hasConversation = bodyRecord.conversationId !== undefined;
+  if (hasUser !== hasConversation) {
+    writeJson(res, 400, { error: { code: 'network' } });
+    return;
+  }
+  const subagentModelRaw =
+    typeof bodyRecord.subagentModel === 'string' && bodyRecord.subagentModel.trim()
+      ? bodyRecord.subagentModel.trim()
+      : undefined;
+  // subagentModel も model と同一の検証を適用する（スコープ迂回の防止）。正規形で保存する。
+  let subagentModel: string | undefined;
+  if (subagentModelRaw !== undefined) {
+    const subagentRef = parseModelRef(subagentModelRaw);
+    if (
+      !subagentRef ||
+      !isModelAllowed(subagentRef.provider, subagentRef.modelId, config.gateway.modelScope)
+    ) {
+      writeJson(res, 400, { error: { code: 'network' } });
+      return;
+    }
+    subagentModel = `${subagentRef.provider}/${subagentRef.modelId}`;
+  }
+  let sessionPath: string | undefined;
+  if (hasUser && hasConversation) {
+    try {
+      const userId = assertSafeId('userId', bodyRecord.userId);
+      const conversationId = assertSafeId('conversationId', bodyRecord.conversationId);
+      sessionPath = sessionFilePath(config.gateway.dataDir, userId, conversationId);
+      fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
+      // per-user 設定は毎回マージ書込する（packages 保証のため。既存キーは保持される）。
+      writeUserAgentSettings(
+        config.gateway.dataDir,
+        userId,
+        subagentModel !== undefined ? { subagentModel } : {},
+      );
+      runEnv.PI_CODING_AGENT_DIR = userConfigDir(config.gateway.dataDir, userId);
+    } catch {
+      writeJson(res, 400, { error: { code: 'network' } });
+      return;
+    }
+  }
+
   const runId = randomUUID();
   registry.create(runId);
 
@@ -264,6 +399,13 @@ async function handlePrompt(
 
   const runPromise = (async () => {
     await client.start();
+    if (sessionPath) {
+      await client.switchSession(sessionPath);
+    }
+    if (modelRef) {
+      // set_model 自体はスコープ非チェックのため gateway で事前検証済み。失敗は server 扱い。
+      await client.command({ type: 'set_model', provider: modelRef.provider, modelId: modelRef.modelId }, 30_000);
+    }
     return client.runPrompt(message, {
       timeoutMs: config.pi.promptTimeoutMs,
       onEvent: (event) => {

@@ -5,17 +5,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { createGatewayServer } from '../src/server';
 import { AgentConfig } from '../src/config';
-
 const APPROVAL = path.join(__dirname, 'fixtures', 'piApproval.js');
 const STUB = path.join(__dirname, 'fixtures', 'piStub.js');
 const SILENT = path.join(__dirname, 'fixtures', 'piSilent.js');
 const ENV_ECHO = path.join(__dirname, 'fixtures', 'piEnvEcho.js');
+const MODELS = path.join(__dirname, 'fixtures', 'piModels.js');
 
 interface GatewayTestOptions {
   promptTimeoutMs?: number;
   approvalTimeoutMs?: number;
   heartbeatMs?: number;
   maxRuns?: number;
+  modelScope?: string[];
+  dataDir?: string;
   onLog?: (message: string) => void;
   piEnv?: Record<string, string>;
 }
@@ -39,6 +41,8 @@ async function startServer(
       runTtlMs: 600_000,
       registryMax: 50,
       maxRuns: opts.maxRuns ?? 4,
+      modelScope: opts.modelScope ?? [],
+      dataDir: opts.dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')),
     },
   };
   const server = createGatewayServer(config, opts.onLog);
@@ -335,6 +339,168 @@ describe('gateway per-run approval env injection', () => {
       const text = await res.text();
       expect(text).toContain('level=(unset)');
       expect(text).toContain('"done":true');
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe('gateway model catalog and selection', () => {
+  it('lists scoped models from the pi catalog', async () => {
+    const { server, url } = await startServer([MODELS], { modelScope: ['test-provider/*'] });
+    try {
+      const res = await fetch(`${url}/models`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { models?: Array<{ id?: string }> };
+      expect(body.models?.map((m) => m.id)).toEqual(['good-model']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('lists everything on empty scope', async () => {
+    const { server, url } = await startServer([MODELS]);
+    try {
+      const res = await fetch(`${url}/models`);
+      const body = (await res.json()) as { models?: Array<{ id?: string }> };
+      expect(body.models?.map((m) => m.id)?.sort()).toEqual(['good-model', 'other-model']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('applies set_model for in-scope models on prompt', async () => {
+    const { server, url } = await startServer([MODELS], { modelScope: ['test-provider/*'] });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', model: 'test-provider/good-model' }),
+      });
+      const text = await res.text();
+      expect(text).toContain('model-ok');
+      expect(text).toContain('"done":true');
+    } finally {
+      server.close();
+    }
+  });
+
+  it('rejects out-of-scope and malformed models with 400', async () => {
+    const { server, url } = await startServer([MODELS], { modelScope: ['test-provider/*'] });
+    try {
+      const outOfScope = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', model: 'other-provider/other-model' }),
+      });
+      expect(outOfScope.status).toBe(400);
+
+      const malformed = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', model: 'bare-id' }),
+      });
+      expect(malformed.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('returns a safe error when set_model fails', async () => {
+    const { server, url } = await startServer([MODELS], { modelScope: ['test-provider/*'] });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', model: 'test-provider/fail-model' }),
+      });
+      const text = await res.text();
+      expect(text).toContain('"error":{"code":"server"}');
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe('gateway conversation sessions', () => {
+  it('writes per-user settings and settles prompts with ids', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-'));
+    const { server, url } = await startServer([MODELS], { dataDir });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'hi',
+          userId: 'user-1',
+          conversationId: 'conv-1',
+          subagentModel: 'test-provider/good-model',
+        }),
+      });
+      const text = await res.text();
+      expect(text).toContain('model-ok');
+      expect(text).toContain('"done":true');
+
+      const settings = JSON.parse(
+        fs.readFileSync(path.join(dataDir, 'users', 'user-1', 'config', 'settings.json'), 'utf8'),
+      );
+      expect(settings.subagents.defaultModel).toBe('test-provider/good-model');
+      expect(settings.packages).toEqual(['npm:pi-subagents']);
+      expect(fs.existsSync(path.join(dataDir, 'sessions', 'user-1'))).toBe(true);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('rejects partial ids and traversal with 400', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-'));
+    const { server, url } = await startServer([MODELS], { dataDir, modelScope: ['test-provider/*'] });
+    try {
+      const post = (body: unknown) =>
+        fetch(`${url}/prompt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      expect((await post({ message: 'hi', userId: 'user-1' })).status).toBe(400);
+      expect((await post({ message: 'hi', userId: '../x', conversationId: 'c1' })).status).toBe(400);
+      expect((await post({ message: 'hi', userId: 'u1', conversationId: 'a/b' })).status).toBe(400);
+      // subagentModel も model と同一のスコープ検証を受ける（F1 回帰）
+      const base = { message: 'hi', userId: 'u1', conversationId: 'c1' };
+      expect(
+        (await post({ ...base, subagentModel: 'other-provider/other-model' })).status,
+      ).toBe(400);
+      expect((await post({ ...base, subagentModel: 'bare-id' })).status).toBe(400);
+      expect(
+        (await post({ ...base, subagentModel: 'test-provider/good-model' })).status,
+      ).toBe(200);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('deletes session files on request and tolerates missing ones', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-'));
+    const { server, url } = await startServer([MODELS], { dataDir });
+    const del = (body: unknown) =>
+      fetch(`${url}/sessions`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    try {
+      const file = path.join(dataDir, 'sessions', 'user-1', 'conv-9.jsonl');
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, '{}');
+      const res = await del({ userId: 'user-1', conversationId: 'conv-9' });
+      expect(res.status).toBe(200);
+      expect(fs.existsSync(file)).toBe(false);
+
+      const missing = await del({ userId: 'user-1', conversationId: 'nope' });
+      expect(missing.status).toBe(200);
+
+      const bad = await del({ userId: '../x', conversationId: 'c1' });
+      expect(bad.status).toBe(400);
     } finally {
       server.close();
     }

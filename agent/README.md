@@ -41,7 +41,11 @@ npm start   # build + node dist/index.js
 # GATEWAY_PORT / GATEWAY_HOST / AGENT_PROMPT_TIMEOUT_MS / PI_BIN を env で変更可
 # 既定 GATEWAY_HOST=127.0.0.1（loopback のみ。コンテナ公開時は 0.0.0.0 を明示。Phase 3 で認証追加まで）
 # その他: AGENT_APPROVAL_TIMEOUT_MS（既定120000） / GATEWAY_HEARTBEAT_MS（既定15000） /
-#   GATEWAY_RUN_TTL_MS（既定600000） / GATEWAY_REGISTRY_MAX（既定200） / GATEWAY_MAX_RUNS（既定4、上限超過は429）
+#   GATEWAY_RUN_TTL_MS（既定600000） / GATEWAY_REGISTRY_MAX（既定200） / GATEWAY_MAX_RUNS（既定4、上限超過は429） /
+#   AGENT_MODEL_SCOPE（カンマ区切り、空は全許可） / AGENT_DATA_DIR（既定./data） / AGENT_EXTENSIONS（上書き）
+# POST /prompt 追加body: approvalLevel（auto/dangerous-only/always）/ dangerousTools（最大50件）/
+#   model（provider/id 形式）/ userId＋conversationId（組指定・ID検証あり）/ subagentModel
+# GET /models（スコープ済み一覧） / DELETE /sessions（会話削除時の破棄用）
 ```
 
 Windows では `pi` が npm シェルシムの場合、Node の `spawn` が直接起動できないため、

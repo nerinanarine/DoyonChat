@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { parseScopeEnv } from './models';
 
 export interface PiOptions {
   /** pi 実行方法。`piBin` が .js ファイルなら node で起動、それ以外はコマンドとして起動する。 */
@@ -24,6 +25,10 @@ export interface GatewayOptions {
   registryMax: number;
   /** 同時実行数上限。超過時は 429 rate_limit で拒否する。 */
   maxRuns: number;
+  /** モデルスコープパターン（`provider/id` または bare id のグロブ）。空は全許可。 */
+  modelScope: string[];
+  /** 実行データディレクトリ（セッション・per-user 設定）。既定 `./data`。 */
+  dataDir: string;
 }
 
 /** 環境変数の数値パース。非数値・無限大はフォールバックに倒す。 */
@@ -129,6 +134,8 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
       runTtlMs: num(env.GATEWAY_RUN_TTL_MS, 600_000),
       registryMax: num(env.GATEWAY_REGISTRY_MAX, 200),
       maxRuns: num(env.GATEWAY_MAX_RUNS, 4),
+      modelScope: parseScopeEnv(env.AGENT_MODEL_SCOPE),
+      dataDir: env.AGENT_DATA_DIR || './data',
     },
   };
 }
