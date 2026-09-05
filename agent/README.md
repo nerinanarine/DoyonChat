@@ -46,6 +46,8 @@ npm start   # build + node dist/index.js
 # POST /prompt 追加body: approvalLevel（auto/dangerous-only/always）/ dangerousTools（最大50件）/
 #   model（provider/id 形式）/ userId＋conversationId（組指定・ID検証あり）/ subagentModel
 # GET /models（スコープ済み一覧） / DELETE /sessions（会話削除時の破棄用）
+# tools.allowlist.json: {tools[], dangerous[]}。既定は空＝全無効。壊JSONは起動拒否。
+#   有効化は tools 追加のみ（--tools 付加）。dangerous は dangerous-only の既定表（リクエスト上書き可）。
 ```
 
 Windows では `pi` が npm シェルシムの場合、Node の `spawn` が直接起動できないため、

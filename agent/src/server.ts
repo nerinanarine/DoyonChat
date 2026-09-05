@@ -280,8 +280,13 @@ async function handlePrompt(
     : undefined;
   const runEnv: Record<string, string> = { ...config.pi.env };
   if (approvalLevel) runEnv.APPROVAL_LEVEL = approvalLevel;
-  if (dangerousTools && dangerousTools.length > 0) {
-    runEnv.APPROVAL_DANGEROUS_TOOLS = dangerousTools.join(',');
+  // dangerous 表の優先順位: リクエスト指定 > allowlist 既定 > ゲート内蔵既定
+  const dangerousDefault =
+    dangerousTools && dangerousTools.length > 0
+      ? dangerousTools
+      : config.gateway.toolsDangerous;
+  if (dangerousDefault.length > 0) {
+    runEnv.APPROVAL_DANGEROUS_TOOLS = dangerousDefault.join(',');
   }
 
   // 実行モデルは `provider/id` 形式で受け、スコープ内のみ許可する

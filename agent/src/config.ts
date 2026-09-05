@@ -1,7 +1,50 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { parseScopeEnv } from './models';
+
+export interface ToolsAllowlist {
+  /** 有効化するツール名。空は全無効（`--no-tools` のまま）。 */
+  tools: string[];
+  /** `dangerous-only` で確認を求めるツール名。 */
+  dangerous: string[];
+}
+
+const MAX_TOOL_NAME_LENGTH = 64;
+const MAX_TOOL_ENTRIES = 100;
+
+function sanitizeToolNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0 && entry.length <= MAX_TOOL_NAME_LENGTH)
+    .slice(0, MAX_TOOL_ENTRIES);
+}
+
+/**
+ * allowlist ファイルを読む。存在しない場合は既定（全無効・空分類）。
+ * 壊れた JSON は fail-closed で起動させない。
+ */
+export function loadToolsAllowlist(filePath: string): ToolsAllowlist {
+  let document: unknown = {};
+  try {
+    document = JSON.parse(readFileSync(filePath, 'utf8')) as unknown;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return { tools: [], dangerous: [] };
+    }
+    throw new Error(`Invalid tools allowlist file: ${filePath}`);
+  }
+  const record = (document && typeof document === 'object' ? document : {}) as Record<
+    string,
+    unknown
+  >;
+  return {
+    tools: sanitizeToolNames(record.tools),
+    dangerous: sanitizeToolNames(record.dangerous),
+  };
+}
 
 export interface PiOptions {
   /** pi 実行方法。`piBin` が .js ファイルなら node で起動、それ以外はコマンドとして起動する。 */
@@ -27,6 +70,8 @@ export interface GatewayOptions {
   maxRuns: number;
   /** モデルスコープパターン（`provider/id` または bare id のグロブ）。空は全許可。 */
   modelScope: string[];
+  /** allowlist 由来の危険ツール表（`dangerous-only` の既定。リクエスト上書き可）。 */
+  toolsDangerous: string[];
   /** 実行データディレクトリ（セッション・per-user 設定）。既定 `./data`。 */
   dataDir: string;
 }
@@ -113,8 +158,12 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
   const entry = resolvePiEntry(piBin);
   const useNode = entry.endsWith('.js') && existsSync(entry);
   const baseArgs = useNode ? [entry, ...DEFAULT_PI_ARGS] : [...DEFAULT_PI_ARGS];
+  const allowlist = loadToolsAllowlist(
+    env.AGENT_TOOLS_FILE || path.join(__dirname, '..', 'tools.allowlist.json'),
+  );
   const piArgs = [
     ...baseArgs,
+    ...(allowlist.tools.length > 0 ? ['--tools', allowlist.tools.join(',')] : []),
     ...resolveExtensionPaths(env).flatMap((ext) => ['--extension', ext]),
   ];
 
@@ -135,6 +184,7 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
       registryMax: num(env.GATEWAY_REGISTRY_MAX, 200),
       maxRuns: num(env.GATEWAY_MAX_RUNS, 4),
       modelScope: parseScopeEnv(env.AGENT_MODEL_SCOPE),
+      toolsDangerous: allowlist.dangerous,
       dataDir: env.AGENT_DATA_DIR || './data',
     },
   };

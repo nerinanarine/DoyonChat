@@ -17,6 +17,7 @@ interface GatewayTestOptions {
   heartbeatMs?: number;
   maxRuns?: number;
   modelScope?: string[];
+  toolsDangerous?: string[];
   dataDir?: string;
   onLog?: (message: string) => void;
   piEnv?: Record<string, string>;
@@ -42,6 +43,7 @@ async function startServer(
       registryMax: 50,
       maxRuns: opts.maxRuns ?? 4,
       modelScope: opts.modelScope ?? [],
+      toolsDangerous: opts.toolsDangerous ?? [],
       dataDir: opts.dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')),
     },
   };
@@ -339,6 +341,21 @@ describe('gateway per-run approval env injection', () => {
       const text = await res.text();
       expect(text).toContain('level=(unset)');
       expect(text).toContain('"done":true');
+    } finally {
+      server.close();
+    }
+  });
+
+  it('applies the allowlist dangerous table when the request omits it', async () => {
+    const { server, url } = await startServer([ENV_ECHO], { toolsDangerous: ['read'] });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'echo env' }),
+      });
+      const text = await res.text();
+      expect(text).toContain('tools=read');
     } finally {
       server.close();
     }
