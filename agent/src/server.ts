@@ -115,15 +115,19 @@ async function handleRequest(
     }
 
     // /health 以外は Managed Identity 認証（設定時のみ）。欠落・不正は 401。
+    // 失敗分類のみログする（トークン内容は出さない）。
     if (verifier) {
       const token = extractBearer(req.headers);
       if (!token) {
+        onLog('gateway auth: missing token');
         writeJson(res, 401, { error: { code: 'authentication' } });
         return;
       }
       try {
         await verifier(token);
-      } catch {
+      } catch (error) {
+        // AgentError の message のみ（設定値由来の分類。トークン本体は含まない）。
+        onLog(`gateway auth: ${error instanceof AgentError ? error.message : 'invalid token'}`);
         writeJson(res, 401, { error: { code: 'authentication' } });
         return;
       }

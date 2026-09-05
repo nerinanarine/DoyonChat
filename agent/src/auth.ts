@@ -55,12 +55,19 @@ export function createVerifier(auth: GatewayAuthConfig, getKey: KeyProvider = jw
         keyProvider,
         {
           algorithms: ['RS256'],
-          issuer: `https://login.microsoftonline.com/${auth.tenantId}/v2.0`,
+          // MI (IMDS) 発行トークンは v1 形式の iss になることがあるため両方許容する（同一テナント縛り）。
+          issuer: [
+            `https://login.microsoftonline.com/${auth.tenantId}/v2.0`,
+            `https://sts.windows.net/${auth.tenantId}/`,
+          ],
           audience: auth.audience,
         },
         (error) => {
-          if (error) reject(new AgentError('authentication', 'invalid gateway token'));
-          else resolve();
+          // 失敗分類のみ残す（expected/actual の audience・issuer は設定値で非秘匿）。
+          // トークン本体・署名は絶対に出さない。
+          if (error) {
+            reject(new AgentError('authentication', `invalid gateway token (${error.name}: ${error.message})`));
+          } else resolve();
         },
       );
     });
