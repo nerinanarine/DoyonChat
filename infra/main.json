@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "17306892767908901332"
+      "templateHash": "18361652137545182479"
     }
   },
   "parameters": {
@@ -641,7 +641,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "4885316044629802955"
+              "templateHash": "10656997473426814700"
             }
           },
           "parameters": {
@@ -738,7 +738,7 @@
             },
             "memory": {
               "type": "string",
-              "defaultValue": "1.0Gi"
+              "defaultValue": "2.0Gi"
             },
             "appInsightsConnectionString": {
               "type": "string"
@@ -822,7 +822,7 @@
               "properties": {
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentityName')), '2023-01-31').principalId]",
                 "principalType": "ServicePrincipal",
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f781d1c-7f45-4d98-b7e5-1cfd4c4a9b02')]"
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
@@ -860,9 +860,7 @@
                 "workloadProfiles": [
                   {
                     "name": "Consumption",
-                    "workloadProfileType": "Consumption",
-                    "minimumCount": 0,
-                    "maximumCount": 1
+                    "workloadProfileType": "Consumption"
                   }
                 ]
               }

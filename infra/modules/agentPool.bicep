@@ -32,8 +32,9 @@ param gatewayRegistryMax int = 200
 param dataDir string = '/app/data'
 param toolsFile string = ''
 param imageName string = 'doyonchat-agent-gateway:latest'
+// Consumption の有効な CPU-メモリ組み合わせに従う（1.0/2.0Gi。bicep 型は int のため小数CPUは不可）
 param cpu int = 1
-param memory string = '1.0Gi'
+param memory string = '2.0Gi'
 param appInsightsConnectionString string
 
 resource userAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -55,7 +56,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
 }
 
 // UAMI に ACR からイメージを引く権限（AcrPull）
-// AcrPull 組み込みロール: 7f781d1c-7f45-4d98-b7e5-1cfd4c4a9b02
+// AcrPull 組み込みロール: 7f951dda-4ed3-4680-a7ca-43fe172d538d（az role definition list 実測）
 resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid('acr-pull-${containerRegistryName}-${userAssignedIdentityName}')
   scope: containerRegistry
@@ -64,7 +65,7 @@ resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId(
       'Microsoft.Authorization/roleDefinitions',
-      '7f781d1c-7f45-4d98-b7e5-1cfd4c4a9b02'
+      '7f951dda-4ed3-4680-a7ca-43fe172d538d'
     )
   }
 }
@@ -99,8 +100,6 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' 
       {
         name: 'Consumption'
         workloadProfileType: 'Consumption'
-        minimumCount: 0
-        maximumCount: 1
       }
     ]
   }
