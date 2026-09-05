@@ -39,6 +39,10 @@ export class PiClient {
   private handler: ((event: RawPiEvent) => void) | null = null;
   private runReject: ((err: Error) => void) | null = null;
   private approvalWaiters = new Map<string, { resolve: (approved: boolean) => void; timer: NodeJS.Timeout }>();
+  /** 承認待ち時間(ms)の通知先。runPrompt が実行タイマーの期限延長に使う。 */
+  private onApprovalWaited: ((waitedMs: number) => void) | null = null;
+  /** 承認待ち開始の通知先。runPrompt が実行タイマーを一時停止する。 */
+  private onApprovalWaitStarted: (() => void) | null = null;
   /** ダイアログ要求（confirm/select 等）の通知先。gateway が SSE 中継＋承認待ち登録に使う。 */
   onExtensionUiRequest: ((req: ExtensionUiRequest) => void) | null = null;
   /** 承認の解決通知（approved / timeout による自動拒否 / terminate による取消）。gateway が SSE・レジストリ更新に使う。 */
@@ -219,7 +223,11 @@ export class PiClient {
       message: typeof event.message === 'string' ? event.message : undefined,
       options: Array.isArray(event.options) ? (event.options as string[]) : undefined,
     });
+    const waitStart = Date.now();
+    this.onApprovalWaitStarted?.();
     const approved = await this.waitApproval(id);
+    // 承認待ちはユーザーの時間でありエージェントの実行予算に算入しない
+    this.onApprovalWaited?.(Date.now() - waitStart);
     await this.writeLine(
       approved
         ? { type: 'extension_ui_response', id, confirmed: true }
@@ -350,13 +358,34 @@ export class PiClient {
         reject(new AgentError('server', 'pi client busy'));
         return;
       }
-      const timer = setTimeout(() => {
+      // 承認待ちの分だけ期限を延長する（承認はユーザーの時間で実行予算外）
+      let deadline = Date.now() + timeoutMs;
+      let timer: NodeJS.Timeout;
+      const clearHooks = () => {
+        this.onApprovalWaited = null;
+        this.onApprovalWaitStarted = null;
+      };
+      const fireTimeout = () => {
+        clearHooks();
         void this.terminate();
         reject(new AgentError('timeout', `pi prompt timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+      };
+      const armTimer = () => {
+        clearTimeout(timer);
+        timer = setTimeout(fireTimeout, Math.max(0, deadline - Date.now()));
+      };
+      armTimer();
+      this.onApprovalWaitStarted = () => {
+        clearTimeout(timer);
+      };
+      this.onApprovalWaited = (waitedMs) => {
+        deadline += waitedMs;
+        armTimer();
+      };
 
       this.runReject = (err) => {
         clearTimeout(timer);
+        clearHooks();
         this.handler = null;
         this.runReject = null;
         reject(err);
@@ -378,6 +407,7 @@ export class PiClient {
         }
         if (event.type === 'agent_settled') {
           clearTimeout(timer);
+          clearHooks();
           this.handler = null;
           this.runReject = null;
           resolve({ finalText, events, settled: true });
@@ -399,6 +429,7 @@ export class PiClient {
 
       this.writeLine({ id, type: 'prompt', message }).catch((err) => {
         clearTimeout(timer);
+        clearHooks();
         this.handler = null;
         this.runReject = null;
         reject(err instanceof AgentError ? err : new AgentError('network', String(err)));

@@ -10,6 +10,7 @@ const STUB = path.join(__dirname, 'fixtures', 'piStub.js');
 const SILENT = path.join(__dirname, 'fixtures', 'piSilent.js');
 const ENV_ECHO = path.join(__dirname, 'fixtures', 'piEnvEcho.js');
 const MODELS = path.join(__dirname, 'fixtures', 'piModels.js');
+const HOLD = path.join(__dirname, 'fixtures', 'piHold.js');
 
 interface GatewayTestOptions {
   promptTimeoutMs?: number;
@@ -171,6 +172,40 @@ describe('gateway approval flow (approval stub pi)', () => {
 
       const recorded = fs.readFileSync(resultFile, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
       expect(recorded).toEqual([{ type: 'extension_ui_response', id: 'appr-1', cancelled: true }]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('pauses the run budget while waiting for approval', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-approval-'));
+    const resultFile = path.join(dir, 'responses.jsonl');
+    // run 予算 1200ms に対し承認を 1500ms 後に返す。予算停止が効けば approved で完了する。
+    const { server, url } = await startServer([APPROVAL], {
+      promptTimeoutMs: 1200,
+      approvalTimeoutMs: 10000,
+      piEnv: { PI_APPROVAL_RESULT_FILE: resultFile },
+    });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'read the file' }),
+      });
+      expect(res.status).toBe(200);
+      const reader = res.body!.getReader();
+      const { approvalId, runId } = await readUntilApproval(reader);
+      expect(approvalId).toBe('appr-1');
+      await new Promise((r) => setTimeout(r, 1500));
+      const approve = await fetch(`${url}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approvalId, runId, approved: true }),
+      });
+      expect(approve.status).toBe(200);
+      const rest = await readAll(reader);
+      expect(rest).toContain('approved-result');
+      expect(rest).toContain('"done":true');
     } finally {
       server.close();
     }
@@ -518,6 +553,71 @@ describe('gateway conversation sessions', () => {
 
       const bad = await del({ userId: '../x', conversationId: 'c1' });
       expect(bad.status).toBe(400);
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe('gateway conversation in-flight guard', () => {
+  it('rejects a second run for the same conversation with 429', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-'));
+    const { server, url } = await startServer([HOLD], { dataDir });
+    const first = new AbortController();
+    const second = new AbortController();
+    try {
+      const firstRes = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'first', userId: 'user-1', conversationId: 'conv-1' }),
+        signal: first.signal,
+      });
+      expect(firstRes.status).toBe(200);
+
+      const sameConv = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'second', userId: 'user-1', conversationId: 'conv-1' }),
+      });
+      expect(sameConv.status).toBe(429);
+      const body = (await sameConv.json()) as { error?: { code?: string } };
+      expect(body.error?.code).toBe('rate_limit');
+
+      // 別会話は並行実行できる
+      const otherConv = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'other', userId: 'user-1', conversationId: 'conv-2' }),
+        signal: second.signal,
+      });
+      expect(otherConv.status).toBe(200);
+    } finally {
+      first.abort();
+      second.abort();
+      server.close();
+    }
+  });
+
+  it('releases the guard after the run settles', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-'));
+    const { server, url } = await startServer([MODELS], { dataDir });
+    try {
+      const firstRes = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'settles', userId: 'user-1', conversationId: 'conv-3' }),
+      });
+      const text = await firstRes.text();
+      expect(text).toContain('"done":true');
+
+      // settled 後は同じ会話の新しい run を開始できる
+      const again = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'again', userId: 'user-1', conversationId: 'conv-3' }),
+      });
+      expect(again.status).toBe(200);
+      expect((await again.text())).toContain('"done":true');
     } finally {
       server.close();
     }

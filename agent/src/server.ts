@@ -325,27 +325,36 @@ async function handlePrompt(
     subagentModel = `${subagentRef.provider}/${subagentRef.modelId}`;
   }
   let sessionPath: string | undefined;
+  let conversationId: string | undefined;
   if (hasUser && hasConversation) {
     try {
-      const userId = assertSafeId('userId', bodyRecord.userId);
-      const conversationId = assertSafeId('conversationId', bodyRecord.conversationId);
-      sessionPath = sessionFilePath(config.gateway.dataDir, userId, conversationId);
+      const safeUserId = assertSafeId('userId', bodyRecord.userId);
+      const safeConversationId = assertSafeId('conversationId', bodyRecord.conversationId);
+      conversationId = safeConversationId;
+      sessionPath = sessionFilePath(config.gateway.dataDir, safeUserId, safeConversationId);
       fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
       // per-user 設定は毎回マージ書込する（packages 保証のため。既存キーは保持される）。
       writeUserAgentSettings(
         config.gateway.dataDir,
-        userId,
+        safeUserId,
         subagentModel !== undefined ? { subagentModel } : {},
       );
-      runEnv.PI_CODING_AGENT_DIR = userConfigDir(config.gateway.dataDir, userId);
+      runEnv.PI_CODING_AGENT_DIR = userConfigDir(config.gateway.dataDir, safeUserId);
     } catch {
       writeJson(res, 400, { error: { code: 'network' } });
       return;
     }
   }
 
+  // 同一会話の実行中 run があれば 429（replica=1 前提のインメモリ判定）。
+  // SSE ヘッダ送出前に返すため、クライアントは JSON の rate_limit を受ける。
+  if (conversationId && registry.hasActiveRunForConversation(conversationId)) {
+    writeJson(res, 429, { error: { code: 'rate_limit' } });
+    return;
+  }
+
   const runId = randomUUID();
-  registry.create(runId);
+  registry.create(runId, conversationId);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',

@@ -14,7 +14,11 @@ export interface RunRecord {
   id: string;
   status: RunStatus;
   events: RawPiEvent[];
+  /** events が上限で打ち切られた場合に立つ。 */
+  truncated?: boolean;
   approvals: ApprovalRecord[];
+  /** 会話対応の実行中ガードに使う。実行単位に紐づく conversationId。 */
+  conversationId?: string;
   finalText?: string;
   code?: string;
   createdAt: number;
@@ -38,13 +42,14 @@ export class RunRegistry {
     if (typeof this.timer.unref === 'function') this.timer.unref();
   }
 
-  create(id: string): RunRecord {
+  create(id: string, conversationId?: string): RunRecord {
     const now = Date.now();
     const record: RunRecord = {
       id,
       status: 'running',
       events: [],
       approvals: [],
+      conversationId,
       createdAt: now,
       updatedAt: now,
     };
@@ -61,9 +66,27 @@ export class RunRegistry {
     return this.runs.get(id);
   }
 
+  /**
+   * 同じ会話に対して実行中（running）の run が存在するかを返す。
+   * replica=1 前提のインメモリ判定で、同一会話の多重実行を防ぐ（429 用）。
+   */
+  hasActiveRunForConversation(conversationId: string): boolean {
+    for (const record of this.runs.values()) {
+      if (record.status === 'running' && record.conversationId === conversationId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   appendEvent(id: string, event: RawPiEvent): void {
     const record = this.runs.get(id);
     if (!record || record.status !== 'running') return;
+    // 長時間 run の delta 多発によるメモリ圧迫を防ぐ（先頭＝初期文脈を優先保持）。
+    if (record.events.length >= 2000) {
+      record.truncated = true;
+      return;
+    }
     record.events.push(event);
     record.updatedAt = Date.now();
   }
