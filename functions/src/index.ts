@@ -5,5 +5,6 @@ import './functions/conversations';
 import './functions/messages';
 import './functions/chat';
 import './functions/users';
+import './functions/agent';
 
 app.setup({ enableHttpStream: true });
