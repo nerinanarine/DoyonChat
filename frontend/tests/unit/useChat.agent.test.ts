@@ -210,4 +210,24 @@ describe('useChat agent approval flow', () => {
       { kind: 'tool_end', toolName: 'read' },
     ]);
   });
+
+  it('collapses consecutive tool_update events with the same toolCallId', async () => {
+    const { result } = renderHook(() => useChat('conversation-1'));
+    await act(async () => {
+      await result.current.sendMessage('調査して');
+    });
+    act(() => {
+      handlers?.options.onAgentEvent?.({ kind: 'tool_start', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-1' });
+      handlers?.options.onAgentEvent?.({ kind: 'tool_update', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-1' });
+      handlers?.options.onAgentEvent?.({ kind: 'tool_update', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-1' });
+      handlers?.options.onAgentEvent?.({ kind: 'tool_update', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-2' });
+      handlers?.options.onAgentEvent?.({ kind: 'tool_end', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-1' });
+    });
+    expect(result.current.agentProgress).toEqual([
+      { kind: 'tool_start', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-1' },
+      { kind: 'tool_update', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-1' },
+      { kind: 'tool_update', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-2' },
+      { kind: 'tool_end', toolName: 'subagent', agent: 'researcher', toolCallId: 'call-1' },
+    ]);
+  });
 });

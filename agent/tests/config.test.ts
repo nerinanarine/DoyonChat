@@ -62,6 +62,39 @@ describe('loadAgentConfig', () => {
   it('disables researcher web-access with an explicit empty AGENT_WEB_ACCESS_INDEX', () => {
     expect(loadAgentConfig({ AGENT_WEB_ACCESS_INDEX: '' }).gateway.webAccessIndex).toBeNull();
   });
+
+  it('appends the researcher delegation prompt only when researcher wiring is active', () => {
+    const fixture = path.join(os.tmpdir(), `pwa-index-${process.pid}.ts`);
+    const allowlist = path.join(os.tmpdir(), `pwa-tools-${process.pid}.json`);
+    fs.writeFileSync(fixture, '// fixture\n');
+    fs.writeFileSync(allowlist, JSON.stringify({ tools: ['subagent'], dangerous: [] }));
+    try {
+      const active = loadAgentConfig({
+        AGENT_WEB_ACCESS_INDEX: fixture,
+        AGENT_TOOLS_FILE: allowlist,
+        AGENT_EXTENSIONS: '',
+      });
+      const promptIndex = active.pi.piArgs.indexOf('--append-system-prompt');
+      expect(promptIndex).toBeGreaterThanOrEqual(0);
+      expect(active.pi.piArgs[promptIndex + 1]).toContain('researcher');
+      // 配線なし（allowlist 空）では追記しない
+      const emptyTools = path.join(os.tmpdir(), `pwa-tools-empty-${process.pid}.json`);
+      fs.writeFileSync(emptyTools, JSON.stringify({ tools: [], dangerous: [] }));
+      try {
+        const inactive = loadAgentConfig({
+          AGENT_WEB_ACCESS_INDEX: fixture,
+          AGENT_TOOLS_FILE: emptyTools,
+          AGENT_EXTENSIONS: '',
+        });
+        expect(inactive.pi.piArgs).not.toContain('--append-system-prompt');
+      } finally {
+        fs.unlinkSync(emptyTools);
+      }
+    } finally {
+      fs.unlinkSync(fixture);
+      fs.unlinkSync(allowlist);
+    }
+  });
 });
 
 describe('loadToolsAllowlist', () => {

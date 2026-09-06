@@ -189,6 +189,14 @@ function resolveWebAccessIndex(env: NodeJS.ProcessEnv): string | null {
 }
 
 /**
+ * researcher 移譲の指示文（P3-014 FR-4）。Web 系タスクで researcher が引き当てられるよう、
+ * researcher 配線が有効な場合のみ system prompt へ追記する。Q9 の AGENTS.md 調整に相当。
+ */
+export const RESEARCHER_DELEGATION_PROMPT =
+  'Web search and page fetch tasks: delegate to the researcher subagent via the subagent tool ' +
+  '(agent: researcher). You cannot browse the web directly; the researcher has web_search and fetch_content.';
+
+/**
  * AGENT_EXTENSIONS が設定されたら既定を置換する（空文字は拡張なし）。
  * 既定パスの実体が無い場合は fail-closed で起動させない（ゲートなし実行の防止）。
  */
@@ -259,6 +267,12 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
     ...(allowlist.tools.length > 0 ? ['--tools', allowlist.tools.join(',')] : []),
     ...resolveExtensionPaths(env).flatMap((ext) => ['--extension', ext]),
   ];
+  // researcher 配線が有効な場合のみ移譲指示を system prompt へ追記する（P3-014 FR-4）。
+  // Web 系タスクで researcher が引き当てられるようにする。Q9 の AGENTS.md 調整に相当。
+  const webAccessIndex = resolveWebAccessIndex(env);
+  if (allowlist.tools.length > 0 && webAccessIndex) {
+    piArgs.push('--append-system-prompt', RESEARCHER_DELEGATION_PROMPT);
+  }
 
   return {
     // 既定は loopback のみ。コンテナ公開時は GATEWAY_HOST=0.0.0.0 を明示する（Phase 3 で認証追加まで）。
