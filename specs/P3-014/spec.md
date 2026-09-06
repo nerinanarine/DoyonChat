@@ -24,6 +24,7 @@
 ### FR-1: pi-subagents 基盤の組み込み
 
 - gateway が pi-subagents 拡張を読み込み、メインセッションから researcher への移譲が動作すること
+- 実現方式は per-user `settings.json` の `packages: ["npm:pi-subagents"]`＋Dockerfile global 同梱（バージョン固定）。pi が global node_modules から解決する（Phase 0 実機確認済み。per-user 毎の npm install は発生しない）
 - P3-010 で確保済みの `agentSubagentModel` 設定項目と接続すること
 - researcher 用の per-user dir・セッション配置は P3-010 の sessions 方式と同型とする
 

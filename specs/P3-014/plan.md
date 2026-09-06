@@ -4,13 +4,13 @@
 
 ## Phase 0 — pi-subagents 基盤検証（先行）
 
-- [ ] pi-subagents パッケージの Dockerfile 同梱状況を確認する。未同梱なら `agent/Dockerfile` に追加する（FR-1 の前提）
+- [x] pi-subagents パッケージの Dockerfile 同梱状況を確認する。未同梱なら `agent/Dockerfile` に追加する（FR-1 の前提）。→ `pi-subagents@0.65.1` を global 同梱
 
-- [ ] gateway から pi-subagents 拡張を読み込み、researcher への移譲が動作することを実機検証する
-- [ ] `agentSubagentModel` 設定項目との接続を確認する
-- [ ] researcher 用 per-user dir・セッション配置を確定する（P3-010 sessions 方式と同型）
-- [ ] 検証結果を `memo-phase0.md` に記録する。不成立の場合は代替案（メイン直載せ等）を提示し、ユーザー確認を取る
-- [ ] 成果物レビュー（reviewer）→ GO で Phase 1 へ
+- [x] gateway から pi-subagents 拡張を読み込み、researcher への移譲が動作することを実機検証する。→ foreground 子＋delegate で完走確認（`memo-phase0.md` §2）
+- [x] `agentSubagentModel` 設定項目との接続を確認する。→ `subagents.defaultModel` 経路で実測確認
+- [x] researcher 用 per-user dir・セッション配置を確定する（P3-010 sessions 方式と同型）。→ `memo-phase0.md` §4
+- [x] 検証結果を `memo-phase0.md` に記録する。不成立の場合は代替案（メイン直載せ等）を提示し、ユーザー確認を取る。→ 成立。代替案不要
+- [x] 成果物レビュー（reviewer）→ GO で Phase 1 へ。→ GO（2026-09-06）
 
 ## Phase 1 — researcher への Web 機能同梱
 
