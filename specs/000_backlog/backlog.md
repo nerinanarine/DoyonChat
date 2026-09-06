@@ -66,6 +66,8 @@
 | [P3-011](items/P3-011-pwa-android-ios.md) | PWA対応（AndroidとiPhone両方） | P3 | 🟢 対応済み | 利便性 | [仕様](../P3-011/spec.md) | vite-plugin-pwa、実機確認、デプロイ完了 |
 | [P3-012](items/P3-012-chat-name-edit-ux.md) | チャット名編集UXの改善 | P3 | 🔴 未対応 | UX改善 | — | [Issue #28](https://github.com/nerinanarine/DoyonChat/issues/28)、Issue本文なし |
 | [P3-013](items/P3-013-ci-agent-image.md) | エージェントgatewayイメージのCI組み込み | P3 | 🔴 未対応 | 運用改善 | — | az acr build 手動運用の解消、prodはSHAタグ固定 |
+| [P3-014](items/P3-014-agent-web-access.md) | エージェントへの pi-web-access 導入 | P3 | 🔴 未対応 | 機能追加 | — | dev先行・キー不要・読み取りは承認なし |
+| [P3-015](items/P3-015-agent-files.md) | エージェントのファイル作成・読み取り | P3 | 🔴 未対応 | 機能追加 | — | pi-subagents前提・docx/xlsx/pptx/pdf/テキスト/画像・DL導線 |
 | [P4-002](items/P4-002-templates.md) | プロンプトテンプレート | P4 | 🔴 未対応 | 機能追加 | — | localStorage 保存 |
 | [P4-003](items/P4-003-code-exec.md) | コードブロックの実行機能 | P4 | 🔴 未対応 | 機能追加 | — | Sandpack 検討 |
 | [P4-004](items/P4-004-voice.md) | 音声入力（Web Speech API） | P4 | 🔴 未対応 | 機能追加 | — | ブラウザ対応状況依存 |
