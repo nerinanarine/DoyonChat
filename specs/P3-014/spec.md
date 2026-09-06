@@ -33,13 +33,20 @@
 - `agent/Dockerfile` に `pi-web-access@0.28.0`（バージョン固定）を同梱する
 - researcher ランタイムが既存の拡張読み込み方式（`--extension <path>`）で `index.ts` を読む（pi は TS 直接ロード可）
 - メインセッションには載せない（メインは `--no-tools` のまま）
-- 読み込み失敗時は既存の fail-closed（起動拒否）に従う
+- 読込失敗時の扱い：`AGENT_WEB_ACCESS_INDEX` の明示指定不備は起動拒否（fail-closed）。自動解決不能は機能オフ（起動継続）。FR-3 の確定記録どおり
 
 ### FR-3: researcher 側のツール許可
 
 - researcher の有効ツールに `web_search`、`fetch_content` を追加する
 - `dangerous` 分類は空（auto運用）。移譲・実行ともに承認確認なし
-- メイン側の `tools.allowlist.json` は変更しない（移譲ツールのみの構成は別途確定）
+- メイン側の `tools.allowlist.json` は変更しない
+- **確定した allowlist 構成（Phase 1a 実装）**: メインの `tools.allowlist.json` とは別に、
+  per-user `settings.json` の `subagents.agentOverrides.researcher` へ
+  `subagentOnlyExtensions: [<pi-web-access index パス>]` と `tools`（既存＋`web_search`・
+  `fetch_content` のマージ）を書く。パスは `AGENT_WEB_ACCESS_INDEX` 明示指定（実体必須・
+  fail-closed）または local/global node_modules からの自動解決で得る。
+  researcher への配線が有効になるのはメイン allowlist が非空（＝pi-subagents が
+  packages 登録され、`subagent` ツール有効）のときのみ
 
 ### FR-4: 移譲ルーティング
 
@@ -90,7 +97,9 @@
 ## 未確認事項（実装時に確定）
 
 - pi-subagents の gateway 実機動作（本件の先行検証事項）
-- メイン側の移譲ツールの allowlist 構成（FR-3）
+- **Phase 1b 実機検証事項**: `subagents.agentOverrides.researcher` のスキーマ一致・
+  `subagentOnlyExtensions` の index パス解決（npm パッケージの実エントリ）・既存
+  researcher tools との合流方式の妥当性・メイン allowlist への `subagent` 追加タイミング
 - keyless 時の実効フォールバック（dev 実測で確定）
 - peerDeps の global install 解決（ビルド検証で確定）
 

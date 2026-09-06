@@ -38,6 +38,30 @@ describe('loadAgentConfig', () => {
     expect(() => loadAgentConfig({ AGENT_DEFAULT_MODEL: 'bare' })).toThrow();
     expect(() => loadAgentConfig({ AGENT_DEFAULT_MODEL: 'p2/a', AGENT_MODEL_SCOPE: 'p1/*' })).toThrow();
   });
+
+  it('resolves an explicit AGENT_WEB_ACCESS_INDEX and keeps it out of main args', () => {
+    const fixture = path.join(os.tmpdir(), `pwa-index-${process.pid}.ts`);
+    fs.writeFileSync(fixture, '// fixture\n');
+    try {
+      const config = loadAgentConfig({ AGENT_WEB_ACCESS_INDEX: fixture, AGENT_EXTENSIONS: '' });
+      expect(config.gateway.webAccessIndex).toBe(fixture);
+      // メインセッションには載せない（--extension に追加しない）
+      expect(config.pi.piArgs.join(' ')).not.toContain(fixture);
+      expect(config.pi.piArgs.join(' ')).not.toContain('--extension');
+    } finally {
+      fs.unlinkSync(fixture);
+    }
+  });
+
+  it('fails closed when AGENT_WEB_ACCESS_INDEX points to a missing file', () => {
+    expect(() => loadAgentConfig({ AGENT_WEB_ACCESS_INDEX: '/no/such/pwa/index.ts' })).toThrow(
+      /AGENT_WEB_ACCESS_INDEX/,
+    );
+  });
+
+  it('disables researcher web-access with an explicit empty AGENT_WEB_ACCESS_INDEX', () => {
+    expect(loadAgentConfig({ AGENT_WEB_ACCESS_INDEX: '' }).gateway.webAccessIndex).toBeNull();
+  });
 });
 
 describe('loadToolsAllowlist', () => {

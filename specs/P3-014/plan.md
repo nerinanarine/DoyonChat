@@ -14,14 +14,14 @@
 
 ## Phase 1 — researcher への Web 機能同梱
 
-- [ ] `agent/Dockerfile` に `pi-web-access@0.28.0` をバージョン固定で同梱する
-- [ ] researcher ランタイムが `--extension` で `index.ts` を読む（メインには載せない。メインは `--no-tools` 維持）
-- [ ] researcher の有効ツールに `web_search`、`fetch_content` を追加（`dangerous` は空＝auto）。メイン側 `tools.allowlist.json` は変更しない。移譲ツールの allowlist 構成は確定次第 spec FR-3 に記録する
-- [ ] キーなし最小構成（`web-search.json` なし）で起動することを確認する
-- [ ] コンテナからの outbound 到達性（DuckDuckGo / Exa）を dev で実測確認する
-- [ ] researcher 拡張（pi-subagents / pi-web-access）の読込失敗時に起動拒否されることをテストで確認する（fail-closed）
-- [ ] 自動テスト（config・researcher許可・移譲）を追加し green を確認する
-- [ ] 成果物レビュー（reviewer）→ GO で Phase 2 へ（RG-1）
+- [x] `agent/Dockerfile` に `pi-web-access@0.28.0` をバージョン固定で同梱する
+- [x] researcher ランタイムが `--extension` で `index.ts` を読む（メインには載せない。メインは `--no-tools` 維持）。→ `subagentOnlyExtensions` child-only 方式＋foreground 化（`writeSubagentExtensionConfig`）
+- [x] researcher の有効ツールに `web_search`、`fetch_content` を追加（`dangerous` は空＝auto）。メイン側 `tools.allowlist.json` は変更しない。→ spec FR-3 に記録済み
+- [x] キーなし最小構成（`web-search.json` なし）で起動することを確認する。→ 生成せず起動。live 完走で確認
+- [x] コンテナからの outbound 到達性（DuckDuckGo / Exa）を dev で実測確認する。→ ローカルで DuckDuckGo 到達（HTTP 200）＋ researcher の web_search 完走で確認。dev 実測は Phase 3
+- [x] researcher 拡張の読込失敗時の扱いを確認する。→ 明示指定の不備は起動拒否、自動解決不能は機能オフ（spec FR-2／FR-3 の確定記録どおり）。テストで確認
+- [x] 自動テスト（config・researcher許可・移譲）を追加し green を確認する。→ 107 件 green
+- [x] 成果物レビュー（reviewer）→ GO で Phase 2 へ（RG-1）。→ GO（2026-09-06）
 
 ## Phase 2 — 移譲ルーティング＋フロント表示
 

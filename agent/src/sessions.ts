@@ -31,7 +31,15 @@ export function userConfigDir(dataDir: string, userId: string): string {
 
 export interface UserAgentSettings {
   subagentModel?: string;
+  /** pi-web-access の index パス。researcher(child-only)への配線に使う。未指定/空は配線なし。 */
+  webAccessIndex?: string;
 }
+
+/**
+ * researcher 子エージェントへ追加する Web 系ツール（P3-014 FR-3）。
+ * dangerous 分類なし（読み取り専用・承認確認なし）。
+ */
+export const RESEARCHER_WEB_TOOLS = ['web_search', 'fetch_content'] as const;
 
 /**
  * per-user 設定を読み、エージェント関連キーをマージして書き戻す。
@@ -58,17 +66,25 @@ export function writeUserAgentSettings(
   } catch {
     // 存在しない・壊れている場合は作り直す
   }
+  // subagents は一度だけ引き出し、subagentModel と researcher 配線の両方に使う。
+  const subagents =
+    document.subagents && typeof document.subagents === 'object' && !Array.isArray(document.subagents)
+      ? { ...(document.subagents as Record<string, unknown>) }
+      : {};
   if (settings.subagentModel !== undefined) {
-    const subagents =
-      document.subagents && typeof document.subagents === 'object' && !Array.isArray(document.subagents)
-        ? { ...(document.subagents as Record<string, unknown>) }
-        : {};
     if (settings.subagentModel) {
       subagents.defaultModel = settings.subagentModel;
     } else {
       delete subagents.defaultModel;
     }
+  }
+  // P3-014: researcher 配線は宣言的に同期する（未指定時は残留配線を削除）。
+  syncResearcherWebAccess(subagents, settings.webAccessIndex ?? '', includePackages);
+  if (Object.keys(subagents).length > 0) {
     document.subagents = subagents;
+  } else {
+    // 管理対象が空になった場合は古い値が残らないよう削除する（P3-014 残留配線の防止）
+    delete document.subagents;
   }
   const packages = Array.isArray(document.packages)
     ? [...document.packages]
@@ -85,6 +101,36 @@ export function writeUserAgentSettings(
   return dir;
 }
 
+/**
+ * pi-subagents の per-user 拡張設定を書く（P3-014 FR-1）。
+ * `extensions/subagent/config.json` に `{"asyncByDefault": false}` を設定し、
+ * 子を foreground 化して gateway の run ライフサイクル（prompt→settle→終了）に収める。
+ * 既存キーは保持し、原子書込（temp+rename）する。既存設定を返す。
+ */
+export function writeSubagentExtensionConfig(
+  dataDir: string,
+  userId: string,
+): string {
+  const dir = path.join(userConfigDir(dataDir, userId), 'extensions', 'subagent');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, 'config.json');
+  let document: Record<string, unknown> = {};
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      document = parsed as Record<string, unknown>;
+    }
+  } catch {
+    // 存在しない・壊れている場合は作り直す
+  }
+  document.asyncByDefault = false;
+  const tmpFile = `${file}.tmp-${process.pid}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+  fs.writeFileSync(tmpFile, `${JSON.stringify(document, null, 2)}\n`);
+  fs.renameSync(tmpFile, file);
+  return file;
+}
+
 /** 会話削除時のセッション破棄。存在しなくても成功扱い。 */
 export function deleteSessionFile(dataDir: string, userId: string, conversationId: string): boolean {
   const file = sessionFilePath(dataDir, userId, conversationId);
@@ -95,4 +141,49 @@ export function deleteSessionFile(dataDir: string, userId: string, conversationI
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return true;
     throw error;
   }
+}
+
+/**
+ * researcher への pi-web-access 配線を宣言的に同期する（P3-014 FR-2/FR-3）。
+ * 拡張ツールは子エージェントの allowlist に provider パスを明示しないと載らない
+ * （Phase 0 §3 の実機診断）。subagents.agentOverrides.researcher に
+ * subagentOnlyExtensions（child-only）＋ tools（既存+Web ツールをマージ）を書く。
+ * pi-subagents が無効（includePackages=false）または配線指定なしの場合は
+ * 管理する researcher override を削除する（残留配線の防止）。
+ */
+function syncResearcherWebAccess(
+  subagents: Record<string, unknown>,
+  webAccessIndex: string,
+  includePackages: boolean,
+): void {
+  const subagentsEnabled = includePackages && webAccessIndex.length > 0;
+  const hasOverrides =
+    subagents.agentOverrides &&
+    typeof subagents.agentOverrides === 'object' &&
+    !Array.isArray(subagents.agentOverrides);
+  if (!subagentsEnabled) {
+    if (hasOverrides) {
+      const overrides = { ...(subagents.agentOverrides as Record<string, unknown>) };
+      delete overrides.researcher;
+      if (Object.keys(overrides).length === 0) delete subagents.agentOverrides;
+      else subagents.agentOverrides = overrides;
+    }
+    return;
+  }
+  const overrides = hasOverrides
+    ? { ...(subagents.agentOverrides as Record<string, unknown>) }
+    : {};
+  const researcher =
+    overrides.researcher &&
+    typeof overrides.researcher === 'object' &&
+    !Array.isArray(overrides.researcher)
+      ? { ...(overrides.researcher as Record<string, unknown>) }
+      : {};
+  const existingTools = Array.isArray(researcher.tools)
+    ? researcher.tools.filter((tool): tool is string => typeof tool === 'string')
+    : [];
+  researcher.subagentOnlyExtensions = [webAccessIndex];
+  researcher.tools = [...new Set([...existingTools, ...RESEARCHER_WEB_TOOLS])];
+  overrides.researcher = researcher;
+  subagents.agentOverrides = overrides;
 }
