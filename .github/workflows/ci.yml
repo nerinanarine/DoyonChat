@@ -80,6 +80,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
+    # environment 宣言がないと environment スコープの vars/secrets が空になる。
+    # 検証はテンプレート形状の確認が目的のため dev の値で検証する
+    # （prod environment は承認ルールで CI が止まる可能性がある）。
+    environment: dev
     steps:
       - uses: actions/checkout@v4
 
@@ -100,8 +104,9 @@ jobs:
 
       - name: Validate Deployment (What-If)
         env:
-          AGENT_AUTH_TENANT: ${{ secrets.AGENT_AUTH_TENANT || '' }}
-          AGENT_AUTH_AUDIENCE: ${{ secrets.AGENT_AUTH_AUDIENCE || '' }}
+          # 登録場所の揺れに対応: environment 変数 (vars) を優先し、secrets をフォールバックにする。
+          AGENT_AUTH_TENANT: ${{ vars.AGENT_AUTH_TENANT || secrets.AGENT_AUTH_TENANT || '' }}
+          AGENT_AUTH_AUDIENCE: ${{ vars.AGENT_AUTH_AUDIENCE || secrets.AGENT_AUTH_AUDIENCE || '' }}
         run: |
           echo "🔍 Running deployment validation..."
           test -n "$AGENT_AUTH_TENANT" || { echo "::error::AGENT_AUTH_TENANT is required (Bicep now requires gateway auth tenant)"; exit 1; }
