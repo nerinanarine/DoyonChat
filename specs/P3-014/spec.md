@@ -51,8 +51,8 @@
 ### FR-4: 移譲ルーティング
 
 - Web検索が必要なタスクで researcher が引き当てられること
-- 引き当てられない場合は description・AGENTS.md（コンテナ内の researcher 定義）を調整し、テストで確認する
 - 調整内容は本 spec に記録する
+- **Phase 2 の確定記録**: 標準 researcher 定義のままで引き当て成立（live で `args.agent==="researcher"` 確認済み。Phase 1b/2 とも再現）。description・AGENTS.md の調整は不要と判断。LLM の引き当ては確率的なため自動テストにできないが、パイプライン（SSE 正規化→表示）はユニットテストで固定する
 
 ### FR-5: 設定
 
@@ -70,6 +70,7 @@
 - 表示内容：移譲先（researcher）・タスク概要・状態（実行中／完了／失敗）・進捗
 - gateway がサブエージェントのライフサイクルイベント（開始／進捗／終了）を SSE で放出し、Functions が中継、フロントが描画する（P3-010 の `AgentProgress` 方式と同型。拡張または新設は実装時に確定）
 - 既存 SSE 契約は後方互換を維持する（任意フィールド追加のみ）
+- **Phase 2 の確定方式**: gateway は既存の raw パススルー（`tool_execution_start/update/end`、`toolName:"subagent"`、`args.agent/task`）で発生源を成立させ、Functions は `sseRaw` パススルーで中継（agent/functions の変更不要）。フロントは `AgentProgress` を拡張し、`normalizeAgentEvent` で agent/task を抽出する。`tool_execution_end` は args を持たないため、同一 `toolCallId` の agent 名をストリーム内 Map で引き継ぐ
 
 ## 受け入れ条件（バックログ対応）
 

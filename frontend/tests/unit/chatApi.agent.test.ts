@@ -83,6 +83,34 @@ describe('chat stream agent events', () => {
     expect(events).toEqual(['agent_start', 'tool_start', 'tool_end', 'agent_settled']);
   });
 
+  it('surfaces subagent delegation info (agent/task) from tool_execution events', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"type":"tool_execution_start","toolCallId":"call-9","toolName":"subagent","args":{"agent":"researcher","task":"search the web for the latest pi version"}}\n\n' +
+          'data: {"type":"tool_execution_update","toolCallId":"call-9","toolName":"subagent","args":{"agent":"researcher","task":"search the web for the latest pi version"}}\n\n' +
+          'data: {"type":"tool_execution_end","toolCallId":"call-9","toolName":"subagent","isError":false}\n\n' +
+          'data: {"content":"","done":true,"runId":"run-1","finalText":"ok"}\n\n',
+      ),
+    );
+
+    const events: Array<Record<string, unknown>> = [];
+    const done = new Promise<void>((resolve) => {
+      streamChat('conversation-1', '質問', undefined, undefined, resolve, undefined, {
+        onAgentEvent: (event) => events.push(event as Record<string, unknown>),
+      });
+    });
+
+    await done;
+    expect(events[0]).toMatchObject({
+      kind: 'tool_start',
+      toolName: 'subagent',
+      agent: 'researcher',
+      task: 'search the web for the latest pi version',
+    });
+    expect(events[1]).toMatchObject({ kind: 'tool_update', agent: 'researcher' });
+    expect(events[2]).toMatchObject({ kind: 'tool_end', agent: 'researcher', isError: false });
+  });
+
   it('relays approval requests and expired notifications via onApproval', async () => {
     mockFetch.mockResolvedValueOnce(
       streamingResponse(

@@ -25,18 +25,17 @@
 
 ## Phase 2 — 移譲ルーティング＋フロント表示
 
-- [ ] Web検索タスクで researcher が引き当てられることをテストで確認する
-- [ ] 引き当てられない場合は researcher 定義の description・AGENTS.md を調整し、調整内容を spec に記録する
-- [ ] gateway がサブエージェントのライフサイクルイベント（開始／進捗／終了）を SSE で放出する（任意フィールド追加のみで後方互換維持）
-- [ ] Functions がイベントを中継し、フロントが移譲状態（移譲先・タスク概要・実行中／完了／失敗・進捗）を表示する（`AgentProgress` 拡張または新設は実装時に確定）
-- [ ] 移譲・実行ともに承認確認なしで動作することを確認する
-- [ ] 自動テスト＋ローカル疎通で回帰なしを確認する（dev 環境へのデプロイは Phase 3）
-- [ ] 成果物レビュー（reviewer）→ GO で Phase 3 へ（RG-2）
+- [x] Web検索タスクで researcher が引き当てられることをテストで確認する。→ live で `args.agent==="researcher"` を確認（Phase 1b・2）。LLM 引き当ては確率的のためパイプラインをユニットテストで固定（`memo-phase2.md`）。引き当て不調に備えた description・AGENTS.md 調整は不要と判断
+- [x] gateway がサブエージェントのライフサイクルイベント（開始／進捗／終了）を SSE で放出する（任意フィールド追加のみで後方互換維持）。→ 既存 raw パススルー（`tool_execution_start/update/end`）で放出済み。変更不要
+- [x] Functions がイベントを中継し、フロントが移譲状態（移譲先・タスク概要・実行中／完了／失敗・進捗）を表示する（`AgentProgress` 拡張または新設は実装時に確定）。→ `AgentProgress` を拡張し、`normalizeAgentEvent` で agent/task 抽出＋toolCallId 引き継ぎを実装
+- [x] 移譲・実行ともに承認確認なしで動作することを確認する。→ live で `approvalRequest: 0` を確認
+- [x] 自動テスト＋ローカル疎通で回帰なしを確認する。→ frontend 157 / agent 106＋real / functions 219 green＋live 疎通
+- [x] 成果物レビュー（reviewer）→ GO で Phase 3 へ（RG-2）。→ GO（2026-09-06）。P2 2 件は Phase 3 へ持越し
 
 ## Phase 3 — dev 検証・残課題整理
 
 - [ ] dev デプロイ（手動。イメージは `az acr build`＋`az containerapp update`。P3-013 完成までは手動運用）
-- [ ] E2E: Web検索→移譲→回答反映→フロント表示、および fetch_content によるページ取得→回答反映の一連動作を確認する
+- [ ] E2E: Web検索→移譲→回答反映→フロント表示、および fetch_content によるページ取得→回答反映の一連動作を確認する。実ブラウザで `tool_execution_update` の行蓄積（RG-2 P2）が許容範囲か判断する
 - [ ] 残課題（Tavily キー追加手順・prod 展開・`source_check` 等の対象外ツールの扱い）を整理し、バックログまたは本 plan に記録する
 - [ ] 最終レビュー（reviewer。全体差分対象）→ GO で完了
 
