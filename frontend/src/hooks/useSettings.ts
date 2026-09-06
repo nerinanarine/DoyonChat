@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserSettings } from '../types';
+import { AgentApprovalLevel, UserSettings } from '../types';
 import * as api from '../services/chatApi';
 import { errorMessage } from '../services/errorMessages';
 
@@ -29,7 +29,13 @@ export function useSettings(enabled = true) {
   }, [enabled, load]);
 
   const updateSettings = useCallback(
-    async (partial: { defaultModel?: string | null; displayName?: string | null }) => {
+    async (partial: {
+      defaultModel?: string | null;
+      displayName?: string | null;
+      agentApprovalLevel?: AgentApprovalLevel | null;
+      agentModel?: string | null;
+      agentSubagentModel?: string | null;
+    }) => {
       const previous = settings;
       // Optimistic update; rollback on failure.
       const next = { ...settings };
@@ -45,6 +51,31 @@ export function useSettings(enabled = true) {
           delete next.displayName;
         } else if (typeof partial.displayName === 'string') {
           next.displayName = partial.displayName.trim();
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(partial, 'agentApprovalLevel')) {
+        if (partial.agentApprovalLevel === null || partial.agentApprovalLevel === undefined) {
+          delete next.agentApprovalLevel;
+        } else if (
+          partial.agentApprovalLevel === 'auto' ||
+          partial.agentApprovalLevel === 'dangerous-only' ||
+          partial.agentApprovalLevel === 'always'
+        ) {
+          next.agentApprovalLevel = partial.agentApprovalLevel;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(partial, 'agentModel')) {
+        if (partial.agentModel === null || partial.agentModel === '' || partial.agentModel === undefined) {
+          delete next.agentModel;
+        } else if (typeof partial.agentModel === 'string') {
+          next.agentModel = partial.agentModel.trim();
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(partial, 'agentSubagentModel')) {
+        if (partial.agentSubagentModel === null || partial.agentSubagentModel === '' || partial.agentSubagentModel === undefined) {
+          delete next.agentSubagentModel;
+        } else if (typeof partial.agentSubagentModel === 'string') {
+          next.agentSubagentModel = partial.agentSubagentModel.trim();
         }
       }
       setSettings(next);

@@ -45,6 +45,30 @@ export function useConversations(enabled = true) {
     setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
   }, []);
 
+  /**
+   * 会話のエージェントモードを切り替える。楽観更新で即座に反映し、
+   * サーバー応答で正規化、失敗時は元の状態へロールバックしてエラーを再 throw する。
+   */
+  const updateAgentMode = useCallback(
+    async (id: string, enabled: boolean) => {
+      const previous = conversations.find((c) => c.id === id);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, agentMode: enabled } : c)),
+      );
+      try {
+        const updated = await api.updateConversationAgentMode(id, enabled);
+        setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      } catch (error) {
+        // 失敗時は元の会話へ戻す。一覧に無い会話は何もしない。
+        if (previous) {
+          setConversations((prev) => prev.map((c) => (c.id === id ? previous : c)));
+        }
+        throw error;
+      }
+    },
+    [conversations],
+  );
+
   const updateTitle = useCallback(async (id: string, title: string) => {
     const updated = await api.updateConversationTitle(id, title);
     renamedIds.current.add(id);
@@ -72,6 +96,7 @@ export function useConversations(enabled = true) {
     remove,
     updateModel,
     updateTitle,
+    updateAgentMode,
     autoTitle,
     isRenamed,
   };

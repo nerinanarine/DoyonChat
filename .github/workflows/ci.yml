@@ -31,6 +31,8 @@ jobs:
           filters: |
             functions:
               - 'functions/**'
+            agent:
+              - 'agent/**'
             infra:
               - 'infra/**'
             workflows:
@@ -56,10 +58,32 @@ jobs:
       - run: npm run build
       - run: npm test -- --runInBand
 
+  test-agent:
+    needs: changes
+    if: needs.changes.outputs.agent == 'true' || needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: agent/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test -- --runInBand
+
   validate-infra:
     needs: changes
     if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
+    # environment 宣言がないと environment スコープの vars/secrets が空になる。
+    # 検証はテンプレート形状の確認が目的のため dev の値で検証する
+    # （prod environment は承認ルールで CI が止まる可能性がある）。
+    environment: dev
     steps:
       - uses: actions/checkout@v4
 
@@ -79,12 +103,21 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Validate Deployment (What-If)
+        env:
+          # 登録場所の揺れに対応: environment 変数 (vars) を優先し、secrets をフォールバックにする。
+          AGENT_AUTH_TENANT: ${{ vars.AGENT_AUTH_TENANT || secrets.AGENT_AUTH_TENANT || '' }}
+          AGENT_AUTH_AUDIENCE: ${{ vars.AGENT_AUTH_AUDIENCE || secrets.AGENT_AUTH_AUDIENCE || '' }}
         run: |
           echo "🔍 Running deployment validation..."
+          test -n "$AGENT_AUTH_TENANT" || { echo "::error::AGENT_AUTH_TENANT is required (Bicep now requires gateway auth tenant)"; exit 1; }
+          test -n "$AGENT_AUTH_AUDIENCE" || { echo "::error::AGENT_AUTH_AUDIENCE is required (Bicep now requires gateway auth audience)"; exit 1; }
           az deployment group validate \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
             --parameters infra/parameters/prod.parameters.json \
             openCodeGoApiKey=${{ secrets.OPENCODE_GO_API_KEY }} \
-            cosmosDbKey=${{ secrets.COSMOSDB_KEY }}
+            cosmosDbKey=${{ secrets.COSMOSDB_KEY }} \
+            agentAuthTenant="$AGENT_AUTH_TENANT" \
+            agentAuthAudience="$AGENT_AUTH_AUDIENCE" \
+            agentEnabled="${{ vars.AGENT_ENABLED || 'false' }}"
           echo "✅ Deployment validation passed"

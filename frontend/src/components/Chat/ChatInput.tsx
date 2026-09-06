@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Send, Square, ImagePlus, X } from 'lucide-react';
 import { validateImageFile, fileToBase64, resizeImageIfNeeded } from '../../utils/image';
 
@@ -8,6 +8,8 @@ interface ChatInputProps {
   isStreaming: boolean;
   disabled?: boolean;
   disabledReason?: string;
+  /** 画像添付のみを無効化する理由（エージェントモード等）。設定時は添付UIと理由を表示する。 */
+  imageDisabledReason?: string;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -16,11 +18,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
   isStreaming,
   disabled,
   disabledReason,
+  imageDisabledReason,
 }) => {
   const [text, setText] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 画像添付が無効化されたら、添付済みプレビューも破棄する
+  useEffect(() => {
+    if (imageDisabledReason) setImage(null);
+  }, [imageDisabledReason]);
 
   const handleSend = useCallback(() => {
     if ((!text.trim() && !image) || disabled) return;
@@ -47,7 +55,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [dragActive, setDragActive] = useState(false);
 
   const processImage = useCallback(async (file: File) => {
-    if (disabled) return;
+    if (disabled || imageDisabledReason) return;
     const error = validateImageFile(file);
     if (error) {
       alert(error);
@@ -60,7 +68,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     } catch {
       alert('画像の処理に失敗しました');
     }
-  }, [disabled]);
+  }, [disabled, imageDisabledReason]);
 
   const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -112,12 +120,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
           {disabledReason}
         </p>
       )}
+      {imageDisabledReason && (
+        <p role="alert" className="mb-2 text-sm text-amber-700">
+          {imageDisabledReason}
+        </p>
+      )}
       <div className="flex items-end gap-2">
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={disabled}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-          title="画像をアップロード"
+          disabled={disabled || Boolean(imageDisabledReason)}
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title={imageDisabledReason ?? '画像をアップロード'}
+          aria-label="画像をアップロード"
           type="button"
         >
           <ImagePlus size={20} />
@@ -127,7 +141,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           type="file"
           accept="image/*"
           className="hidden"
-          disabled={disabled}
+          disabled={disabled || Boolean(imageDisabledReason)}
           onChange={handleImageSelect}
         />
         <textarea

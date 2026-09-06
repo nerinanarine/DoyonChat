@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useMsal } from '@azure/msal-react';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { Conversation, ModelInfo } from '../../src/types';
@@ -146,5 +146,91 @@ describe('AppLayout settings menu', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ログアウト' }));
 
     expect(onLogout).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AppLayout agent mode toggle', () => {
+  it('renders a switch that reflects the conversation agent mode and toggles it', () => {
+    const onToggleAgentMode = vi.fn();
+    const { rerender } = render(
+      <AppLayout
+        {...props}
+        conversations={[{ ...conversation, agentMode: true }]}
+        agentMode
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+
+    const toggle = screen.getByRole('switch', { name: /エージェント/ });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(toggle);
+    expect(onToggleAgentMode).toHaveBeenCalledWith(false);
+
+    rerender(
+      <AppLayout
+        {...props}
+        conversations={[conversation]}
+        agentMode={false}
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+    expect(screen.getByRole('switch', { name: /エージェント/ })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+  });
+
+  it('does not render the switch while busy and shows an error on failure', () => {
+    const onToggleAgentMode = vi.fn();
+    const { rerender } = render(
+      <AppLayout
+        {...props}
+        conversations={[{ ...conversation, agentMode: true }]}
+        agentMode
+        agentModeBusy
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+    expect(screen.getByRole('switch', { name: /エージェント/ })).toBeDisabled();
+
+    rerender(
+      <AppLayout
+        {...props}
+        conversations={[conversation]}
+        agentMode={false}
+        agentModeError="エージェントモードを切り替えられませんでした。もう一度お試しください。"
+        onToggleAgentMode={onToggleAgentMode}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('エージェントモードを切り替えられませんでした');
+  });
+
+  it('does not render the switch when no conversation is selected', () => {
+    render(<AppLayout {...props} activeConversationId={null} conversations={[]} />);
+    expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('AppLayout agent feature flag (RG-2 F4)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('hides the agent toggle when VITE_AGENT_ENABLED=false', () => {
+    vi.stubEnv('VITE_AGENT_ENABLED', 'false');
+    render(
+      <AppLayout {...props} conversations={[{ ...conversation, agentMode: true }]} agentMode />,
+    );
+    expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
+    // 既存UI（モデルメニュー等）は不変
+    expect(screen.getByRole('button', { name: /Model 1/ })).toBeInTheDocument();
+  });
+
+  it('shows the agent toggle by default (flag unset)', () => {
+    vi.unstubAllEnvs();
+    render(
+      <AppLayout {...props} conversations={[{ ...conversation, agentMode: true }]} agentMode />,
+    );
+    expect(screen.getByRole('switch', { name: /エージェント/ })).toBeInTheDocument();
   });
 });

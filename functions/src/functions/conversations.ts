@@ -9,6 +9,10 @@ import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
 import { DEFAULT_MODEL_ID, hasModel } from '../config/modelCatalog';
 import { generateTitle, sanitizeGeneratedTitle } from '../services/opencodeGo';
+import {
+  deleteGatewaySession,
+  loadAgentGatewayConfig,
+} from '../services/agentGateway';
 import { getOptionalString, getRequiredString, readJsonBody } from './request';
 
 function getConversationId(request: HttpRequest): string {
@@ -45,6 +49,22 @@ export async function conversationsHandler(
   }
 }
 
+/**
+ * 会話削除に伴う pi セッション資産の破棄を gateway へ依頼する（RG-2 F2）。
+ * fire-and-forget 前提：失敗しても削除本体の成否には影響させない。
+ * kill switch（AGENT_ENABLED=false）または gateway 未設定時は何もしない。
+ */
+function notifyGatewaySessionDeleted(userId: string, conversationId: string): void {
+  const config = loadAgentGatewayConfig();
+  if (!config.enabled || !config.baseUrl) return;
+  deleteGatewaySession(config, { userId, conversationId }).catch((error) => {
+    console.error(
+      '[functions/conversations] gateway session delete failed (non-blocking):',
+      error,
+    );
+  });
+}
+
 export async function conversationHandler(
   request: HttpRequest,
   _context: InvocationContext,
@@ -62,6 +82,7 @@ export async function conversationHandler(
 
     const deleted = await service.deleteConversation(id, userId);
     if (!deleted) throw new AppError(404, 'Conversation not found');
+    notifyGatewaySessionDeleted(userId, id);
     return { status: 204 };
   } catch (error) {
     return toHttpResponse(error);
@@ -145,6 +166,29 @@ export async function titleAutoHandler(
   }
 }
 
+export async function agentModeHandler(
+  request: HttpRequest,
+  _context: InvocationContext,
+): Promise<HttpResponseInit> {
+  try {
+    const userId = await authenticateRequest(request);
+    const body = await readJsonBody(request);
+    // enabled は boolean のみ採用。それ以外は 400（微妙な真偽の黙殺を避ける）。
+    if (!Object.prototype.hasOwnProperty.call(body, 'enabled') || typeof body.enabled !== 'boolean') {
+      throw new AppError(400, 'enabled must be a boolean');
+    }
+    const updated = await service.updateConversationAgentMode(
+      getConversationId(request),
+      body.enabled as boolean,
+      userId,
+    );
+    if (!updated) throw new AppError(404, 'Conversation not found');
+    return { status: 200, jsonBody: updated };
+  } catch (error) {
+    return toHttpResponse(error);
+  }
+}
+
 app.http('conversations', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -178,4 +222,11 @@ app.http('conversation-title-auto', {
   authLevel: 'anonymous',
   route: 'conversations/{id}/title/auto',
   handler: titleAutoHandler,
+});
+
+app.http('conversation-agent-mode', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  route: 'conversations/{id}/agent-mode',
+  handler: agentModeHandler,
 });

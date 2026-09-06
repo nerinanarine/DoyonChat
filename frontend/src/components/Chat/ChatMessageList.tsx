@@ -1,7 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { Message, ModelInfo, UserSettings } from '../../types';
+import {
+  AgentApprovalRequest,
+  AgentStreamEvent,
+  Message,
+  ModelInfo,
+  UserSettings,
+} from '../../types';
 import ChatMessage from './ChatMessage';
 import CollapsibleReasoning from './CollapsibleReasoning';
+import AgentProgress from './AgentProgress';
+import ToolCallConfirmation from './ToolCallConfirmation';
 import MarkdownRenderer from '../Markdown/MarkdownRenderer';
 import LoadingState from '../Common/LoadingState';
 import { Bot } from 'lucide-react';
@@ -15,6 +23,10 @@ interface ChatMessageListProps {
   models?: ModelInfo[];
   settings?: UserSettings;
   currentModel?: string;
+  agentProgress?: AgentStreamEvent[];
+  approvalRequest?: AgentApprovalRequest | null;
+  approvalBusy?: boolean;
+  onRespondApproval?: (approved: boolean) => void;
 }
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
@@ -26,6 +38,10 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   models = [],
   settings,
   currentModel,
+  agentProgress = [],
+  approvalRequest = null,
+  approvalBusy = false,
+  onRespondApproval,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +85,15 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
             <div className="text-sm font-semibold mb-1 text-gray-900">
               {models.find((m) => m.id === currentModel)?.name || currentModel || 'AI'}
             </div>
+            <AgentProgress events={agentProgress} />
+            {approvalRequest && !approvalRequest.expired && onRespondApproval && (
+              <ToolCallConfirmation
+                request={approvalRequest}
+                busy={approvalBusy}
+                onApprove={() => onRespondApproval(true)}
+                onReject={() => onRespondApproval(false)}
+              />
+            )}
             <CollapsibleReasoning reasoning={streamingReasoning} />
             {streamingText && (
               <div className="text-gray-800 text-[15px] leading-relaxed">

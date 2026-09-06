@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P3-010 AIエージェント化 — システムアーキテクチャ</title>
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --bg2: #0e1626;
+    --panel: #111c30;
+    --line: #24365a;
+    --grid: rgba(56, 120, 200, 0.09);
+    --ink: #dbe7f7;
+    --dim: #8fa3c2;
+    --cyan: #41d9e2;
+    --amber: #ffb454;
+    --green: #5eeaa0;
+    --red: #ff7a90;
+    --violet: #b9a5ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink);
+    font-family: "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(65, 217, 226, 0.07), transparent 60%),
+      radial-gradient(1000px 700px at 10% 20%, rgba(255, 180, 84, 0.05), transparent 60%),
+      var(--bg);
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 90%);
+  }
+  header.hero {
+    padding: 64px 32px 28px; max-width: 1180px; margin: 0 auto;
+    border-bottom: 1px solid var(--line);
+  }
+  .kicker {
+    font-family: Consolas, Menlo, monospace; color: var(--cyan);
+    letter-spacing: 0.25em; font-size: 12px; text-transform: uppercase;
+  }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(30px, 4.5vw, 52px); margin: 12px 0 8px; line-height: 1.25;
+  }
+  h1 .accent { color: var(--amber); }
+  .sub { color: var(--dim); max-width: 760px; line-height: 1.9; }
+  nav.toc {
+    max-width: 1180px; margin: 0 auto; padding: 18px 32px;
+    display: flex; flex-wrap: wrap; gap: 10px;
+  }
+  nav.toc a {
+    color: var(--ink); text-decoration: none; font-size: 13px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px;
+    background: rgba(17, 28, 48, 0.7);
+  }
+  nav.toc a:hover { border-color: var(--cyan); color: var(--cyan); }
+  main { max-width: 1180px; margin: 0 auto; padding: 8px 32px 80px; }
+  section { margin-top: 56px; }
+  h2 {
+    font-family: Georgia, serif; font-size: 26px; margin: 0 0 6px;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .no {
+    font-family: Consolas, monospace; font-size: 13px; color: var(--bg);
+    background: var(--amber); border-radius: 4px; padding: 2px 9px;
+  }
+  .lede { color: var(--dim); line-height: 1.9; margin: 0 0 20px; max-width: 820px; }
+  .fig {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--bg2);
+    padding: 18px; overflow-x: auto;
+  }
+  .fig figcaption {
+    font-family: Consolas, monospace; font-size: 12px; color: var(--dim);
+    margin-top: 12px; letter-spacing: 0.04em;
+  }
+  svg text { font-family: Consolas, Menlo, monospace; }
+  table.spec { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; }
+  table.spec th, table.spec td {
+    border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top;
+  }
+  table.spec th { background: var(--panel); color: var(--cyan); white-space: nowrap; }
+  table.spec td code, p code, li code {
+    font-family: Consolas, monospace; font-size: 12.5px; color: var(--amber);
+    background: rgba(255, 180, 84, 0.08); padding: 1px 6px; border-radius: 4px;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+  .card {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+    padding: 18px 20px;
+  }
+  .card h3 { margin: 0 0 8px; font-size: 16px; }
+  .card h3 .tag {
+    font-family: Consolas, monospace; font-size: 11px; color: var(--green);
+    border: 1px solid var(--green); border-radius: 4px; padding: 1px 7px; margin-left: 8px;
+  }
+  .card p, .card li { color: var(--dim); font-size: 13.5px; line-height: 1.85; }
+  .card ul { margin: 6px 0 0; padding-left: 20px; }
+  .badge {
+    display: inline-block; font-family: Consolas, monospace; font-size: 11px;
+    border-radius: 4px; padding: 1px 8px; margin-right: 6px;
+  }
+  .b-cyan { color: var(--cyan); border: 1px solid var(--cyan); }
+  .b-amber { color: var(--amber); border: 1px solid var(--amber); }
+  .b-green { color: var(--green); border: 1px solid var(--green); }
+  .b-violet { color: var(--violet); border: 1px solid var(--violet); }
+  footer {
+    max-width: 1180px; margin: 0 auto; padding: 24px 32px 60px;
+    color: var(--dim); font-size: 12px; border-top: 1px solid var(--line);
+    font-family: Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">P3-010 &middot; specs/P3-010 &middot; feat/p3-010-ai-agent</div>
+  <h1>AIのエージェント化 <span class="accent">— システムアーキテクチャ</span></h1>
+  <p class="sub">pi coding agent を別基盤の RPC バックエンドとして呼び出す構成の全体像。リソース配置・リクエスト経路・承認フロー・永続化・セキュリティ境界を1枚にまとめた技術資料。P3-011 / P2-015 形式の <code>spec.md</code>・<code>plan.md</code> の視覚的 companion。</p>
+</header>
+
+<nav class="toc">
+  <a href="#s1">01 全体構成</a>
+  <a href="#s2">02 Azureリソース</a>
+  <a href="#s3">03 通常チャット経路</a>
+  <a href="#s4">04 エージェント経路</a>
+  <a href="#s5">05 承認フロー</a>
+  <a href="#s6">06 永続化マップ</a>
+  <a href="#s7">07 セキュリティ境界</a>
+  <a href="#s8">08 設計判断</a>
+</nav>
+
+<main>
+
+<!-- ============ 01 ============ -->
+<section id="s1">
+  <h2><span class="no">01</span>全体構成</h2>
+  <p class="lede">フロントは変えず、バックエンドを「直結」と「エージェント」の二系に分岐する。エージェント実行は Functions と分離した常駐基盤（Container Apps）に隔離し、Functions は認証・プロキシ・SSE 中継に徹する。</p>
+  <figure class="fig">
+  <svg viewBox="0 0 1120 430" width="100%" role="img" aria-label="全体構成図">
+    <defs>
+      <marker id="arw" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#41d9e2" stroke-width="1.5"/></marker>
+      <marker id="arwA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#ffb454" stroke-width="1.5"/></marker>
+    </defs>
+    <!-- users -->
+    <g>
+      <rect x="20" y="150" width="130" height="120" rx="10" fill="#111c30" stroke="#41d9e2" stroke-width="1.5"/>
+      <text x="85" y="200" fill="#41d9e2" font-size="13" text-anchor="middle">users</text>
+      <text x="85" y="222" fill="#8fa3c2" font-size="11" text-anchor="middle">browser</text>
+      <text x="85" y="240" fill="#8fa3c2" font-size="11" text-anchor="middle">Entra ID login</text>
+    </g>
+    <!-- entra -->
+    <g>
+      <rect x="20" y="20" width="130" height="70" rx="10" fill="#111c30" stroke="#b9a5ff"/>
+      <text x="85" y="48" fill="#b9a5ff" font-size="13" text-anchor="middle">Entra ID</text>
+      <text x="85" y="68" fill="#8fa3c2" font-size="11" text-anchor="middle">OAuth / MSAL</text>
+    </g>
+    <!-- swa -->
+    <g>
+      <rect x="200" y="150" width="150" height="120" rx="10" fill="#111c30" stroke="#41d9e2" stroke-width="1.5"/>
+      <text x="275" y="192" fill="#dbe7f7" font-size="13" text-anchor="middle">Static Web App</text>
+      <text x="275" y="212" fill="#8fa3c2" font-size="11" text-anchor="middle">React + Vite</text>
+      <text x="275" y="230" fill="#8fa3c2" font-size="11" text-anchor="middle">AgentProgress /</text>
+      <text x="275" y="246" fill="#8fa3c2" font-size="11" text-anchor="middle">ToolCallConfirmation</text>
+    </g>
+    <!-- functions -->
+    <g>
+      <rect x="400" y="120" width="200" height="180" rx="10" fill="#141f38" stroke="#ffb454" stroke-width="2"/>
+      <text x="500" y="148" fill="#ffb454" font-size="13" text-anchor="middle">Azure Functions</text>
+      <text x="500" y="168" fill="#8fa3c2" font-size="11" text-anchor="middle">Flex Consumption</text>
+      <text x="420" y="196" fill="#dbe7f7" font-size="11">/api/chat ──┬── 直結</text>
+      <text x="420" y="216" fill="#dbe7f7" font-size="11">/api/agent/* ─┼─ 承認・状態</text>
+      <text x="420" y="236" fill="#dbe7f7" font-size="11">Entra検証・kill switch</text>
+      <text x="420" y="256" fill="#dbe7f7" font-size="11">MI token → gateway</text>
+      <text x="420" y="276" fill="#8fa3c2" font-size="11">cosmos / KV / AI 接続</text>
+    </g>
+    <!-- opencode -->
+    <g>
+      <rect x="650" y="60" width="170" height="80" rx="10" fill="#111c30" stroke="#8fa3c2"/>
+      <text x="735" y="90" fill="#dbe7f7" font-size="13" text-anchor="middle">OpenCode Go</text>
+      <text x="735" y="110" fill="#8fa3c2" font-size="11" text-anchor="middle">27 models · 3 protocols</text>
+    </g>
+    <!-- aca -->
+    <g>
+      <rect x="650" y="180" width="440" height="220" rx="12" fill="none" stroke="#ffb454" stroke-dasharray="7 5"/>
+      <text x="660" y="202" fill="#ffb454" font-size="12">Container Apps ── agentPool (replica = 1 固定)</text>
+      <rect x="670" y="215" width="200" height="165" rx="10" fill="#141f38" stroke="#ffb454" stroke-width="1.5"/>
+      <text x="770" y="242" fill="#ffb454" font-size="13" text-anchor="middle">agent gateway</text>
+      <text x="770" y="262" fill="#8fa3c2" font-size="11" text-anchor="middle">Node / HTTP+SSE</text>
+      <text x="770" y="280" fill="#8fa3c2" font-size="11" text-anchor="middle">run registry (TTL)</text>
+      <text x="770" y="298" fill="#8fa3c2" font-size="11" text-anchor="middle">Entra JWT 検証</text>
+      <text x="770" y="316" fill="#8fa3c2" font-size="11" text-anchor="middle">heartbeat : ping</text>
+      <text x="770" y="334" fill="#8fa3c2" font-size="11" text-anchor="middle">concurrency cap</text>
+      <text x="770" y="352" fill="#8fa3c2" font-size="11" text-anchor="middle">scope / allowlist</text>
+      <rect x="890" y="215" width="180" height="165" rx="10" fill="#111c30" stroke="#5eeaa0" stroke-width="1.5"/>
+      <text x="980" y="242" fill="#5eeaa0" font-size="13" text-anchor="middle">pi --mode rpc</text>
+      <text x="980" y="262" fill="#8fa3c2" font-size="11" text-anchor="middle">JSONL / stdin·stdout</text>
+      <text x="980" y="280" fill="#8fa3c2" font-size="11" text-anchor="middle">--no-tools (既定)</text>
+      <text x="980" y="298" fill="#8fa3c2" font-size="11" text-anchor="middle">approvalGate 拡張</text>
+      <text x="980" y="316" fill="#8fa3c2" font-size="11" text-anchor="middle">pi-subagents (将来)</text>
+      <text x="980" y="334" fill="#8fa3c2" font-size="11" text-anchor="middle">session 継続</text>
+      <text x="980" y="352" fill="#8fa3c2" font-size="11" text-anchor="middle">tool 実行</text>
+    </g>
+    <!-- data services -->
+    <g>
+      <rect x="400" y="330" width="200" height="70" rx="10" fill="#111c30" stroke="#8fa3c2"/>
+      <text x="500" y="356" fill="#dbe7f7" font-size="12" text-anchor="middle">CosmosDB · KeyVault</text>
+      <text x="500" y="376" fill="#8fa3c2" font-size="11" text-anchor="middle">App Insights · ACR</text>
+    </g>
+    <!-- arrows -->
+    <line x1="85" y1="90" x2="230" y2="170" stroke="#b9a5ff" stroke-width="1.2" marker-end="url(#arw)"/>
+    <line x1="150" y1="210" x2="200" y2="210" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+    <line x1="350" y1="190" x2="400" y2="190" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+    <line x1="600" y1="160" x2="650" y2="105" stroke="#8fa3c2" stroke-width="1.2" marker-end="url(#arw)"/>
+    <line x1="600" y1="220" x2="650" y2="280" stroke="#ffb454" stroke-width="1.8" marker-end="url(#arwA)"/>
+    <line x1="870" y1="297" x2="890" y2="297" stroke="#5eeaa0" stroke-width="1.5" marker-end="url(#arw)"/>
+  </svg>
+  <figcaption>fig.1 — 青＝通常系 / 橙＝エージェント系 / 緑＝pi プロセス。Functions は両系の入口で認証と kill switch を担う。</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 02 ============ -->
+<section id="s2">
+  <h2><span class="no">02</span>Azureリソースと接続</h2>
+  <p class="lede">Dev 先行（<code>rg-opencode-chat-dev</code>）→ prod 展開。P3-010 の新規分は <span class="badge b-amber">NEW</span>。シークレットは Key Vault 経由のみで、平文の App Settings 受け渡しはしない。</p>
+  <table class="spec">
+    <tr><th>リソース</th><th>命名（dev例）</th><th>役割</th><th>接続</th></tr>
+    <tr><td>Static Web App</td><td><code>swa-dev-*</code></td><td>フロント配信</td><td>→ Functions（API URL）</td></tr>
+    <tr><td>Function App <span class="badge b-cyan">既存＋拡張</span></td><td><code>func-dev-*</code>（Flex）</td><td>認証・プロキシ・SSE中継・通常チャット</td><td>→ CosmosDB / KV / App Insights / <span class="badge b-amber">NEW</span> gateway URL</td></tr>
+    <tr><td>Container Apps 環境 <span class="badge b-amber">NEW</span></td><td><code>cae-dev-*</code></td><td>エージェント実行基盤の器</td><td>同RG・同リージョンに新設</td></tr>
+    <tr><td>Container App <span class="badge b-amber">NEW</span></td><td><code>agent-dev-*</code>（min=max=1）</td><td>gateway 常駐実行</td><td>UAMI で ACR pull・KV 参照、Entra JWT 検証</td></tr>
+    <tr><td>Container Registry <span class="badge b-amber">NEW</span></td><td><code>acrdev*</code>（admin無効）</td><td>gateway イメージ配布</td><td>UAMI に AcrPull のみ</td></tr>
+    <tr><td>User Assigned MI <span class="badge b-amber">NEW</span></td><td><code>uami-dev-*</code></td><td>ACR pull＋KV 参照の身元</td><td>secrets:get のみ</td></tr>
+    <tr><td>Key Vault</td><td><code>kv-dev-*</code></td><td><code>OPENCODE_API_KEY</code> 保管</td><td>secretRef で gateway env へ注入</td></tr>
+    <tr><td>Cosmos DB</td><td><code>cosmos-dev-*</code></td><td>会話履歴の正本</td><td>Functions のみが読み書き</td></tr>
+    <tr><td>App Insights</td><td><code>appi-dev</code></td><td>実行メトリクス</td><td>接続文字列を両基盤へ配布</td></tr>
+    <tr><td>Entra アプリ登録</td><td><code>doyonchat-agent-gateway-dev</code></td><td>gateway audience（JWT 検証の錨）</td><td>Functions の MI が audience 宛に取得</td></tr>
+    <tr><td>OpenCode Go（外部）</td><td><code>opencode.ai/zen/go</code></td><td>LLM API（27モデル）</td><td>Functions 直結＋ pi の provider 経由</td></tr>
+  </table>
+</section>
+
+<!-- ============ 03 ============ -->
+<section id="s3">
+  <h2><span class="no">03</span>通常チャット経路（変更なし）</h2>
+  <p class="lede">P3-010 はこの経路を壊さない。後方互換は SSE パーサの「未知フィールド無視」規約で担保する。</p>
+  <figure class="fig">
+  <svg viewBox="0 0 1120 150" width="100%" role="img" aria-label="通常チャット経路">
+    <g font-size="12">
+      <rect x="10" y="45" width="150" height="60" rx="8" fill="#111c30" stroke="#41d9e2"/><text x="85" y="70" fill="#dbe7f7" text-anchor="middle">useChat</text><text x="85" y="88" fill="#8fa3c2" text-anchor="middle" font-size="11">Abort / 停止</text>
+      <rect x="210" y="45" width="170" height="60" rx="8" fill="#111c30" stroke="#41d9e2"/><text x="295" y="70" fill="#dbe7f7" text-anchor="middle">POST /api/chat</text><text x="295" y="88" fill="#8fa3c2" text-anchor="middle" font-size="11">SSE 受信</text>
+      <rect x="430" y="45" width="200" height="60" rx="8" fill="#141f38" stroke="#ffb454"/><text x="530" y="70" fill="#dbe7f7" text-anchor="middle">chat.ts → streamChat</text><text x="530" y="88" fill="#8fa3c2" text-anchor="middle" font-size="11">3 protocol 分岐</text>
+      <rect x="680" y="45" width="170" height="60" rx="8" fill="#111c30" stroke="#8fa3c2"/><text x="765" y="70" fill="#dbe7f7" text-anchor="middle">OpenCode Go</text><text x="765" y="88" fill="#8fa3c2" text-anchor="middle" font-size="11">x-opencode-session</text>
+      <rect x="900" y="45" width="210" height="60" rx="8" fill="#111c30" stroke="#5eeaa0"/><text x="1005" y="70" fill="#dbe7f7" text-anchor="middle">{content,reasoning,done}</text><text x="1005" y="88" fill="#8fa3c2" text-anchor="middle" font-size="11">＋ 中断時部分保存</text>
+      <line x1="160" y1="75" x2="210" y2="75" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="380" y1="75" x2="430" y2="75" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="630" y1="75" x2="680" y2="75" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="850" y1="75" x2="900" y2="75" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+    </g>
+  </svg>
+  <figcaption>fig.2 — 既存契約。エージェント拡張イベントは任意フィールド追加のみで、このパーサを壊さない。</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 04 ============ -->
+<section id="s4">
+  <h2><span class="no">04</span>エージェント経路</h2>
+  <p class="lede">会話の <code>agentMode</code> が ON の送信だけがこちらへ分岐する。gateway は pi プロセスの所有者として起動・JSONL 読取・回収・同時実行上限を一手に担う。</p>
+  <figure class="fig">
+  <svg viewBox="0 0 1120 380" width="100%" role="img" aria-label="エージェント経路">
+    <g font-size="12">
+      <rect x="10" y="150" width="150" height="80" rx="8" fill="#111c30" stroke="#41d9e2"/><text x="85" y="178" fill="#dbe7f7" text-anchor="middle">フロント</text><text x="85" y="198" fill="#8fa3c2" text-anchor="middle" font-size="11">agentMode 送信</text>
+      <rect x="200" y="120" width="210" height="140" rx="8" fill="#141f38" stroke="#ffb454"/><text x="305" y="148" fill="#ffb454" text-anchor="middle">Functions /chat 分岐</text><text x="220" y="172" fill="#8fa3c2" font-size="11">1. Entra検証・kill switch</text><text x="220" y="192" fill="#8fa3c2" font-size="11">2. MI token 取得・付与</text><text x="220" y="212" fill="#8fa3c2" font-size="11">3. gateway POST /prompt</text><text x="220" y="232" fill="#8fa3c2" font-size="11">4. SSE 中継・確定保存</text>
+      <rect x="450" y="120" width="230" height="140" rx="8" fill="#141f38" stroke="#ffb454"/><text x="565" y="148" fill="#ffb454" text-anchor="middle">gateway</text><text x="470" y="172" fill="#8fa3c2" font-size="11">・JWT 検証・429 上限</text><text x="470" y="192" fill="#8fa3c2" font-size="11">・run 登録・heartbeat</text><text x="470" y="212" fill="#8fa3c2" font-size="11">・switch_session 対応付け</text><text x="470" y="232" fill="#8fa3c2" font-size="11">・set_model pin・承認中継</text>
+      <rect x="720" y="120" width="180" height="140" rx="8" fill="#111c30" stroke="#5eeaa0"/><text x="810" y="148" fill="#5eeaa0" text-anchor="middle">pi 子プロセス</text><text x="740" y="172" fill="#8fa3c2" font-size="11">prompt → turn 実行</text><text x="740" y="192" fill="#8fa3c2" font-size="11">tool 実行・進捗放出</text><text x="740" y="212" fill="#8fa3c2" font-size="11">agent_settled で完了</text>
+      <rect x="940" y="120" width="170" height="140" rx="8" fill="#111c30" stroke="#8fa3c2"/><text x="1025" y="148" fill="#dbe7f7" text-anchor="middle">LLM / tools</text><text x="1025" y="172" fill="#8fa3c2" font-size="11">opencode-go</text><text x="1025" y="192" fill="#8fa3c2" font-size="11">read 等 (allowlist)</text>
+      <line x1="160" y1="190" x2="200" y2="190" stroke="#ffb454" stroke-width="1.8" marker-end="url(#arwA)"/>
+      <line x1="410" y1="190" x2="450" y2="190" stroke="#ffb454" stroke-width="1.8" marker-end="url(#arwA)"/>
+      <line x1="680" y1="190" x2="720" y2="190" stroke="#5eeaa0" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="900" y1="190" x2="940" y2="190" stroke="#8fa3c2" stroke-width="1.2" marker-end="url(#arw)"/>
+      <rect x="200" y="290" width="880" height="60" rx="8" fill="none" stroke="#24365a" stroke-dasharray="6 5"/>
+      <text x="220" y="315" fill="#8fa3c2" font-size="11">停止時: 切断検知 → pi abort → 部分結果を interrupted 保存 → GET /runs/:id で再取得可</text>
+      <text x="220" y="335" fill="#8fa3c2" font-size="11">実行状態: running / settled / timeout / interrupted / error ＋ 承認 pending/resolved/expired/cancelled</text>
+    </g>
+  </svg>
+  <figcaption>fig.3 — 会話単位の同時実行ガード（429）、承認待ち中の実行タイマー停止、events 上限 2000 件を含む。</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 05 ============ -->
+<section id="s5">
+  <h2><span class="no">05</span>承認フロー</h2>
+  <p class="lede">pi に確認ダイアログのビルトインは無い。自作の承認ゲート拡張が <code>tool_call</code> を購読し、レベル判定の上で <code>ctx.ui.confirm</code> を発火させる。confirm 専用設計。</p>
+  <figure class="fig">
+  <svg viewBox="0 0 1120 200" width="100%" role="img" aria-label="承認フロー">
+    <g font-size="12">
+      <rect x="10" y="60" width="170" height="80" rx="8" fill="#111c30" stroke="#5eeaa0"/><text x="95" y="90" fill="#5eeaa0" text-anchor="middle">approvalGate 拡張</text><text x="95" y="110" fill="#8fa3c2" font-size="11" text-anchor="middle">tool_call 購読・判定</text>
+      <rect x="230" y="60" width="200" height="80" rx="8" fill="#111c30" stroke="#ffb454"/><text x="330" y="90" fill="#dbe7f7" text-anchor="middle">extension_ui_request</text><text x="330" y="110" fill="#8fa3c2" font-size="11" text-anchor="middle">confirm / timeout付き</text>
+      <rect x="480" y="60" width="210" height="80" rx="8" fill="#111c30" stroke="#41d9e2"/><text x="585" y="90" fill="#dbe7f7" text-anchor="middle">ToolCallConfirmation</text><text x="585" y="110" fill="#8fa3c2" font-size="11" text-anchor="middle">許可 / 拒否 UI</text>
+      <rect x="740" y="60" width="170" height="80" rx="8" fill="#111c30" stroke="#41d9e2"/><text x="825" y="90" fill="#dbe7f7" text-anchor="middle">POST /api/agent/approve</text><text x="825" y="110" fill="#8fa3c2" font-size="11" text-anchor="middle">所有者検証あり</text>
+      <rect x="960" y="60" width="150" height="80" rx="8" fill="#111c30" stroke="#5eeaa0"/><text x="1035" y="90" fill="#5eeaa0" text-anchor="middle">続行 / 中止</text><text x="1035" y="110" fill="#8fa3c2" font-size="11" text-anchor="middle">無応答は拒否</text>
+      <line x1="180" y1="100" x2="230" y2="100" stroke="#5eeaa0" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="430" y1="100" x2="480" y2="100" stroke="#ffb454" stroke-width="1.5" marker-end="url(#arwA)"/>
+      <line x1="690" y1="100" x2="740" y2="100" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="910" y1="100" x2="960" y2="100" stroke="#41d9e2" stroke-width="1.5" marker-end="url(#arw)"/>
+    </g>
+  </svg>
+  <figcaption>fig.4 — レベル：auto / dangerous-only（既定）/ always。拒否・タイムアウトは安全側（{block:true}）に倒れる。</figcaption>
+  </figure>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card"><h3>レベル定義</h3><ul><li><code>auto</code> — 確認なし（将来の信頼ツール用）</li><li><code>dangerous-only</code> — 危険表（write/edit/bash/powershell 既定）のみ確認</li><li><code>always</code> — 全ツール実行前に確認</li></ul></div>
+    <div class="card"><h3>安全弁</h3><ul><li>承認待ちは実行予算外（タイマー停止、上限120秒で自動拒否）</li><li>拒否・タイムアウト・切断時は中断保存＋再取得可能</li><li>承認は実行所有者のみ（run→会話→所有者照合）</li></ul></div>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section id="s6">
+  <h2><span class="no">06</span>永続化マップ</h2>
+  <p class="lede">正本は既存 CosmosDB のみ。pi 側資産は最小限（短期＋エフェメラル）で、チャットUIに必要なのは最終回答テキストだけ。</p>
+  <table class="spec">
+    <tr><th>資産</th><th>場所</th><th>寿命</th><th>備考</th></tr>
+    <tr><td>会話・メッセージ</td><td>CosmosDB（既存）</td><td>永続</td><td>エージェント実行も通常メッセージとして保存</td></tr>
+    <tr><td>ユーザー設定</td><td>CosmosDB（既存）</td><td>永続</td><td><code>agentApprovalLevel / agentModel / agentSubagentModel</code> を追加</td></tr>
+    <tr><td>pi セッション</td><td><code>sessions/{user}/{conv}.jsonl</code></td><td>短期</td><td>会話削除時は <code>DELETE /sessions</code> で破棄。再起動後は新規扱い</td></tr>
+    <tr><td>per-user pi 設定</td><td><code>users/{user}/config/</code></td><td>短期</td><td><code>subagents.defaultModel</code> 等。認証は置かない（サーバーenv供給）</td></tr>
+    <tr><td>実行レコード</td><td>gateway メモリ（TTL 10分・最大200件）</td><td>一時的</td><td>再購読・最終回答回収用。events 上限2000件</td></tr>
+    <tr><td>作業ディレクトリ</td><td>エフェメラル</td><td>実行単位</td><td>コンテナ再起動で消去</td></tr>
+  </table>
+</section>
+
+<!-- ============ 07 ============ -->
+<section id="s7">
+  <h2><span class="no">07</span>セキュリティ境界</h2>
+  <div class="grid2">
+    <div class="card"><h3>境界の定義 <span class="tag">実施済</span></h3><ul><li>pi にビルトインサンドボックスは無い → OS 境界（Container Apps）で隔離</li><li>ツール既定全無効（<code>--no-tools</code>）。有効化は allowlist 追加のみ</li><li>gateway は loopback 既定＋Entra JWT 必須（<code>/health</code> 除外）</li><li>Functions→gateway は MI トークン（静的キー経路は削除）</li><li>APIキー・上流本文はログ・SSE・UIに出さない（SafeErrorCode 契約）</li></ul></div>
+    <div class="card"><h3>残る前提条件 <span class="tag">運用</span></h3><ul><li>replica=1 固定（セッション・レジストリのメモリ前提）</li><li>初回起動時の per-user npm 展開 latency（ツール有効化時）</li><li>サブプロセスへのゲート伝播はツール有効化前に実機検証すること</li><li>プロンプトインジェクションの完全防止は不可（読ませる範囲制限で緩和）</li></ul></div>
+  </div>
+</section>
+
+<!-- ============ 08 ============ -->
+<section id="s8">
+  <h2><span class="no">08</span>設計判断の記録</h2>
+  <table class="spec">
+    <tr><th>#</th><th>判断</th><th>理由</th></tr>
+    <tr><td>Q1</td><td>別基盤（Container Apps）</td><td>Functions の時間・プロセス制約と課金・スケールの分離</td></tr>
+    <tr><td>Q3</td><td>確認レベルはユーザー選択・既定 dangerous-only</td><td>サンドボックス不在下の権限管理の主手段</td></tr>
+    <tr><td>Q4</td><td>初期ツール無効＋allowlist 拡張式</td><td>将来のファイル作成等を設定追加のみで開放できる</td></tr>
+    <tr><td>Q5</td><td>モデル選択可＋pi-subagents（既定サブエージェントモデル指定可）</td><td>設定は起動前 settings.json 書込が唯一の経路（実測）</td></tr>
+    <tr><td>Q6</td><td>最小永続化／既定モデル <code>opencode-go/muse-spark-1.3-contributor</code></td><td>チャットUI前提。opencode系は別鍵のため既定対象外（実測）</td></tr>
+    <tr><td>Q7</td><td>全ユーザー＋ kill switch（<code>AGENT_ENABLED</code>）</td><td>即時無効化できる公開方式</td></tr>
+    <tr><td>D2</td><td>gateway が pi プロセスの所有者</td><td>Functions はステートレスな中継に留める</td></tr>
+    <tr><td>D5</td><td>自作承認ゲート＋confirm 専用</td><td>pi に確認ダイアログのビルトインは無い（実測）</td></tr>
+    <tr><td>MI</td><td>MI トークンの iss は v1 形式を受理</td><td>検証で特定（v2 のみでは 401 になる）</td></tr>
+    <tr><td>Deploy</td><td>Flex への Functions デプロイは <code>func publish</code></td><td>config-zip / OneDeploy は適用されない（実測）</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer>specs/P3-010/architecture.html — branch feat/p3-010-ai-agent — companion to spec.md / plan.md / memo-phase*.md</footer>
+
+</body>
+</html>

@@ -3,6 +3,8 @@ export interface Conversation {
   userId?: string;
   title: string;
   model: string;
+  /** エージェントモード（P3-010）。未定義=false。 */
+  agentMode?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,9 +38,14 @@ export interface ChatRequest {
   imageBase64?: string;
 }
 
+export type AgentApprovalLevel = 'auto' | 'dangerous-only' | 'always';
+
 export interface UserSettings {
   defaultModel?: string;
   displayName?: string;
+  agentApprovalLevel?: AgentApprovalLevel;
+  agentModel?: string;
+  agentSubagentModel?: string;
 }
 
 export interface UserSettingsDocument {

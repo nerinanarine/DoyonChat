@@ -21,6 +21,9 @@ param entraApiClientId string = ''
 param frontendUrl string
 param cosmosDbRequired string = 'false'
 param appInsightsConnectionString string
+param agentGatewayUrl string = ''
+param agentGatewayAudience string = ''
+param agentEnabled string = 'false'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -69,6 +72,9 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   location: location
   tags: tags
   kind: 'functionapp,linux'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: functionPlan.id
     httpsOnly: true
@@ -119,6 +125,9 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2024-04-01' = {
     ENTRA_API_CLIENT_ID: entraApiClientId
     FRONTEND_URL: frontendUrl
     APPLICATIONINSIGHTS_CONNECTION_STRING: appInsightsConnectionString
+    AGENT_GATEWAY_URL: agentGatewayUrl
+    AGENT_GATEWAY_AUDIENCE: agentGatewayAudience
+    AGENT_ENABLED: agentEnabled
   }
 }
 

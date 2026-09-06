@@ -1,4 +1,4 @@
-import { UserSettings, UserSettingsDocument, UserSettingsResponse } from '../types';
+import { AgentApprovalLevel, UserSettings, UserSettingsDocument, UserSettingsResponse } from '../types';
 import { hasModel } from '../config/modelCatalog';
 import { getUserSettingsContainer } from '../db';
 import { AppError } from '../middleware/errorHandler';
@@ -28,6 +28,20 @@ async function ensureUserSettingsContainer(): Promise<void> {
   }
 }
 
+const AGENT_APPROVAL_LEVELS: readonly AgentApprovalLevel[] = [
+  'auto',
+  'dangerous-only',
+  'always',
+];
+
+/** agentApprovalLevel の値域チェック（handler の 400 判定と sanitize で共用）。 */
+export function isAgentApprovalLevel(value: unknown): value is AgentApprovalLevel {
+  return (
+    typeof value === 'string' &&
+    (AGENT_APPROVAL_LEVELS as readonly string[]).includes(value)
+  );
+}
+
 // Invalid (removed-from-catalog) defaultModel is excluded from responses
 // without rewriting the stored document. See spec FR-007.
 function sanitizeSettings(settings: UserSettings): UserSettings {
@@ -37,6 +51,17 @@ function sanitizeSettings(settings: UserSettings): UserSettings {
   }
   if (settings.displayName !== undefined && settings.displayName.trim()) {
     sanitized.displayName = settings.displayName.trim();
+  }
+  // エージェント設定。値域外の agentApprovalLevel・空白のモデル名はレスポンスに含めない
+  // （ストアド文書は書き換えずに除外する。defaultModel と同じ流儀）。
+  if (settings.agentApprovalLevel !== undefined && isAgentApprovalLevel(settings.agentApprovalLevel)) {
+    sanitized.agentApprovalLevel = settings.agentApprovalLevel;
+  }
+  if (settings.agentModel !== undefined && settings.agentModel.trim()) {
+    sanitized.agentModel = settings.agentModel.trim();
+  }
+  if (settings.agentSubagentModel !== undefined && settings.agentSubagentModel.trim()) {
+    sanitized.agentSubagentModel = settings.agentSubagentModel.trim();
   }
   return sanitized;
 }
@@ -76,7 +101,19 @@ export async function updateSettings(
   // Empty body (no known keys) is a no-op returning current settings. Spec FR-005.
   const hasDefaultModel = Object.prototype.hasOwnProperty.call(partial, 'defaultModel');
   const hasDisplayName = Object.prototype.hasOwnProperty.call(partial, 'displayName');
-  if (!hasDefaultModel && !hasDisplayName) {
+  const hasAgentApprovalLevel = Object.prototype.hasOwnProperty.call(partial, 'agentApprovalLevel');
+  const hasAgentModel = Object.prototype.hasOwnProperty.call(partial, 'agentModel');
+  const hasAgentSubagentModel = Object.prototype.hasOwnProperty.call(
+    partial,
+    'agentSubagentModel',
+  );
+  if (
+    !hasDefaultModel &&
+    !hasDisplayName &&
+    !hasAgentApprovalLevel &&
+    !hasAgentModel &&
+    !hasAgentSubagentModel
+  ) {
     return toResponse(existing, userId);
   }
 
@@ -98,6 +135,34 @@ export async function updateSettings(
       delete settings.displayName;
     } else if (typeof value === 'string') {
       settings.displayName = value.trim();
+    }
+  }
+
+  // 値域外の文字列はストアされるが、レスポンスでは sanitize が除外する（defaultModel と同流儀）。
+  if (hasAgentApprovalLevel) {
+    const value = partial.agentApprovalLevel;
+    if (value === null) {
+      delete settings.agentApprovalLevel;
+    } else if (typeof value === 'string') {
+      settings.agentApprovalLevel = value as AgentApprovalLevel;
+    }
+  }
+
+  if (hasAgentModel) {
+    const value = partial.agentModel;
+    if (value === null || value === '') {
+      delete settings.agentModel;
+    } else if (typeof value === 'string') {
+      settings.agentModel = value.trim();
+    }
+  }
+
+  if (hasAgentSubagentModel) {
+    const value = partial.agentSubagentModel;
+    if (value === null || value === '') {
+      delete settings.agentSubagentModel;
+    } else if (typeof value === 'string') {
+      settings.agentSubagentModel = value.trim();
     }
   }
 
