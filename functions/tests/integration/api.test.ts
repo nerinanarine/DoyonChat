@@ -86,10 +86,12 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
-    expect(models.jsonBody).toHaveLength(27);
+    expect(models.jsonBody).toHaveLength(35);
     expect((models.jsonBody as Array<{ id: string }>).map(({ id }) => id)).toEqual([
+      'grok-4.5',
       'grok-4.6',
       'gpt-5.6-luna',
+      'glm-5',
       'glm-5.3-flash',
       'glm-5.3',
       'glm-5.2',
@@ -97,10 +99,13 @@ describe('Functions API contract', () => {
       'kimi-k3',
       'kimi-k2.7-code',
       'kimi-k2.6',
+      'kimi-k2.5',
       'longcat-2.0',
       'deepseek-v4-pro',
       'deepseek-v4-flash',
       'deepseek-v4-flash-vision-exp',
+      'mimo-v2-pro',
+      'mimo-v2-omni',
       'mimo-v2.5',
       'mimo-v2.5-pro',
       'minimax-m3',
@@ -113,8 +118,11 @@ describe('Functions API contract', () => {
       'qwen3.7-max',
       'qwen3.7-plus',
       'qwen3.6-plus',
+      'qwen3.5-plus',
       'hy4-preview',
+      'hy3-preview',
       'hy3',
+      'omen-alpha',
     ]);
   });
 
@@ -590,6 +598,8 @@ describe('Functions API contract', () => {
       {} as never,
     );
     const id = (created.jsonBody as { id: string }).id;
+    // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+    await conversationService.updateConversationAgentMode(id, false, 'dev-user');
 
     const response = await chatHandler(
       request('POST', '/api/chat', { conversationId: id, message: 'Hello' }),
@@ -641,6 +651,8 @@ describe('Functions API contract', () => {
       'retired-model',
       'dev-user',
     );
+    // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+    await conversationService.updateConversationAgentMode(conversation.id, false, 'dev-user');
 
     const response = await chatHandler(
       request('POST', '/api/chat', {

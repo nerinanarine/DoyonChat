@@ -34,8 +34,8 @@
 
 ## Phase 3 — dev 検証・残課題整理
 
-- [ ] dev デプロイ（手動。イメージは `az acr build`＋`az containerapp update`。P3-013 完成までは手動運用）
-- [ ] E2E: Web検索→移譲→回答反映→フロント表示、および fetch_content によるページ取得→回答反映の一連動作を確認する。実ブラウザで `tool_execution_update` の行蓄積（RG-2 P2）が許容範囲か判断する
+- [x] dev デプロイ（手動。イメージは `az acr build`＋`az containerapp update`。P3-013 完成までは手動運用）。→ dev gateway 更新済み（`--tools subagent`＋移譲指示を `/health` で確認）。デプロイ中に `tools.allowlist.json` のイメージ未COPY不具合を発見・修正
+- [ ] E2E: Web検索→移譲→回答反映→フロント表示、および fetch_content によるページ取得→回答反映の一連動作を確認する。実ブラウザで `tool_execution_update` の行蓄積（RG-2 P2）が許容範囲か判断する。→ backend完走は確認済み（gateway直接）。実ブラウザE2Eはユーザー検証中（移譲指示・update畳み込みの修正後に再試行待ち）。追加対応：モデルカタログ更新（27→35）・エージェントモード既定化＋切替ボタン削除
 - [ ] 残課題（Tavily キー追加手順・prod 展開・`source_check` 等の対象外ツールの扱い）を整理し、バックログまたは本 plan に記録する
 - [ ] 最終レビュー（reviewer。全体差分対象）→ GO で完了
 

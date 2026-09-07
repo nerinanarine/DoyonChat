@@ -350,7 +350,7 @@ describe('App agent mode', () => {
     vi.mocked(api.fetchModels).mockResolvedValue([defaultModel]);
   });
 
-  it('disables image attach and shows the switch for agent mode conversations', async () => {
+  it('disables image attach for agent mode conversations (no toggle)', async () => {
     mockHooks([
       { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
     ]);
@@ -375,17 +375,13 @@ describe('App agent mode', () => {
     );
 
     await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('agent-conv'));
-    expect(screen.getByRole('switch', { name: /エージェント/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '画像をアップロード' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent(/エージェントモードはテキストのみ対応/);
     expect(screen.getByLabelText('エージェントモード')).toBeInTheDocument();
   });
 
-  it('toggles agent mode off through the header switch', async () => {
-    const updateAgentMode = vi.fn().mockResolvedValue(undefined);
+  it('does not render the agent mode toggle', async () => {
     mockHooks([
       { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
     ]);
@@ -399,7 +395,7 @@ describe('App agent mode', () => {
       create,
       remove: vi.fn(),
       updateModel: vi.fn(),
-      updateAgentMode,
+      updateAgentMode: vi.fn(),
       updateTitle: vi.fn(),
       autoTitle,
       isRenamed,
@@ -409,9 +405,8 @@ describe('App agent mode', () => {
       (await screen.findByRole('button', { name: 'エージェント会話' })).parentElement as HTMLElement,
     );
 
-    const toggle = await screen.findByRole('switch', { name: /エージェント/ });
-    fireEvent.click(toggle);
-    await waitFor(() => expect(updateAgentMode).toHaveBeenCalledWith('agent-conv', false));
+    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('agent-conv'));
+    expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
   });
 
   it('keeps chat input enabled for agent conversations with an unavailable saved model (RG-2 F3)', async () => {

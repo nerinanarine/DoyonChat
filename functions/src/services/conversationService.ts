@@ -121,6 +121,8 @@ export async function createConversation(
     userId: userId || 'dev-user',
     title,
     model,
+    // 新規会話はエージェントモードが既定（P3-014 Phase 3）。切替 UI は廃止済み。
+    agentMode: true,
     createdAt: now,
     updatedAt: now,
   };

@@ -9,8 +9,10 @@ import {
 import { ModelInfo } from '../../src/types';
 
 const EXPECTED_MODELS = [
+  ['grok-4.5', 'responses'],
   ['grok-4.6', 'responses'],
   ['gpt-5.6-luna', 'responses'],
+  ['glm-5', 'chat-completions'],
   ['glm-5.3-flash', 'chat-completions'],
   ['glm-5.3', 'chat-completions'],
   ['glm-5.2', 'chat-completions'],
@@ -18,10 +20,13 @@ const EXPECTED_MODELS = [
   ['kimi-k3', 'chat-completions'],
   ['kimi-k2.7-code', 'chat-completions'],
   ['kimi-k2.6', 'chat-completions'],
+  ['kimi-k2.5', 'chat-completions'],
   ['longcat-2.0', 'chat-completions'],
   ['deepseek-v4-pro', 'chat-completions'],
   ['deepseek-v4-flash', 'chat-completions'],
   ['deepseek-v4-flash-vision-exp', 'chat-completions'],
+  ['mimo-v2-pro', 'chat-completions'],
+  ['mimo-v2-omni', 'chat-completions'],
   ['mimo-v2.5', 'chat-completions'],
   ['mimo-v2.5-pro', 'chat-completions'],
   ['minimax-m3', 'messages'],
@@ -34,8 +39,11 @@ const EXPECTED_MODELS = [
   ['qwen3.7-max', 'messages'],
   ['qwen3.7-plus', 'messages'],
   ['qwen3.6-plus', 'messages'],
+  ['qwen3.5-plus', 'messages'],
   ['hy4-preview', 'chat-completions'],
+  ['hy3-preview', 'chat-completions'],
   ['hy3', 'chat-completions'],
+  ['omen-alpha', 'chat-completions'],
 ] as const;
 
 const EXISTING_METADATA: Record<string, Omit<ModelInfo, 'id'>> = {
@@ -59,18 +67,18 @@ const EXISTING_METADATA: Record<string, Omit<ModelInfo, 'id'>> = {
 };
 
 describe('OpenCode Go model catalog contract', () => {
-  it('contains the canonical 27 models in fixed protocol order', () => {
+  it('contains the canonical 35 models in fixed protocol order', () => {
     expect(MODEL_CATALOG.map(({ info, protocol }) => [info.id, protocol])).toEqual(EXPECTED_MODELS);
-    expect(new Set(MODEL_CATALOG.map(({ info }) => info.id)).size).toBe(27);
+    expect(new Set(MODEL_CATALOG.map(({ info }) => info.id)).size).toBe(35);
   });
 
-  it('contains 4 Responses, 15 Chat Completions, and 8 Messages models', () => {
+  it('contains 5 Responses, 21 Chat Completions, and 9 Messages models', () => {
     const counts = MODEL_CATALOG.reduce<Record<string, number>>((result, model) => {
       result[model.protocol] = (result[model.protocol] ?? 0) + 1;
       return result;
     }, {});
 
-    expect(counts).toEqual({ responses: 4, 'chat-completions': 15, messages: 8 });
+    expect(counts).toEqual({ responses: 5, 'chat-completions': 21, messages: 9 });
   });
 
   it('keeps the public metadata of the existing 17 models', () => {
@@ -124,6 +132,28 @@ describe('OpenCode Go model catalog contract', () => {
     ]);
   });
 
+  it('uses neutral metadata for the eight models added in the latest refresh', () => {
+    expect([
+      getModelConfig('grok-4.5')?.info,
+      getModelConfig('glm-5')?.info,
+      getModelConfig('kimi-k2.5')?.info,
+      getModelConfig('qwen3.5-plus')?.info,
+      getModelConfig('mimo-v2-pro')?.info,
+      getModelConfig('mimo-v2-omni')?.info,
+      getModelConfig('hy3-preview')?.info,
+      getModelConfig('omen-alpha')?.info,
+    ]).toEqual([
+      { id: 'grok-4.5', name: 'Grok 4.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'glm-5', name: 'GLM-5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'kimi-k2.5', name: 'Kimi K2.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'qwen3.5-plus', name: 'Qwen 3.5 Plus', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'mimo-v2-pro', name: 'MiMo-V2 Pro', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'mimo-v2-omni', name: 'MiMo-V2 Omni', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'hy3-preview', name: 'Hy3 Preview', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'omen-alpha', name: 'Omen Alpha', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    ]);
+  });
+
   it('exposes public models without internal protocol metadata', () => {
     expect(PUBLIC_MODELS).toEqual(MODEL_CATALOG.map(({ info }) => info));
     expect(PUBLIC_MODELS.every((model) => !('protocol' in model))).toBe(true);
@@ -136,7 +166,7 @@ describe('OpenCode Go model catalog contract', () => {
     expect(getModelProtocol('glm-5.2')).toBe('chat-completions');
     expect(getModelProtocol('minimax-m3')).toBe('messages');
 
-    for (const id of ['kimi-k2.5', 'glm-5', 'qwen3.5-plus', 'mimo-v2-pro', 'mimo-v2-omni', 'hy3-preview', 'grok-4.5', 'ox-alpha-free']) {
+    for (const id of ['ox-alpha-free']) {
       expect(hasModel(id)).toBe(false);
       expect(getModelConfig(id)).toBeUndefined();
       expect(getModelProtocol(id)).toBeUndefined();

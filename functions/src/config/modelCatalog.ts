@@ -11,12 +11,20 @@ export interface OpenCodeGoModelConfig {
 
 export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
   {
+    info: { id: 'grok-4.5', name: 'Grok 4.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'responses',
+  },
+  {
     info: { id: 'grok-4.6', name: 'Grok 4.6', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'responses',
   },
   {
     info: { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna', description: 'General reasoning and coding', quality: 5, speed: 'Fast', cost: '★★★★☆', supportsMultimodal: false, contextLength: '272K', bestFor: 'General reasoning, coding' },
     protocol: 'responses',
+  },
+  {
+    info: { id: 'glm-5', name: 'GLM-5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
   },
   {
     info: { id: 'glm-5.3-flash', name: 'GLM-5.3-Flash', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
@@ -47,6 +55,10 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'chat-completions',
   },
   {
+    info: { id: 'kimi-k2.5', name: 'Kimi K2.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
     info: { id: 'longcat-2.0', name: 'LongCat-2.0', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
   },
@@ -64,6 +76,14 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     info: { id: 'deepseek-v4-flash-vision-exp', name: 'DeepSeek V4 Flash Vision Exp', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: true, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
     maxTokens: 16384,
+  },
+  {
+    info: { id: 'mimo-v2-pro', name: 'MiMo-V2 Pro', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
+    info: { id: 'mimo-v2-omni', name: 'MiMo-V2 Omni', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
   },
   {
     info: { id: 'mimo-v2.5', name: 'MiMo-V2.5', description: 'Fast and efficient general model', quality: 3, speed: 'Fast', cost: '★★★★★', supportsMultimodal: false, contextLength: '1M', bestFor: 'Fast tasks, high volume' },
@@ -114,11 +134,23 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'messages',
   },
   {
+    info: { id: 'qwen3.5-plus', name: 'Qwen 3.5 Plus', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'messages',
+  },
+  {
     info: { id: 'hy4-preview', name: 'Hy4 preview', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
   },
   {
+    info: { id: 'hy3-preview', name: 'Hy3 Preview', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
     info: { id: 'hy3', name: 'Hy3', description: 'Experimental model', quality: 3, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'Experimental tasks' },
+    protocol: 'chat-completions',
+  },
+  {
+    info: { id: 'omen-alpha', name: 'Omen Alpha', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
   },
 ];
