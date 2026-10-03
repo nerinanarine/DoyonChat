@@ -62,9 +62,18 @@ export interface AgentApprovalRequest {
 export type AgentStreamEvent =
   | { kind: 'agent_start' }
   | { kind: 'agent_settled' }
-  | { kind: 'tool_start'; toolCallId?: string; toolName?: string; args?: unknown }
-  | { kind: 'tool_update'; toolCallId?: string; toolName?: string }
-  | { kind: 'tool_end'; toolCallId?: string; toolName?: string; isError?: boolean }
+  | {
+      kind: 'tool_start';
+      toolCallId?: string;
+      toolName?: string;
+      args?: unknown;
+      /** サブエージェント移譲先（pi-subagents の agent 名。例: researcher）。toolName==='subagent' 時のみ。 */
+      agent?: string;
+      /** 移譲タスク概要。toolName==='subagent' 時の args.task から抽出。 */
+      task?: string;
+    }
+  | { kind: 'tool_update'; toolCallId?: string; toolName?: string; agent?: string }
+  | { kind: 'tool_end'; toolCallId?: string; toolName?: string; isError?: boolean; agent?: string }
   | { kind: 'approval_request' }
   | { kind: 'approval_resolved'; approved: boolean };
 

@@ -77,6 +77,8 @@ describe('Functions SSE response', () => {
         {} as never,
       );
       const conversationId = (created.jsonBody as { id: string }).id;
+      // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+      await conversationService.updateConversationAgentMode(conversationId, false, 'dev-user');
 
       const response = await chatHandler(
         request('POST', '/api/chat', { conversationId, message: 'Hello' }),
@@ -122,6 +124,8 @@ describe('Functions SSE response', () => {
       {} as never,
     );
     const conversationId = (created.jsonBody as { id: string }).id;
+      // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+      await conversationService.updateConversationAgentMode(conversationId, false, 'dev-user');
 
     const response = await chatHandler(
       request('POST', '/api/chat', { conversationId, message: 'Hello' }),
@@ -162,6 +166,8 @@ describe('Functions SSE response', () => {
         {} as never,
       );
       const conversationId = (created.jsonBody as { id: string }).id;
+      // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+      await conversationService.updateConversationAgentMode(conversationId, false, 'dev-user');
 
       const response = await chatHandler(
         request('POST', '/api/chat', { conversationId, message: 'Hello' }),
@@ -206,6 +212,8 @@ describe('Functions SSE response', () => {
         {} as never,
       );
       const conversationId = (created.jsonBody as { id: string }).id;
+      // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+      await conversationService.updateConversationAgentMode(conversationId, false, 'dev-user');
 
       const response = await chatHandler(
         request('POST', '/api/chat', { conversationId, message: 'Hello' }),
@@ -245,6 +253,8 @@ describe('Functions SSE response', () => {
         {} as never,
       );
       const conversationId = (created.jsonBody as { id: string }).id;
+      // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+      await conversationService.updateConversationAgentMode(conversationId, false, 'dev-user');
 
       const response = await chatHandler(
         request('POST', '/api/chat', { conversationId, message: 'Hello' }),
@@ -282,6 +292,8 @@ describe('Functions SSE response', () => {
         {} as never,
       );
       const conversationId = (created.jsonBody as { id: string }).id;
+      // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+      await conversationService.updateConversationAgentMode(conversationId, false, 'dev-user');
 
       const response = await chatHandler(
         request('POST', '/api/chat', { conversationId, message: 'Hello' }),
@@ -325,6 +337,8 @@ describe('Functions SSE response', () => {
         {} as never,
       );
       const conversationId = (created.jsonBody as { id: string }).id;
+      // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
+      await conversationService.updateConversationAgentMode(conversationId, false, 'dev-user');
       const body = {
         conversationId,
         message: 'Retry me',

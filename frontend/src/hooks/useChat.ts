@@ -114,7 +114,21 @@ export function useChat(conversationId: string | null) {
         {
           userMessageId,
           onAgentEvent: (event) => {
-            setAgentProgress((prev) => [...prev, event]);
+            setAgentProgress((prev) => {
+              // 同一 toolCallId の連続 tool_update は最新のみ保持する（P3-014）。
+              // researcher 実行中は update が大量発生し、同一文言の行で埋まるため。
+              const last = prev[prev.length - 1];
+              if (
+                event.kind === 'tool_update' &&
+                event.toolCallId !== undefined &&
+                last !== undefined &&
+                last.kind === 'tool_update' &&
+                last.toolCallId === event.toolCallId
+              ) {
+                return [...prev.slice(0, -1), event];
+              }
+              return [...prev, event];
+            });
           },
           onApproval: (request) => {
             if (request.expired) {

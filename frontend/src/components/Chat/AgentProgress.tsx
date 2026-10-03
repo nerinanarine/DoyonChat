@@ -16,6 +16,18 @@ function argsSummary(args: unknown): string | undefined {
   return entries.join(', ');
 }
 
+/** サブエージェント移譲イベントか（toolName==='subagent' かつ移譲先あり）。 */
+function isSubagent(event: AgentStreamEvent): boolean {
+  return event.kind === 'tool_start' || event.kind === 'tool_update' || event.kind === 'tool_end'
+    ? event.toolName === 'subagent'
+    : false;
+}
+
+/** 移譲先表示名（例: researcher）。未指定時は「サブエージェント」。 */
+function subagentLabel(agent?: string): string {
+  return agent && agent.trim() ? agent : 'サブエージェント';
+}
+
 function EventLine({ event }: { event: AgentStreamEvent }) {
   switch (event.kind) {
     case 'agent_start':
@@ -33,6 +45,19 @@ function EventLine({ event }: { event: AgentStreamEvent }) {
         </span>
       );
     case 'tool_start': {
+      if (isSubagent(event)) {
+        return (
+          <span className="flex items-center gap-1.5">
+            <Play size={13} className="text-violet-600 shrink-0" />
+            <span>
+              サブエージェントへ移譲: <span className="font-medium">{subagentLabel(event.agent)}</span>
+              {event.task ? (
+                <span className="text-gray-500"> ({event.task.slice(0, 60)})</span>
+              ) : null}
+            </span>
+          </span>
+        );
+      }
       const summary = argsSummary(event.args);
       return (
         <span className="flex items-center gap-1.5">
@@ -45,6 +70,16 @@ function EventLine({ event }: { event: AgentStreamEvent }) {
       );
     }
     case 'tool_update':
+      if (isSubagent(event)) {
+        return (
+          <span className="flex items-center gap-1.5">
+            <Loader2 size={13} className="text-violet-600 shrink-0 animate-spin" />
+            <span>
+              サブエージェント実行中: <span className="font-medium">{subagentLabel(event.agent)}</span>
+            </span>
+          </span>
+        );
+      }
       return (
         <span className="flex items-center gap-1.5">
           <Loader2 size={13} className="text-blue-500 shrink-0 animate-spin" />
@@ -53,7 +88,24 @@ function EventLine({ event }: { event: AgentStreamEvent }) {
           </span>
         </span>
       );
-    case 'tool_end':
+    case 'tool_end': {
+      if (isSubagent(event)) {
+        return event.isError ? (
+          <span className="flex items-center gap-1.5 text-amber-700">
+            <AlertCircle size={13} className="shrink-0" />
+            <span>
+              サブエージェント失敗: <span className="font-medium">{subagentLabel(event.agent)}</span>
+            </span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 size={13} className="text-green-600 shrink-0" />
+            <span>
+              サブエージェント完了: <span className="font-medium">{subagentLabel(event.agent)}</span>
+            </span>
+          </span>
+        );
+      }
       return event.isError ? (
         <span className="flex items-center gap-1.5 text-amber-700">
           <AlertCircle size={13} className="shrink-0" />
@@ -69,6 +121,7 @@ function EventLine({ event }: { event: AgentStreamEvent }) {
           </span>
         </span>
       );
+    }
     case 'approval_request':
       return (
         <span className="flex items-center gap-1.5 text-amber-700">

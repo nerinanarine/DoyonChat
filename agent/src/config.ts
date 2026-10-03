@@ -78,6 +78,8 @@ export interface GatewayOptions {
   tools: string[];
   /** 実行データディレクトリ（セッション・per-user 設定）。既定 `./data`。 */
   dataDir: string;
+  /** pi-web-access の index パス（researcher child-only 用）。null は機能オフ。 */
+  webAccessIndex: string | null;
 }
 
 /** 環境変数の数値パース。非数値・無限大はフォールバックに倒す。 */
@@ -107,6 +109,92 @@ function defaultExtensionCandidate(): string | null {
   if (existsSync(ts)) return ts;
   return null;
 }
+
+/**
+ * npm パッケージから拡張エントリ（pi が直接ロードできるファイル）を解決する。
+ * pi パッケージの manifest（pi.extensions）→ main → index.ts / dist/index.js の順で探す。
+ */
+function resolvePackageExtensionEntry(pkgDir: string): string | null {
+  const manifestFile = path.join(pkgDir, 'package.json');
+  if (!existsSync(manifestFile)) return null;
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(readFileSync(manifestFile, 'utf8')) as unknown;
+  } catch {
+    return null;
+  }
+  const record = (manifest && typeof manifest === 'object' ? manifest : {}) as Record<
+    string,
+    unknown
+  >;
+  const candidates: string[] = [];
+  // pi パッケージの manifest（pi.extensions）を優先する
+  const piMeta = (record.pi && typeof record.pi === 'object' ? record.pi : {}) as Record<
+    string,
+    unknown
+  >;
+  const extensions = piMeta.extensions;
+  if (Array.isArray(extensions)) {
+    for (const entry of extensions) {
+      if (typeof entry === 'string') {
+        candidates.push(path.join(pkgDir, entry));
+      } else if (entry && typeof entry === 'object') {
+        const meta = entry as Record<string, unknown>;
+        if (typeof meta.from === 'string') candidates.push(path.join(pkgDir, meta.from));
+        else if (typeof meta.path === 'string') candidates.push(path.join(pkgDir, meta.path));
+      }
+    }
+  }
+  if (typeof record.main === 'string') candidates.push(path.join(pkgDir, record.main));
+  candidates.push(path.join(pkgDir, 'index.ts'), path.join(pkgDir, 'dist', 'index.js'));
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+    // main が .js で隣に .ts がある場合は TS 版を試す（pi は TS 直接ロード可）
+    if (candidate.endsWith('.js')) {
+      const tsCandidate = candidate.replace(/\.js$/, '.ts');
+      if (existsSync(tsCandidate)) return tsCandidate;
+    }
+  }
+  return null;
+}
+
+/**
+ * pi-web-access の index パスの解決。researcher(child-only: subagentOnlyExtensions)で使う。
+ * - AGENT_WEB_ACCESS_INDEX が明示されたらそれを優先する。実体が無い場合は fail-closed
+ *   で起動させない（壊れた配線で静かに進めない）。空文字は明確な無効化。
+ * - 未指定なら local / global node_modules から自動検出する。見つからなければ機能オフ
+ *   （null）。承認ゲートと違い任意機能のため、未導入環境で起動を拒否しない。
+ */
+function resolveWebAccessIndex(env: NodeJS.ProcessEnv): string | null {
+  const explicit = env.AGENT_WEB_ACCESS_INDEX;
+  if (explicit !== undefined) {
+    if (!explicit) return null;
+    if (!existsSync(explicit)) {
+      throw new Error(
+        `AGENT_WEB_ACCESS_INDEX points to a missing file: ${explicit}. ` +
+          'Refusing to start with a broken researcher web-access wiring.',
+      );
+    }
+    return explicit;
+  }
+  const pkgDirs: string[] = [];
+  pkgDirs.push(path.join(__dirname, '..', 'node_modules', 'pi-web-access'));
+  const npmRoot = spawnSync('npm root -g', { encoding: 'utf8', shell: true }).stdout?.trim();
+  if (npmRoot) pkgDirs.push(path.join(npmRoot, 'pi-web-access'));
+  for (const pkgDir of pkgDirs) {
+    const entry = resolvePackageExtensionEntry(pkgDir);
+    if (entry) return entry;
+  }
+  return null;
+}
+
+/**
+ * researcher 移譲の指示文（P3-014 FR-4）。Web 系タスクで researcher が引き当てられるよう、
+ * researcher 配線が有効な場合のみ system prompt へ追記する。Q9 の AGENTS.md 調整に相当。
+ */
+export const RESEARCHER_DELEGATION_PROMPT =
+  'Web search and page fetch tasks: delegate to the researcher subagent via the subagent tool ' +
+  '(agent: researcher). You cannot browse the web directly; the researcher has web_search and fetch_content.';
 
 /**
  * AGENT_EXTENSIONS が設定されたら既定を置換する（空文字は拡張なし）。
@@ -179,6 +267,12 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
     ...(allowlist.tools.length > 0 ? ['--tools', allowlist.tools.join(',')] : []),
     ...resolveExtensionPaths(env).flatMap((ext) => ['--extension', ext]),
   ];
+  // researcher 配線が有効な場合のみ移譲指示を system prompt へ追記する（P3-014 FR-4）。
+  // Web 系タスクで researcher が引き当てられるようにする。Q9 の AGENTS.md 調整に相当。
+  const webAccessIndex = resolveWebAccessIndex(env);
+  if (allowlist.tools.length > 0 && webAccessIndex) {
+    piArgs.push('--append-system-prompt', RESEARCHER_DELEGATION_PROMPT);
+  }
 
   return {
     // 既定は loopback のみ。コンテナ公開時は GATEWAY_HOST=0.0.0.0 を明示する（Phase 3 で認証追加まで）。
@@ -201,6 +295,7 @@ export function loadAgentConfig(env: NodeJS.ProcessEnv = process.env): AgentConf
       toolsDangerous: allowlist.dangerous,
       tools: allowlist.tools,
       dataDir: env.AGENT_DATA_DIR || './data',
+      webAccessIndex: resolveWebAccessIndex(env),
     },
   };
 }

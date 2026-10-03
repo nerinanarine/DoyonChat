@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMsal } from '@azure/msal-react';
-import { Menu, X, ChevronDown, Bot } from 'lucide-react';
+import { Menu, X, ChevronDown } from 'lucide-react';
 import {
   AgentApprovalLevel,
   Conversation,
@@ -25,11 +25,6 @@ interface AppLayoutProps {
   onChangeAgentApprovalLevel?: (level: AgentApprovalLevel | null) => Promise<void>;
   onChangeAgentModel?: (modelId: string | null) => Promise<void>;
   onChangeAgentSubagentModel?: (modelId: string | null) => Promise<void>;
-  /** アクティブな会話のエージェントモード状態（会話未選択時は undefined）。 */
-  agentMode?: boolean;
-  agentModeBusy?: boolean;
-  agentModeError?: string | null;
-  onToggleAgentMode?: (enabled: boolean) => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => Promise<void>;
@@ -52,10 +47,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onChangeAgentApprovalLevel,
   onChangeAgentModel,
   onChangeAgentSubagentModel,
-  agentMode,
-  agentModeBusy,
-  agentModeError,
-  onToggleAgentMode,
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
@@ -68,8 +59,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
-  // エージェント機能フラグ：VITE_AGENT_ENABLED=false でトグル・バッジを非表示にする（RG-2 F4）
-  const agentEnabled = import.meta.env.VITE_AGENT_ENABLED !== 'false';
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
   const selectedModelId = activeConversation?.model ?? draftModel;
@@ -151,29 +140,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {agentEnabled && activeConversation && (
-              <button
-                type="button"
-                role="switch"
-                aria-checked={agentMode === true}
-                disabled={agentModeBusy}
-                onClick={() => onToggleAgentMode?.(agentMode !== true)}
-                title="エージェントモード切替"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                  agentMode
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <Bot size={14} className={agentMode ? 'text-blue-600' : 'text-gray-500'} />
-                エージェント
-              </button>
-            )}
-            {agentModeError && (
-              <span role="alert" className="text-xs text-red-600">
-                {agentModeError}
-              </span>
-            )}
             {authEnabled && (
               <SettingsMenu
                 models={models}

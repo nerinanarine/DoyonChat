@@ -100,33 +100,78 @@ function asString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
-/** pi のパススルーイベントを最小の進捗イベントへ正規化する。未知イベントは null。 */
-export function normalizeAgentEvent(data: Record<string, unknown>): AgentStreamEvent | null {
+/** subagent ツール実行から移譲先 agent 名・タスク概要を抽出する。それ以外は undefined。
+ *  tool_execution_end は args を持たないため、同じ toolCallId の先行イベントで記録した
+ *  agent 名を `agents` マップから引き継ぐ。 */
+function subagentInfo(
+  data: Record<string, unknown>,
+  agents?: Map<string, string>,
+): { agent?: string; task?: string } {
+  if (data.toolName !== 'subagent') return {};
+  const args = data.args;
+  let agent: string | undefined;
+  let task: string | undefined;
+  if (args && typeof args === 'object') {
+    const rec = args as Record<string, unknown>;
+    agent = typeof rec.agent === 'string' ? rec.agent : undefined;
+    task = typeof rec.task === 'string' ? rec.task : undefined;
+  }
+  if (!agent && agents && typeof data.toolCallId === 'string') {
+    agent = agents.get(data.toolCallId);
+  }
+  return { agent, task };
+}
+
+/** pi のパススルーイベントを最小の進捗イベントへ正規化する。未知イベントは null。
+ *  `subagentAgents` は同一 toolCallId を跨いで agent 名を引き継ぐためのキャッシュ。 */
+export function normalizeAgentEvent(
+  data: Record<string, unknown>,
+  subagentAgents?: Map<string, string>,
+): AgentStreamEvent | null {
   switch (data.type) {
     case 'agent_start':
       return { kind: 'agent_start' };
     case 'agent_settled':
       return { kind: 'agent_settled' };
-    case 'tool_execution_start':
+    case 'tool_execution_start': {
+      const sub = subagentInfo(data, subagentAgents);
+      if (sub.agent && typeof data.toolCallId === 'string') {
+        subagentAgents?.set(data.toolCallId, sub.agent);
+      }
       return {
         kind: 'tool_start',
         toolCallId: asString(data.toolCallId),
         toolName: asString(data.toolName),
         args: data.args,
+        agent: sub.agent,
+        task: sub.task,
       };
-    case 'tool_execution_update':
+    }
+    case 'tool_execution_update': {
+      const sub = subagentInfo(data, subagentAgents);
+      if (sub.agent && typeof data.toolCallId === 'string') {
+        subagentAgents?.set(data.toolCallId, sub.agent);
+      }
       return {
         kind: 'tool_update',
         toolCallId: asString(data.toolCallId),
         toolName: asString(data.toolName),
+        agent: sub.agent,
       };
-    case 'tool_execution_end':
+    }
+    case 'tool_execution_end': {
+      const sub = subagentInfo(data, subagentAgents);
+      if (sub.agent && typeof data.toolCallId === 'string') {
+        subagentAgents?.set(data.toolCallId, sub.agent);
+      }
       return {
         kind: 'tool_end',
         toolCallId: asString(data.toolCallId),
         toolName: asString(data.toolName),
         isError: data.isError === true,
+        agent: sub.agent,
       };
+    }
     default:
       return null;
   }
@@ -190,6 +235,8 @@ export function streamChat(
       if (!reader) throw new ChatStreamError('network', 'No response body');
       const decoder = new TextDecoder();
       let buffer = '';
+      // subagent 移譲先 (agent 名) を同一 toolCallId の start/update から end へ引き継ぐ。
+      const subagentAgents = new Map<string, string>();
 
       const handleLine = (line: string) => {
         const trimmed = line.trim();
@@ -231,7 +278,7 @@ export function streamChat(
           return;
         }
 
-        const agentEvent = normalizeAgentEvent(parsed);
+        const agentEvent = normalizeAgentEvent(parsed, subagentAgents);
         if (agentEvent) {
           options.onAgentEvent?.(agentEvent);
           return;

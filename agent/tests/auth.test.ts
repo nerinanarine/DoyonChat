@@ -24,6 +24,7 @@ function baseConfig(): AgentConfig {
       toolsDangerous: [],
       tools: [],
       dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')),
+      webAccessIndex: null,
     },
   };
 }

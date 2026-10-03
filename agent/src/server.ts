@@ -14,6 +14,8 @@ import {
   deleteSessionFile,
   sessionFilePath,
   userConfigDir,
+  UserAgentSettings,
+  writeSubagentExtensionConfig,
   writeUserAgentSettings,
 } from './sessions';
 
@@ -362,12 +364,22 @@ async function handlePrompt(
       fs.mkdirSync(path.dirname(sessionPath), { recursive: true });
       // per-user 設定は毎回マージ書込する（packages 保証のため。既存キーは保持される）。
       // pi-subagents の登録はツール有効時のみ（初回 npm インストールの latency 回避）。
+      // P3-014: ツール有効時のみ researcher へ pi-web-access を配線する。
+      const settings: UserAgentSettings = {};
+      if (subagentModel !== undefined) settings.subagentModel = subagentModel;
+      if (config.gateway.tools.length > 0 && config.gateway.webAccessIndex) {
+        settings.webAccessIndex = config.gateway.webAccessIndex;
+      }
       writeUserAgentSettings(
         config.gateway.dataDir,
         safeUserId,
-        subagentModel !== undefined ? { subagentModel } : {},
+        settings,
         config.gateway.tools.length > 0,
       );
+      if (config.gateway.tools.length > 0) {
+        // pi-subagents 有効時は子を foreground 化する（background 完走待ちと run 寿命の不整合防止）。
+        writeSubagentExtensionConfig(config.gateway.dataDir, safeUserId);
+      }
       runEnv.PI_CODING_AGENT_DIR = userConfigDir(config.gateway.dataDir, safeUserId);
     } catch {
       writeJson(res, 400, { error: { code: 'network' } });

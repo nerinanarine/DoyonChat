@@ -22,6 +22,7 @@ interface GatewayTestOptions {
   toolsDangerous?: string[];
   tools?: string[];
   dataDir?: string;
+  webAccessIndex?: string | null;
   onLog?: (message: string) => void;
   piEnv?: Record<string, string>;
 }
@@ -50,6 +51,7 @@ async function startServer(
       toolsDangerous: opts.toolsDangerous ?? [],
       tools: opts.tools ?? [],
       dataDir: opts.dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')),
+      webAccessIndex: opts.webAccessIndex ?? null,
     },
   };
   const server = createGatewayServer(config, opts.onLog);
@@ -559,6 +561,32 @@ describe('gateway conversation sessions', () => {
       expect(fs.existsSync(path.join(dataDir, 'sessions', 'user-1'))).toBe(true);
     } finally {
       server.close();
+    }
+  });
+
+  it('wires researcher web-access when tools and web index are enabled (P3-014)', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-'));
+    const webIndex = path.join(os.tmpdir(), `pwa-index-${process.pid}-${Date.now()}.ts`);
+    fs.writeFileSync(webIndex, '// fixture\n');
+    const { server, url } = await startServer([MODELS], { dataDir, tools: ['subagent'], webAccessIndex: webIndex });
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', userId: 'user-1', conversationId: 'conv-1' }),
+      });
+      const text = await res.text();
+      expect(text).toContain('"done":true');
+
+      const settings = JSON.parse(
+        fs.readFileSync(path.join(dataDir, 'users', 'user-1', 'config', 'settings.json'), 'utf8'),
+      );
+      const researcher = settings.subagents.agentOverrides.researcher;
+      expect(researcher.subagentOnlyExtensions).toEqual([webIndex]);
+      expect(researcher.tools).toEqual(['web_search', 'fetch_content']);
+    } finally {
+      server.close();
+      fs.unlinkSync(webIndex);
     }
   });
 
