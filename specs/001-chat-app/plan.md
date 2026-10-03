@@ -158,7 +158,7 @@ infra/
 
 ```json
 {
-  "model": "glm-5.1",
+  "model": "glm-5.2",
   "messages": [
     {
       "role": "user",
@@ -187,15 +187,15 @@ data: [DONE]
 | Protocol | Model IDs |
 |----------|-----------|
 | Responses | `grok-4.6`, `gpt-5.6-luna`, `muse-spark-1.2-contributor` |
-| Chat Completions | `glm-5.3-flash`, `glm-5.3`, `glm-5.2`, `glm-5.1`, `kimi-k3`, `kimi-k2.7-code`, `kimi-k2.6`, `longcat-2.0`, `deepseek-v4-pro`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`, `mimo-v2.5`, `mimo-v2.5-pro`, `hy4-preview`, `hy3` |
-| Messages | `minimax-m3`, `minimax-m2.7`, `minimax-m2.5`, `qwen3.8-max`, `qwen3.8-flash`, `qwen3.7-max`, `qwen3.7-plus`, `qwen3.6-plus` |
+| Chat Completions | `glm-5.3-flash`, `glm-5.3`, `glm-5.2`, `kimi-k3`, `kimi-k2.7-code`, `kimi-k2.6`, `longcat-2.0`, `deepseek-v4-pro`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`, `mimo-v2.5`, `mimo-v2.5-pro`, `hy4-preview`, `hy3` |
+| Messages | `minimax-m3`, `minimax-m2.7`, `qwen3.8-max`, `qwen3.8-flash`, `qwen3.7-plus` |
 
 > モデルIDとprotocolは [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-08-31確認）を基準にする。詳細な公開メタデータと利用不可モデルの扱いは[009の正規カタログ仕様](../009-opencode-go-models/spec.md)を参照する。
 
 ### Model Selection Rules
 
 - **Default model**: `kimi-k2.6` (best balance of quality and speed)
-- **Image upload metadata**: `glm-5.2`, `glm-5.1`, `deepseek-v4-flash-vision-exp` support multimodal input
+- **Image upload metadata**: `glm-5.2`, `deepseek-v4-flash-vision-exp` support multimodal input
 - **Model per conversation**: Each conversation stores its selected model; switching model mid-conversation applies to subsequent messages only
 - **Unavailable model**: Existing history remains readable, but sending is blocked until a canonical model is selected
 

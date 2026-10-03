@@ -52,7 +52,7 @@
 | [P2-013](items/P2-013-loading-state.md) | データ取得中のローディング画面 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-013/spec.md) | 実装・自動テスト完了、bootstrap/メッセージloading。本番デプロイまで管理済み、[Issue #34](https://github.com/nerinanarine/DoyonChat/issues/34) |
 | [P2-014](items/P2-014-display-names.md) | チャット画面の発言者名をカスタマイズ | P2 | 🟢 対応済み | UX改善 | — | AI側はモデル名、ユーザー側は設定した名前を表示。P2-008・P2-010と連携、本番デプロイまで管理済み |
 | [P2-015](items/P2-015-opencode-session-header.md) | x-opencode-session・遅延作成・モデル1件追加 | P2 | 🟢 対応済み | 品質・安定性 | [仕様](../P2-015/spec.md) | 本番デプロイ完了（live test 26/27、grokはP2-016へ分離） |
-| [P2-016](items/P2-016-grok-4-6-capacity.md) | grok-4.6 上流キャパシティ不足の追従 | P2 | 🔴 未対応 | 品質・安定性 | — | P2-015 live test 26/27の残件。上流回復後に27/27再確認 |
+| [P2-016](items/P2-016-grok-4-6-capacity.md) | grok-4.6 上流キャパシティ不足の追従 | P2 | 🟢 対応済み | 品質・安定性 | — | P2-019 live test 30/30で解消 |
 | [P2-017](items/P2-017-draft-send-failure.md) | 新規作成失敗時の入力保持・エラー表示 | P2 | 🔴 未対応 | UX改善 | — | P2-015残存リスク。作成失敗で入力が消える問題 |
 | [P2-018](items/P2-018-containerapp-scale-zero.md) | Agent gateway ContainerAppのスケールゼロ化＋起動中ローディング | P2 | 🟡 進行中 | コスト・スケーリング | — | `minReplicas: 0`、起動中ローディング表示 |
 | [P2-019](items/P2-019-opencode-latest-models.md) | OpenCode Go最新モデルカタログ追従 | P2 | 🟡 進行中 | 機能追加・品質 | P2-011 | P2-011の後継、公式Endpoints表の差分追従＋全モデル疎通 |

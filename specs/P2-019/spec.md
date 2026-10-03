@@ -58,7 +58,8 @@ P2-011 と同型の live test で、30モデルすべての実APIチャットが
 - **deepseek系 `maxTokens: 16384`**: 既存は `deepseek-v4-*` に適用。新規 `deepseek-v4.1-flash` も同方針を適用する
 - **新規モデルの公開メタデータ**: 中立値（`quality: 3`、`speed`/`contextLength: Unknown`、`cost: See OpenCode Go`、`bestFor: General use`）とする（spec 009方針）
 - **P1-012 との整合**: P1-012 で通常チャット消費者が削減されても、カタログ自体は本件で30件化する。`GET /api/models` はメッセージ表示名解決に残す。FR-007 の削除モデル409は P2-019適用時点の通常チャット経路で有効だが、P1-012適用後は当該経路ごと消滅し、P1-012 FR-009 の送信不可（`agentMode: false` 会話は一律送信不可・不保存）に吸収される（陳腐化）。実装順序は P2-019→P1-012 を想定する
-- **P2-016（grok-4.6）**: 本件の live test 30/30に含めて再確認し、成功すれば P2-016 を解消扱いとする
+- **上流の `x-opencode-session` 必須化**: 2026-10-03のlive testで上流が `MissingSessionID`（3プロトコル共通・30/30 http-400）を返した。2026-09-03時点ではHTTPレベルで必須でなかったため、上流契約変更と判断。live harness は本番経路と同様に `sessionId: 'live-test'` を送る（`models.live.test.ts`）。本番チャット経路は `chat.ts` ですでに `sessionId=conversationId` を送っており影響なし
+- **P2-016（grok-4.6）**: 本件の live test 30/30に含めて再確認し、2026-10-03のlive testで grok-4.6 を含む30/30成功を確認したため P2-016 は解消とした
 
 ## Requirements
 

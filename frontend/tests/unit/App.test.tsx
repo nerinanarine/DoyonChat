@@ -129,13 +129,13 @@ describe('App model state', () => {
   });
 
   it('uses the saved defaultModel as the initial draft model', async () => {
-    mockHooks([], 'glm-5.1');
+    mockHooks([], 'glm-5.2');
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
 
     // モデルメニューに draftModel のID（利用不可扱い）が出る
-    expect(await screen.findByRole('button', { name: /glm-5\.1/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /glm-5\.2/i })).toBeInTheDocument();
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -173,13 +173,13 @@ describe('App model state', () => {
     });
     vi.mocked(api.fetchModels).mockResolvedValue([
       defaultModel,
-      { ...defaultModel, id: 'glm-5.1', name: 'GLM-5.1', description: 'GLM model' },
+      { ...defaultModel, id: 'glm-5.2', name: 'GLM-5.2', description: 'GLM model' },
     ]);
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
     fireEvent.click(await screen.findByRole('button', { name: /Kimi K2.6/ }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /GLM-5.1/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /GLM-5.2/ }));
 
     await waitFor(() => expect(updateModel).not.toHaveBeenCalled());
     // draft model が反映され、初回送信に使われる
@@ -187,11 +187,11 @@ describe('App model state', () => {
     fireEvent.change(input, { target: { value: 'draft message' } });
     fireEvent.click(screen.getByRole('button', { name: '送信' }));
 
-    await waitFor(() => expect(create).toHaveBeenCalledWith('draft message', 'glm-5.1'));
+    await waitFor(() => expect(create).toHaveBeenCalledWith('draft message', 'glm-5.2'));
   });
 
   it('uses the saved defaultModel when the first message creates a conversation', async () => {
-    mockHooks([], 'glm-5.1');
+    mockHooks([], 'glm-5.2');
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
@@ -200,7 +200,7 @@ describe('App model state', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '送信' }));
 
-    await waitFor(() => expect(create).toHaveBeenCalledWith('最初のメッセージ', 'glm-5.1'));
+    await waitFor(() => expect(create).toHaveBeenCalledWith('最初のメッセージ', 'glm-5.2'));
   });
 
   it('omits model when the first message creates a conversation', async () => {

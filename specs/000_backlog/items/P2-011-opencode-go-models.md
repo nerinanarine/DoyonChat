@@ -57,6 +57,8 @@ OpenCode Go公式Endpoints表を正として、DoyonChatで選択・チャット
 - mainマージコミット: `29d70bb`
 - 本番デプロイ: GitHub Actions Deploy run `32608281147`成功（2026-08-23）
 - 2026-09-03の27件化（`muse-spark-1.3-contributor`追加）はP2-015で実施
+- 2026-10-03のP2-019で公式Endpoints表を再確認し、カタログを正規30件（Responses 6 / Chat Completions 19 / Messages 5）へ同期。削除12件・追加7件、`deepseek-v4.1-flash`への`maxTokens: 16384`適用、live test期待値の30件化を実施
+- 正規30件の正規表・件数は`README.md`と`specs/009-opencode-go-models/spec.md`へ同期済み（P2-019）
 
 ---
 
@@ -69,3 +71,4 @@ OpenCode Go公式Endpoints表を正として、DoyonChatで選択・チャット
 | 2026-08-23 | 🟢 対応済み | PR #24をmainへマージし、Deploy run `32608281147`で本番デプロイ完了 |
 | 2026-08-31 | 🟡 進行中 | 公式Endpoints表を再確認しカタログを26モデルへ更新（`feat/004-auto-conversation-title` 上）。通常テスト・ビルド・26モデルlive testはgreen、本番デプロイ待ち |
 | 2026-09-03 | 🟡 進行中 | カタログ27件化（`muse-spark-1.3-contributor`追加）はP2-015で実施 |
+| 2026-10-03 | 🟡 進行中 | P2-019でカタログを正規30件（Responses 6 / Chat Completions 19 / Messages 5）へ同期（削除12件・追加7件）。README・specs/009の正規表も30件化 |

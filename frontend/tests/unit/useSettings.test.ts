@@ -46,17 +46,17 @@ describe('useSettings', () => {
   it('applies an optimistic update and keeps the server value on success', async () => {
     vi.mocked(api.updateUserSettings).mockResolvedValue({
       userId: 'alice',
-      settings: { defaultModel: 'glm-5.1' },
+      settings: { defaultModel: 'glm-5.2' },
     });
     const { result } = renderHook(() => useSettings(true));
     await waitFor(() => expect(result.current.status).toBe('loaded'));
 
     await act(async () => {
-      await result.current.updateSettings({ defaultModel: 'glm-5.1' });
+      await result.current.updateSettings({ defaultModel: 'glm-5.2' });
     });
 
-    expect(api.updateUserSettings).toHaveBeenCalledWith({ defaultModel: 'glm-5.1' });
-    expect(result.current.settings).toEqual({ defaultModel: 'glm-5.1' });
+    expect(api.updateUserSettings).toHaveBeenCalledWith({ defaultModel: 'glm-5.2' });
+    expect(result.current.settings).toEqual({ defaultModel: 'glm-5.2' });
   });
 
   it('rolls back to the previous settings when the update fails', async () => {
@@ -67,7 +67,7 @@ describe('useSettings', () => {
     let thrown: unknown;
     await act(async () => {
       try {
-        await result.current.updateSettings({ defaultModel: 'glm-5.1' });
+        await result.current.updateSettings({ defaultModel: 'glm-5.2' });
       } catch (caught) {
         thrown = caught;
       }

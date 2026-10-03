@@ -86,43 +86,38 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
-    expect(models.jsonBody).toHaveLength(35);
+    expect(models.jsonBody).toHaveLength(30);
     expect((models.jsonBody as Array<{ id: string }>).map(({ id }) => id)).toEqual([
-      'grok-4.5',
+      'grok-4.7',
       'grok-4.6',
+      'gpt-6-luna',
       'gpt-5.6-luna',
-      'glm-5',
       'glm-5.3-flash',
       'glm-5.3',
       'glm-5.2',
-      'glm-5.1',
       'kimi-k3',
       'kimi-k2.7-code',
       'kimi-k2.6',
-      'kimi-k2.5',
+      'longcat-2.5-preview-free',
       'longcat-2.0',
+      'deepseek-v4.1-flash',
       'deepseek-v4-pro',
       'deepseek-v4-flash',
       'deepseek-v4-flash-vision-exp',
-      'mimo-v2-pro',
-      'mimo-v2-omni',
+      'mimo-v2.6-flash',
+      'mimo-v2.6-pro',
       'mimo-v2.5',
       'mimo-v2.5-pro',
       'minimax-m3',
       'minimax-m2.7',
-      'minimax-m2.5',
       'muse-spark-1.3-contributor',
       'muse-spark-1.2-contributor',
       'qwen3.8-max',
       'qwen3.8-flash',
-      'qwen3.7-max',
       'qwen3.7-plus',
-      'qwen3.6-plus',
-      'qwen3.5-plus',
       'hy4-preview',
-      'hy3-preview',
       'hy3',
-      'omen-alpha',
+      'space-bunny-free',
     ]);
   });
 
@@ -159,12 +154,12 @@ describe('Functions API contract', () => {
     expect(empty.jsonBody).toEqual({ userId: 'dev-user', settings: {} });
 
     const patched = await userSettingsHandler(
-      request('PATCH', '/api/users/me/settings', { defaultModel: 'glm-5.1' }),
+      request('PATCH', '/api/users/me/settings', { defaultModel: 'glm-5.2' }),
       {} as never,
     );
     expect(patched.status).toBe(200);
     expect(patched.jsonBody).toEqual(
-      expect.objectContaining({ userId: 'dev-user', settings: { defaultModel: 'glm-5.1' } }),
+      expect.objectContaining({ userId: 'dev-user', settings: { defaultModel: 'glm-5.2' } }),
     );
 
     const fetched = await userSettingsHandler(
@@ -287,11 +282,11 @@ describe('Functions API contract', () => {
     );
 
     const updated = await modelHandler(
-      request('PUT', `/api/conversations/${id}/model`, { model: 'glm-5.1' }),
+      request('PUT', `/api/conversations/${id}/model`, { model: 'glm-5.2' }),
       {} as never,
     );
     expect(updated.status).toBe(200);
-    expect((updated.jsonBody as { model: string }).model).toBe('glm-5.1');
+    expect((updated.jsonBody as { model: string }).model).toBe('glm-5.2');
 
     const beforeRename = updated.jsonBody as Record<string, unknown>;
     const renamed = await titleHandler(

@@ -36,7 +36,7 @@ describe('Functions conversation service', () => {
 
     expect((await service.listConversations('alice')).map((item) => item.id)).toEqual([alice.id]);
     await expect(service.getConversation(bob.id, 'alice')).resolves.toBeNull();
-    await expect(service.updateConversationModel(bob.id, 'glm-5.1', 'alice')).resolves.toBeNull();
+    await expect(service.updateConversationModel(bob.id, 'glm-5.2', 'alice')).resolves.toBeNull();
     await expect(service.updateConversationTitle(bob.id, 'Renamed', 'alice')).resolves.toBeNull();
     await expect(service.deleteConversation(bob.id, 'alice')).resolves.toBe(false);
   });

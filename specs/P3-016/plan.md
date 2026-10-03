@@ -8,7 +8,7 @@
 - **D2 — 認証規約の踏襲**: Storage アクセスキーは Key Vault 格納＋UAMI 参照（`opencode-api-key` と同型）。平文キーを bicep・env・ログに置かない
 - **D3 — 配信規約の踏襲**: ダウンロードは Functions 経由＋`authenticateRequest`＋`verifyRunOwnership`（`agent.ts` と同型）
 - **D4 — P3-015 非依存の検証**: Phase 1 はダミー配置でマウント・永続化を実証し、ファイル操作ツール（P3-015）を待たない
-- **D5 — dev先行**: 全 Phase を dev で実証し、prod 適用は本ブランチ外で判断する
+- **D5 — dev先行**: 全 Phase を dev で実証し、prod 適用は本ブランチ外で判断する。2026-10-03 オーナー承認済み：dev Azure リソースの作成可（`az login` 済み）。Infra 変更は bicep（CI/CD 含む）に反映する
 
 ## Review Policy
 
