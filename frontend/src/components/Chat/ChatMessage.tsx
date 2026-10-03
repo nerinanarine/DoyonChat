@@ -34,13 +34,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, models = [], setting
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold mb-1 text-gray-900">{displayName}</div>
-        {message.imageUrl && (
-          <img
-            src={message.imageUrl}
-            alt="uploaded"
-            className="max-h-48 rounded-lg mb-2 border border-gray-200"
-          />
-        )}
         {!isUser && message.reasoning && <CollapsibleReasoning reasoning={message.reasoning} />}
         {message.content && (
           <div className="text-gray-800 text-[15px] leading-relaxed">

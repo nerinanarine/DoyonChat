@@ -43,7 +43,6 @@ describe('chat stream authentication errors', () => {
       'conversation-1',
       '質問',
       undefined,
-      undefined,
       () => {
         doneCount += 1;
       },

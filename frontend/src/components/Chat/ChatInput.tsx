@@ -1,15 +1,12 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Square, ImagePlus, X } from 'lucide-react';
-import { validateImageFile, fileToBase64, resizeImageIfNeeded } from '../../utils/image';
+import React, { useState, useRef, useCallback } from 'react';
+import { Send, Square } from 'lucide-react';
 
 interface ChatInputProps {
-  onSend: (text: string, imageBase64?: string) => void;
+  onSend: (text: string) => void;
   onStop: () => void;
   isStreaming: boolean;
   disabled?: boolean;
   disabledReason?: string;
-  /** 画像添付のみを無効化する理由（エージェントモード等）。設定時は添付UIと理由を表示する。 */
-  imageDisabledReason?: string;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -18,25 +15,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
   isStreaming,
   disabled,
   disabledReason,
-  imageDisabledReason,
 }) => {
   const [text, setText] = useState('');
-  const [image, setImage] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // 画像添付が無効化されたら、添付済みプレビューも破棄する
-  useEffect(() => {
-    if (imageDisabledReason) setImage(null);
-  }, [imageDisabledReason]);
 
   const handleSend = useCallback(() => {
-    if ((!text.trim() && !image) || disabled) return;
-    onSend(text.trim(), image || undefined);
+    if (!text.trim() || disabled) return;
+    onSend(text.trim());
     setText('');
-    setImage(null);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-  }, [text, image, onSend, disabled]);
+  }, [text, onSend, disabled]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -52,98 +40,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   };
 
-  const [dragActive, setDragActive] = useState(false);
-
-  const processImage = useCallback(async (file: File) => {
-    if (disabled || imageDisabledReason) return;
-    const error = validateImageFile(file);
-    if (error) {
-      alert(error);
-      return;
-    }
-    try {
-      const base64 = await fileToBase64(file);
-      const resized = await resizeImageIfNeeded(base64);
-      setImage(resized);
-    } catch {
-      alert('画像の処理に失敗しました');
-    }
-  }, [disabled, imageDisabledReason]);
-
-  const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await processImage(file);
-  }, [processImage]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-  }, []);
-
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    await processImage(file);
-  }, [processImage]);
-
   return (
-    <div
-      className={`border-t border-gray-200 bg-white px-4 pt-3 pb-safe ${dragActive ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {image && (
-        <div className="relative inline-block mb-2">
-          <img src={image} alt="preview" className="h-16 rounded-lg border border-gray-200" />
-          <button
-            onClick={() => setImage(null)}
-            className="absolute -top-2 -right-2 bg-gray-800 text-white rounded-full p-0.5"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
+    <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-safe">
       {disabledReason && (
         <p role="status" className="mb-2 text-sm text-amber-700">
           {disabledReason}
         </p>
       )}
-      {imageDisabledReason && (
-        <p role="alert" className="mb-2 text-sm text-amber-700">
-          {imageDisabledReason}
-        </p>
-      )}
       <div className="flex items-end gap-2">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || Boolean(imageDisabledReason)}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title={imageDisabledReason ?? '画像をアップロード'}
-          aria-label="画像をアップロード"
-          type="button"
-        >
-          <ImagePlus size={20} />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          disabled={disabled || Boolean(imageDisabledReason)}
-          onChange={handleImageSelect}
-        />
         <textarea
           ref={textareaRef}
           value={text}
@@ -166,7 +70,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         ) : (
           <button
             onClick={handleSend}
-            disabled={(!text.trim() && !image) || disabled}
+            disabled={!text.trim() || disabled}
             className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             title="送信"
             type="button"

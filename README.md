@@ -1,16 +1,14 @@
 # DoyonChat
 
-生成 AI（OpenCode Go）と対話できるチャット Web アプリ。複数の AI モデルを切り替えながら、ストリーミング応答でリアルタイムに会話できます。
+生成 AI（OpenCode Go）と対話できるチャット Web アプリ。エージェントモードでストリーミング応答をリアルタイムに受け取れます。
 
 ## 主な機能
 
-- 💬 **テキストチャット** — 複数の AI モデルと自然な対話
+- 💬 **テキストチャット** — Agentと自然な対話
 - ⚡ **ストリーミング応答** — AI の回答がリアルタイムに文字単位で表示される
-- 🔄 **モデル切り替え** — OpenCode Go公式Endpoints表の27モデルを会話ごとに選択
-- 🖼️ **画像入力** — ファイル選択・ドラッグ＆ドロップ・プレビュー・5MB上限検証
 - 🧠 **Reasoning表示** — モデルの思考過程と最終回答を分けて表示
 - 📂 **複数会話管理** — サイドバーで会話の作成・切り替え・リネーム・削除
-- ⚙️ **ユーザー設定** — 既定モデルをアカウントに保存し、別デバイスでも復元。設定メニューからログアウトも可能
+- ⚙️ **ユーザー設定** — 表示名・エージェントのモデル・承認レベルをアカウントに保存。設定メニューからログアウトも可能
 - 📲 **PWA対応** — Android / iPhoneのホーム画面に追加してスタンドアロン起動、オフラインでアプリシェルを表示
 - 🏷️ **タイトル自動生成** — 最初のメッセージから AI が会話タイトルを要約（手動リネーム優先）
 - 🔐 **Entra ID認証** — Microsoftアカウントでログインし、ユーザーごとに会話を分離
@@ -224,7 +222,7 @@ Function App名、API URL、Static Web App URLはBicepのdeployment outputsか�
 | Chat Completions | `glm-5.2` | ✅ | 高品質、画像入力対応 |
 | Chat Completions | `kimi-k3` | ❌ | 高度な推論・コーディング |
 | Chat Completions | `kimi-k2.7-code` | ❌ | コーディング特化 |
-| Chat Completions | `kimi-k2.6` | ❌ | 高品質、長文対応（既定モデル） |
+| Chat Completions | `kimi-k2.6` | ❌ | 高品質、長文対応 |
 | Chat Completions | `longcat-2.5-preview-free` | ❌ | OpenCode Go model |
 | Chat Completions | `longcat-2.0` | ❌ | OpenCode Go model |
 | Chat Completions | `deepseek-v4.1-flash` | ❌ | OpenCode Go model |
@@ -247,8 +245,6 @@ Function App名、API URL、Static Web App URLはBicepのdeployment outputsか�
 | Chat Completions | `space-bunny-free` | ❌ | OpenCode Go model |
 
 > モデルID・protocol・提供状況は [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-10-03確認）を基準にしています。提供モデルは変更される可能性があります。
->
-> **注意:** 画像入力UIは利用できますが、Messagesモデルへの新規画像送信は非対応のため、送信前に別protocolの画像対応モデルを選択してください。
 
 ### 全30モデルの実API確認
 

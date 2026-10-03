@@ -133,15 +133,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
                 {conv.title}
               </button>
             )}
-            {conv.agentMode && (
-              <span
-                title="エージェントモード"
-                aria-label="エージェントモード"
-                className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-[10px] font-medium leading-none"
-              >
-                Agent
-              </span>
-            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();

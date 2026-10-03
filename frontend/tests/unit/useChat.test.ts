@@ -25,7 +25,7 @@ describe('useChat stop and retry', () => {
     handlers = null;
     vi.clearAllMocks();
     vi.mocked(api.streamChat).mockImplementation(
-      (_id, _msg, _img, onChunk, onDone, onError, options) => {
+      (_id, _msg, onChunk, onDone, onError, options) => {
         const controller = new AbortController();
         handlers = {
           onChunk: onChunk ?? (() => {}),

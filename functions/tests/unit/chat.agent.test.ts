@@ -259,25 +259,77 @@ describe('Functions /chat agent branch', () => {
     );
   });
 
-  it('keeps the normal chat path untouched for non-agent conversations', async () => {
-    serviceMock.getConversation.mockResolvedValue({ ...AGENT_CONVERSATION, agentMode: false });
-    serviceMock.listMessages.mockResolvedValue([]);
-    // gateway に到達したら失敗するスパイを仕掛け、通常経路が fetch しないことを確認する
-    const fetchSpy = jest
-      .spyOn(global, 'fetch')
-      .mockImplementation(() => {
-        throw new Error('gateway must not be reached');
-      });
+  it('emits the cold-start code instead of server when the gateway is unreachable (P2-018)', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
 
     const response = await chatHandler(
       request('POST', '/api/chat', { conversationId: 'conv-1', message: 'hi' }),
       {} as never,
     );
 
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(response.status).toBe(200);
     const text = await streamText(response);
-    expect(text).toContain('"done":true');
+    expect(text).toContain('"error":{"code":"agent-starting"}');
+    expect(text).not.toContain('"error":{"code":"server"}');
+    // コールドスタートは再送前提のため、ユーザーメッセージのみ保存して自動再送に委ねる
+    expect(serviceMock.addMessage).toHaveBeenCalledTimes(1);
+    expect(serviceMock.addMessage.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ role: 'user', content: 'hi' }),
+    );
+  });
+
+  it('keeps an explicit config error as a generic server error, not a cold start', async () => {
+    delete process.env.AGENT_GATEWAY_URL;
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', { conversationId: 'conv-1', message: 'hi' }),
+      {} as never,
+    );
+
+    const text = await streamText(response);
+    expect(text).toContain('"error":{"code":"server"}');
+    expect(text).not.toContain('agent-starting');
+  });
+
+  it('truncates reasoning beyond REASONING_MAX_CODEPOINTS when finalizing the agent message', async () => {
+    const longReasoning = '考'.repeat(60_000);
+    mockGatewayStream({ content: 'answer' }, { reasoning: longReasoning }, { done: true });
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', { conversationId: 'conv-1', message: 'hi' }),
+      {} as never,
+    );
+    await streamText(response);
+
+    const assistantCall = serviceMock.addMessage.mock.calls.find(
+      ([message]) => message.role === 'assistant',
+    );
+    const reasoning = assistantCall![0].reasoning!;
+    expect(reasoning).toContain('…(truncated)');
+    expect(Array.from(reasoning).length).toBeLessThanOrEqual(50_000 + '…(truncated)'.length);
+  });
+
+  it('rejects sends to a legacy (agentMode: false) conversation with 409 guidance and saves nothing', async () => {
+    serviceMock.getConversation.mockResolvedValue({ ...AGENT_CONVERSATION, agentMode: false });
+    // gateway に到達したら失敗するスパイを仕掛け、送信前に fail fast することを確認する
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(() => {
+      throw new Error('gateway must not be reached');
+    });
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', {
+        conversationId: 'conv-1',
+        message: 'hi',
+        userMessageId: 'um-1',
+      }),
+      {} as never,
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(response.status).toBe(409);
+    expect((response.jsonBody as { error: string }).error).toContain('新規のAgent会話');
+    // 保存前の fail fast（FR-009）
+    expect(serviceMock.addMessage).not.toHaveBeenCalled();
+    expect(serviceMock.addMessageIfAbsent).not.toHaveBeenCalled();
   });
 });
 

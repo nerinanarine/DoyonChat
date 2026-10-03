@@ -30,7 +30,6 @@ export function useSettings(enabled = true) {
 
   const updateSettings = useCallback(
     async (partial: {
-      defaultModel?: string | null;
       displayName?: string | null;
       agentApprovalLevel?: AgentApprovalLevel | null;
       agentModel?: string | null;
@@ -39,13 +38,6 @@ export function useSettings(enabled = true) {
       const previous = settings;
       // Optimistic update; rollback on failure.
       const next = { ...settings };
-      if (Object.prototype.hasOwnProperty.call(partial, 'defaultModel')) {
-        if (partial.defaultModel === null || partial.defaultModel === undefined) {
-          delete next.defaultModel;
-        } else if (typeof partial.defaultModel === 'string') {
-          next.defaultModel = partial.defaultModel;
-        }
-      }
       if (Object.prototype.hasOwnProperty.call(partial, 'displayName')) {
         if (partial.displayName === null || partial.displayName === '' || partial.displayName === undefined) {
           delete next.displayName;

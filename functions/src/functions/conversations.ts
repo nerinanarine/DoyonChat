@@ -7,7 +7,7 @@ import {
 import { authenticateRequest } from '../middleware/auth';
 import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
-import { DEFAULT_MODEL_ID, hasModel } from '../config/modelCatalog';
+import { DEFAULT_MODEL_ID } from '../config/modelCatalog';
 import { generateTitle, sanitizeGeneratedTitle } from '../services/opencodeGo';
 import {
   deleteGatewaySession,
@@ -32,15 +32,10 @@ export async function conversationsHandler(
     }
 
     const body = await readJsonBody(request);
-    const model = Object.prototype.hasOwnProperty.call(body, 'model')
-      ? getRequiredString(body, 'model')
-      : DEFAULT_MODEL_ID;
-    if (!hasModel(model)) {
-      throw new AppError(400, 'model is not supported');
-    }
+    // 新規会話は常に Agent モード固定。model はクライアント値を受けず既定値で作成する（FR-006）。
     const conversation = await service.createConversation(
       getOptionalString(body, 'title'),
-      model,
+      DEFAULT_MODEL_ID,
       userId,
     );
     return { status: 201, jsonBody: conversation };
@@ -84,29 +79,6 @@ export async function conversationHandler(
     if (!deleted) throw new AppError(404, 'Conversation not found');
     notifyGatewaySessionDeleted(userId, id);
     return { status: 204 };
-  } catch (error) {
-    return toHttpResponse(error);
-  }
-}
-
-export async function modelHandler(
-  request: HttpRequest,
-  _context: InvocationContext,
-): Promise<HttpResponseInit> {
-  try {
-    const userId = await authenticateRequest(request);
-    const body = await readJsonBody(request);
-    const model = getRequiredString(body, 'model');
-    if (!hasModel(model)) {
-      throw new AppError(400, 'model is not supported');
-    }
-    const updated = await service.updateConversationModel(
-      getConversationId(request),
-      model,
-      userId,
-    );
-    if (!updated) throw new AppError(404, 'Conversation not found');
-    return { status: 200, jsonBody: updated };
   } catch (error) {
     return toHttpResponse(error);
   }
@@ -166,29 +138,6 @@ export async function titleAutoHandler(
   }
 }
 
-export async function agentModeHandler(
-  request: HttpRequest,
-  _context: InvocationContext,
-): Promise<HttpResponseInit> {
-  try {
-    const userId = await authenticateRequest(request);
-    const body = await readJsonBody(request);
-    // enabled は boolean のみ採用。それ以外は 400（微妙な真偽の黙殺を避ける）。
-    if (!Object.prototype.hasOwnProperty.call(body, 'enabled') || typeof body.enabled !== 'boolean') {
-      throw new AppError(400, 'enabled must be a boolean');
-    }
-    const updated = await service.updateConversationAgentMode(
-      getConversationId(request),
-      body.enabled as boolean,
-      userId,
-    );
-    if (!updated) throw new AppError(404, 'Conversation not found');
-    return { status: 200, jsonBody: updated };
-  } catch (error) {
-    return toHttpResponse(error);
-  }
-}
-
 app.http('conversations', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -203,13 +152,6 @@ app.http('conversation', {
   handler: conversationHandler,
 });
 
-app.http('conversation-model', {
-  methods: ['PUT'],
-  authLevel: 'anonymous',
-  route: 'conversations/{id}/model',
-  handler: modelHandler,
-});
-
 app.http('conversation-title', {
   methods: ['PUT'],
   authLevel: 'anonymous',
@@ -222,11 +164,4 @@ app.http('conversation-title-auto', {
   authLevel: 'anonymous',
   route: 'conversations/{id}/title/auto',
   handler: titleAutoHandler,
-});
-
-app.http('conversation-agent-mode', {
-  methods: ['PUT'],
-  authLevel: 'anonymous',
-  route: 'conversations/{id}/agent-mode',
-  handler: agentModeHandler,
 });

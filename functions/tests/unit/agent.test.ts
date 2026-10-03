@@ -1,5 +1,9 @@
 import { HttpRequest } from '@azure/functions';
-import { agentApproveHandler, agentRunHandler } from '../../src/functions/agent';
+import {
+  agentApproveHandler,
+  agentModelsHandler,
+  agentRunHandler,
+} from '../../src/functions/agent';
 import * as service from '../../src/services/conversationService';
 import { Conversation } from '../../src/types';
 
@@ -261,6 +265,57 @@ describe('Functions agent proxy handlers', () => {
     expect((notConfigured.jsonBody as { error: string }).error).toBe(
       'Agent service is not configured',
     );
+  });
+
+  describe('GET /agent/models relay (P2-018 cold-start detection)', () => {
+    it('forwards gateway /models with a Managed Identity token and relays the catalog', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      process.env.AGENT_GATEWAY_AUDIENCE = 'api://agent-gateway';
+      const catalog = { models: [{ id: 'opencode-go/grok-4.6' }] };
+      const fetchMock = mockFetch(200, catalog);
+
+      const response = await agentModelsHandler(request('GET', '/api/agent/models'), {} as never);
+
+      expect(response).toEqual({ status: 200, jsonBody: catalog });
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://gateway:8787/models',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer mocked-mi-token' }),
+        }),
+      );
+    });
+
+    it('surfaces a gateway-unreachable 503 so the frontend can keep polling', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      jest.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('ECONNREFUSED'));
+
+      const response = await agentModelsHandler(request('GET', '/api/agent/models'), {} as never);
+
+      expect(response.status).toBe(503);
+      expect((response.jsonBody as { error: string }).error).toBe('Agent service unavailable');
+    });
+
+    it('maps a gateway 5xx to a safe 502 for the relay', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      mockFetch(503, {});
+
+      const response = await agentModelsHandler(request('GET', '/api/agent/models'), {} as never);
+
+      expect(response.status).toBe(502);
+      expect((response.jsonBody as { error: string }).error).toBe('Agent service error');
+    });
+
+    it('disables the relay when AGENT_ENABLED=false', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      process.env.AGENT_ENABLED = 'false';
+      mockFetch(200, {});
+
+      const response = await agentModelsHandler(request('GET', '/api/agent/models'), {} as never);
+
+      expect(response.status).toBe(404);
+      expect((response.jsonBody as { error: string }).error).toBe('Agent feature is not available');
+    });
   });
 
   it.each(['approve', 'run'])('disables %s endpoint when AGENT_ENABLED=false', async (kind) => {
