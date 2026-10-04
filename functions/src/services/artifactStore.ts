@@ -232,7 +232,7 @@ async function readLocalUserAgentsMd(localDataDir: string, userId: string): Prom
 
 /**
  * ユーザー AGENTS.md を共有へ upsert する（P2-020 FR-002/FR-003）。
- * Azure Files では先に `config/` Directory を作成してから PUT する。
+ * Azure Files では先に `{userId}` / `{userId}/config` Directory を作成してから PUT する。
  * GET と違い本体書込みのため、Content-Length を含む PUT 用 SharedKey 署名を使う。
  */
 export async function writeUserAgentsMd(
@@ -249,7 +249,7 @@ export async function writeUserAgentsMd(
     return;
   }
   assertShareConfigured(config);
-  await createShareDirectory(config, safeUserId, fetchImpl);
+  await ensureShareDirectories(config, safeUserId, fetchImpl);
   const body = Buffer.from(content, 'utf8');
   const url = userAgentsMdShareUrl(config, safeUserId);
   const response = await fetchImpl(url.toString(), {
@@ -303,29 +303,36 @@ export async function deleteUserAgentsMd(
 }
 
 /**
- * `{userId}/config` Directory を作成する（P2-020 FR-003）。Azure Files の Create Directory。
- * 既存ディレクトリは 409 DirectoryAlreadyExists を返すため成功扱いにする。
+ * `{userId}` と `{userId}/config` Directory を親から順に作成する（P2-020 FR-003）。
+ * Azure Files の Create Directory は親を自動作成しないため、初回ユーザーは親から作る必要がある。
+ * 既存ディレクトリは 409 DirectoryAlreadyExists を返すため成功扱いにする（それ以外は 502）。
  */
-async function createShareDirectory(
+async function ensureShareDirectories(
   config: ArtifactStoreConfig,
   userId: string,
   fetchImpl: typeof fetch,
 ): Promise<void> {
-  const url = new URL(
-    `https://${config.storageAccount}.file.${config.endpointSuffix}/` +
-      `${config.shareName}/${userId}/${USER_CONFIG_SUBDIR}?restype=directory`,
-  );
-  const response = await fetchImpl(url.toString(), {
-    method: 'PUT',
-    headers: buildSharedKeyHeaders(config, {
+  for (const directoryPath of [userId, `${userId}/${USER_CONFIG_SUBDIR}`]) {
+    const url = new URL(
+      `https://${config.storageAccount}.file.${config.endpointSuffix}/` +
+        `${config.shareName}/${directoryPath}?restype=directory`,
+    );
+    const response = await fetchImpl(url.toString(), {
       method: 'PUT',
-      resourcePath: url.pathname,
-      xmsHeaders: {},
-      query: { restype: 'directory' },
-    }),
-  });
-  if (!response.ok && response.status !== 409) {
-    throw new AppError(502, 'Artifact storage error');
+      headers: {
+        ...buildSharedKeyHeaders(config, {
+          method: 'PUT',
+          resourcePath: url.pathname,
+          xmsHeaders: {},
+          contentLength: '0',
+          query: { restype: 'directory' },
+        }),
+        'Content-Length': '0',
+      },
+    });
+    if (!response.ok && response.status !== 409) {
+      throw new AppError(502, 'Artifact storage error');
+    }
   }
 }
 

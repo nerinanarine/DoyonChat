@@ -112,12 +112,7 @@ describe('Functions user AGENTS.md handler (P2-020)', () => {
     const response = await userAgentsMdHandler(request('PATCH', { content: 'hi' }), {} as never);
 
     expect(response.status).toBe(200);
-    const [dirUrl, dirInit] = fetchMock.mock.calls[0];
-    expect(dirUrl).toBe(
-      'https://stacct.file.core.windows.net/artifacts/user-a/config?restype=directory',
-    );
-    expect((dirInit as RequestInit).method).toBe('PUT');
-    const [fileUrl, fileInit] = fetchMock.mock.calls[1];
+    const [fileUrl, fileInit] = fetchMock.mock.calls[2];
     expect(fileUrl).toBe(
       'https://stacct.file.core.windows.net/artifacts/user-a/config/AGENTS.md',
     );
@@ -126,6 +121,65 @@ describe('Functions user AGENTS.md handler (P2-020)', () => {
     expect(headers.Authorization).toMatch(/^SharedKey stacct:/);
     expect(headers['x-ms-type']).toBe('file');
     expect(headers['x-ms-content-length']).toBe('2');
+  });
+
+  it('creates the parent and config directories in order for a first-time user', async () => {
+    delete process.env.AGENT_DATA_DIR;
+    process.env.ARTIFACTS_STORAGE_ACCOUNT = 'stacct';
+    process.env.ARTIFACTS_STORAGE_KEY = Buffer.from('super-secret-key').toString('base64');
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 201 } as Response);
+    jest.spyOn(global, 'fetch').mockImplementation(fetchMock);
+
+    const response = await userAgentsMdHandler(request('PATCH', { content: 'hi' }), {} as never);
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const [[parentUrl, parentInit], [configUrl, configInit]] = fetchMock.mock.calls;
+    expect(parentUrl).toBe(
+      'https://stacct.file.core.windows.net/artifacts/user-a?restype=directory',
+    );
+    expect(configUrl).toBe(
+      'https://stacct.file.core.windows.net/artifacts/user-a/config?restype=directory',
+    );
+    for (const init of [parentInit, configInit]) {
+      expect((init as RequestInit).method).toBe('PUT');
+      expect(((init as RequestInit).headers as Record<string, string>)['Content-Length']).toBe('0');
+    }
+  });
+
+  it('tolerates 409 when both directories already exist', async () => {
+    delete process.env.AGENT_DATA_DIR;
+    process.env.ARTIFACTS_STORAGE_ACCOUNT = 'stacct';
+    process.env.ARTIFACTS_STORAGE_KEY = Buffer.from('super-secret-key').toString('base64');
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 409 } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 409 } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 201 } as Response);
+    jest.spyOn(global, 'fetch').mockImplementation(fetchMock);
+
+    const response = await userAgentsMdHandler(request('PATCH', { content: 'hi' }), {} as never);
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('fails with 502 when the parent directory creation fails (no second attempt)', async () => {
+    delete process.env.AGENT_DATA_DIR;
+    process.env.ARTIFACTS_STORAGE_ACCOUNT = 'stacct';
+    process.env.ARTIFACTS_STORAGE_KEY = Buffer.from('super-secret-key').toString('base64');
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 403 } as Response);
+    jest.spyOn(global, 'fetch').mockImplementation(fetchMock);
+
+    const response = await userAgentsMdHandler(request('PATCH', { content: 'hi' }), {} as never);
+
+    expect(response.status).toBe(502);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://stacct.file.core.windows.net/artifacts/user-a?restype=directory',
+    );
   });
 
   it('maps a share 404 to 404 and deletes on clear via DELETE', async () => {
