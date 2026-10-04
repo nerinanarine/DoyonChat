@@ -105,6 +105,13 @@ export async function autoGenerateTitle(id: string, text: string): Promise<Conve
   return post<Conversation>(`/conversations/${id}/title/auto`, { text });
 }
 
+export async function updateConversationAgentModel(
+  id: string,
+  agentModel: string | null,
+): Promise<Conversation> {
+  return put<Conversation>(`/conversations/${id}/agent-model`, { agentModel });
+}
+
 export interface ChatStreamChunk {
   content?: string;
   reasoning?: string;

@@ -191,6 +191,73 @@ describe('Functions /chat agent branch', () => {
     expect(payload.approvalLevel).toBe('dangerous-only');
   });
 
+  it('prefers the conversation override over the user setting for the executed model (FR-006)', async () => {
+    serviceMock.getConversation.mockResolvedValue({
+      ...AGENT_CONVERSATION,
+      agentModel: 'opencode-go/kimi-k2.6',
+    });
+    settingsMock.getSettings.mockResolvedValue({
+      userId: 'alice',
+      settings: { agentModel: 'opencode-go/grok-4.6' },
+    });
+    const fetchMock = mockGatewayStream({ content: 'ok' }, { done: true });
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', { conversationId: 'conv-1', message: 'hi' }),
+      {} as never,
+    );
+    await streamText(response);
+
+    const payload = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body) as {
+      model?: string;
+    };
+    expect(payload.model).toBe('opencode-go/kimi-k2.6');
+    const assistantCall = serviceMock.addMessage.mock.calls.find(
+      ([message]) => message.role === 'assistant',
+    );
+    expect(assistantCall![0]).toMatchObject({ model: 'opencode-go/kimi-k2.6' });
+  });
+
+  it('falls back to the user setting when the conversation override is null', async () => {
+    serviceMock.getConversation.mockResolvedValue({ ...AGENT_CONVERSATION, agentModel: null });
+    settingsMock.getSettings.mockResolvedValue({
+      userId: 'alice',
+      settings: { agentModel: 'opencode-go/grok-4.6' },
+    });
+    const fetchMock = mockGatewayStream({ done: true });
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', { conversationId: 'conv-1', message: 'hi' }),
+      {} as never,
+    );
+    await streamText(response);
+
+    const payload = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body) as {
+      model?: string;
+    };
+    expect(payload.model).toBe('opencode-go/grok-4.6');
+  });
+
+  it('omits the model for a legacy conversation with no override or setting (FR-006)', async () => {
+    // AGENT_CONVERSATION には agentModel がなく、beforeEach の設定も空。
+    const fetchMock = mockGatewayStream({ content: 'plain' }, { done: true });
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', { conversationId: 'conv-1', message: 'hi' }),
+      {} as never,
+    );
+    await streamText(response);
+
+    const payload = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body) as {
+      model?: string;
+    };
+    expect(payload).not.toHaveProperty('model');
+    const assistantCall = serviceMock.addMessage.mock.calls.find(
+      ([message]) => message.role === 'assistant',
+    );
+    expect(assistantCall![0]).not.toHaveProperty('model');
+  });
+
   it('maps a gateway 429 to an SSE rate_limit error without saving the assistant', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: false,

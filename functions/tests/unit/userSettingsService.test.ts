@@ -40,7 +40,7 @@ describe('Functions user settings service', () => {
     const updated = await service.updateSettings('alice', { agentModel: 'kimi-k2.6' });
 
     expect(updated.userId).toBe('alice');
-    expect(updated.settings).toEqual({ agentModel: 'kimi-k2.6' });
+    expect(updated.settings).toEqual({ agentModel: 'opencode-go/kimi-k2.6' });
     await expect(service.getSettings('alice')).resolves.toEqual(updated);
   });
 
@@ -63,7 +63,7 @@ describe('Functions user settings service', () => {
     });
 
     expect(updated.userId).toBe('alice');
-    expect(updated.settings).toEqual({ agentModel: 'kimi-k2.6' });
+    expect(updated.settings).toEqual({ agentModel: 'opencode-go/kimi-k2.6' });
   });
 
   it('saves and trims displayName', async () => {
@@ -96,7 +96,10 @@ describe('Functions user settings service', () => {
     await service.updateSettings('alice', { agentModel: 'kimi-k2.6', displayName: 'Alice' });
     // updateSettings only merges known keys one at a time, so test sequential updates
     const updated = await service.updateSettings('alice', { displayName: 'Bob' });
-    expect(updated.settings).toEqual({ agentModel: 'kimi-k2.6', displayName: 'Bob' });
+    expect(updated.settings).toEqual({
+      agentModel: 'opencode-go/kimi-k2.6',
+      displayName: 'Bob',
+    });
   });
 
   it('keeps an empty patch as a no-op', async () => {
@@ -114,12 +117,12 @@ describe('Functions user settings service', () => {
 
     await expect(service.getSettings('alice')).resolves.toEqual({
       userId: 'alice',
-      settings: { agentModel: 'kimi-k2.6' },
+      settings: { agentModel: 'opencode-go/kimi-k2.6' },
       updatedAt: expect.any(String),
     });
     await expect(service.getSettings('bob')).resolves.toEqual({
       userId: 'bob',
-      settings: { agentModel: 'grok-4.6' },
+      settings: { agentModel: 'opencode-go/grok-4.6' },
       updatedAt: expect.any(String),
     });
   });
@@ -174,7 +177,7 @@ describe('Functions user settings service with CosmosDB available', () => {
       expect.objectContaining({
         id: 'alice',
         userId: 'alice',
-        settings: { agentModel: 'kimi-k2.6' },
+        settings: { agentModel: 'opencode-go/kimi-k2.6' },
       }),
     );
   });

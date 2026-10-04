@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   autoGenerateTitle,
   streamChat,
+  updateConversationAgentModel,
   updateConversationTitle,
   fetchUserSettings,
   updateUserSettings,
@@ -245,6 +246,56 @@ describe('conversation title API', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ text: 'こんにちは' }),
+      }),
+    );
+  });
+});
+
+describe('conversation agent model API', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it('sends a qualified agent model and a null clear to the agent model endpoint', async () => {
+    const updated = {
+      id: 'conversation-1',
+      title: '会話',
+      model: 'model-1',
+      agentModel: 'opencode-go/kimi-k2.6',
+      createdAt: '2026-08-22T00:00:00.000Z',
+      updatedAt: '2026-08-22T00:00:00.000Z',
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue(updated),
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({ ...updated, agentModel: null }),
+    });
+
+    await expect(
+      updateConversationAgentModel('conversation-1', 'opencode-go/kimi-k2.6'),
+    ).resolves.toEqual(updated);
+    await expect(updateConversationAgentModel('conversation-1', null)).resolves.toEqual({
+      ...updated,
+      agentModel: null,
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/conversations/conversation-1/agent-model'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ agentModel: 'opencode-go/kimi-k2.6' }),
+      }),
+    );
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/conversations/conversation-1/agent-model'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ agentModel: null }),
       }),
     );
   });

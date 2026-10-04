@@ -53,6 +53,50 @@ describe('Functions conversation service', () => {
     await expect(service.getConversation(conversation.id, 'alice')).resolves.toEqual(updated);
   });
 
+  it('persists and clears a conversation agent model override in the in-memory store', async () => {
+    const conversation = await service.createConversation(
+      'Model',
+      'kimi-k2.6',
+      'alice',
+      'opencode-go/grok-4.6',
+    );
+    expect(conversation.agentModel).toBe('opencode-go/grok-4.6');
+
+    const updated = await service.updateConversationAgentModel(
+      conversation.id,
+      'opencode-go/kimi-k2.6',
+      'alice',
+    );
+    expect(updated).toEqual({ ...conversation, agentModel: 'opencode-go/kimi-k2.6' });
+    await expect(service.getConversation(conversation.id, 'alice')).resolves.toEqual(updated);
+
+    const cleared = await service.updateConversationAgentModel(conversation.id, null, 'alice');
+    expect(cleared).not.toHaveProperty('agentModel');
+    await expect(service.getConversation(conversation.id, 'alice')).resolves.toEqual(cleared);
+  });
+
+  it('omits the agent model for a conversation created without an override', async () => {
+    const conversation = await service.createConversation('No override', 'kimi-k2.6', 'alice');
+    expect(conversation).not.toHaveProperty('agentModel');
+  });
+
+  it('keeps per-conversation overrides independent across conversations', async () => {
+    const withOverride = await service.createConversation(
+      'A',
+      'kimi-k2.6',
+      'alice',
+      'opencode-go/grok-4.6',
+    );
+    const withoutOverride = await service.createConversation('B', 'kimi-k2.6', 'alice');
+
+    expect((await service.getConversation(withOverride.id, 'alice'))?.agentModel).toBe(
+      'opencode-go/grok-4.6',
+    );
+    await expect(service.getConversation(withoutOverride.id, 'alice')).resolves.not.toHaveProperty(
+      'agentModel',
+    );
+  });
+
   it('replaces a Cosmos DB conversation without changing fields other than title', async () => {
     jest.resetModules();
     const conversation = {
@@ -81,6 +125,41 @@ describe('Functions conversation service', () => {
 
     expect(updated).toEqual({ ...conversation, title: 'Renamed' });
     expect(replace).toHaveBeenCalledWith({ ...conversation, title: 'Renamed' });
+    expect(item).toHaveBeenCalledWith(conversation.id, conversation.id);
+  });
+
+  it('replaces a Cosmos DB conversation when updating and clearing the agent model', async () => {
+    jest.resetModules();
+    const conversation = {
+      id: 'conversation-id',
+      userId: 'alice',
+      title: 'Override',
+      model: 'kimi-k2.6',
+      agentModel: 'opencode-go/grok-4.6',
+      createdAt: '2026-08-22T00:00:00.000Z',
+      updatedAt: '2026-08-22T01:00:00.000Z',
+    };
+    const read = jest.fn().mockResolvedValue({ resource: conversation });
+    const replace = jest.fn().mockImplementation(async (updated) => ({ resource: updated }));
+    const item = jest.fn(() => ({ read, replace }));
+    const container = { read: jest.fn().mockResolvedValue({}), item };
+    jest.doMock('../../src/db', () => ({
+      getConversationsContainer: jest.fn(() => container),
+      getMessagesContainer: jest.fn(() => container),
+    }));
+    const cosmosService = require('../../src/services/conversationService') as typeof service;
+
+    const updated = await cosmosService.updateConversationAgentModel(
+      conversation.id,
+      'opencode-go/kimi-k2.6',
+      'alice',
+    );
+    expect(updated).toEqual({ ...conversation, agentModel: 'opencode-go/kimi-k2.6' });
+    expect(replace).toHaveBeenCalledWith({ ...conversation, agentModel: 'opencode-go/kimi-k2.6' });
+
+    const cleared = await cosmosService.updateConversationAgentModel(conversation.id, null, 'alice');
+    expect(cleared).not.toHaveProperty('agentModel');
+    expect(replace.mock.calls[1][0]).not.toHaveProperty('agentModel');
     expect(item).toHaveBeenCalledWith(conversation.id, conversation.id);
   });
 

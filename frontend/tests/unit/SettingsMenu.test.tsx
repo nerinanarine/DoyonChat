@@ -1,10 +1,37 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import SettingsMenu from '../../src/components/Settings/SettingsMenu';
+import { ModelInfo } from '../../src/types';
+
+const models: ModelInfo[] = [
+  {
+    id: 'kimi-k2.6',
+    name: 'Kimi K2.6',
+    description: 'Complex coding, general tasks',
+    quality: 5,
+    speed: 'Fast',
+    cost: '★★☆',
+    supportsMultimodal: false,
+    contextLength: '256K',
+    bestFor: 'Coding, reasoning',
+  },
+  {
+    id: 'grok-4.6',
+    name: 'Grok 4.6',
+    description: 'OpenCode Go model',
+    quality: 3,
+    speed: 'Unknown',
+    cost: 'See OpenCode Go',
+    supportsMultimodal: false,
+    contextLength: 'Unknown',
+    bestFor: 'General use',
+  },
+];
 
 const props = {
   settings: {},
   settingsStatus: 'loaded' as const,
+  models,
   onChangeDisplayName: vi.fn().mockResolvedValue(undefined),
   onLogout: vi.fn(),
 };
@@ -100,21 +127,38 @@ describe('SettingsMenu agent settings', () => {
     ).toHaveValue('auto');
   });
 
-  it('saves the agent model on blur and clears it when emptied', async () => {
-    render(<SettingsMenu {...agentProps} settings={{ agentModel: 'claude-sonnet-4' }} />);
+  it('saves the selected agent model and clears it when reset to default', async () => {
+    render(<SettingsMenu {...agentProps} settings={{ agentModel: 'opencode-go/kimi-k2.6' }} />);
     fireEvent.click(screen.getByRole('button', { name: '設定' }));
 
-    const input = screen.getByLabelText('エージェントのモデル') as HTMLInputElement;
-    expect(input.value).toBe('claude-sonnet-4');
-    fireEvent.change(input, { target: { value: ' gemini-2.5-pro ' } });
-    fireEvent.blur(input);
+    const select = screen.getByRole('combobox', { name: 'エージェントのモデル' });
+    expect(select).toHaveValue('opencode-go/kimi-k2.6');
+
+    fireEvent.change(select, { target: { value: 'opencode-go/grok-4.6' } });
     await vi.waitFor(() =>
-      expect(agentProps.onChangeAgentModel).toHaveBeenCalledWith('gemini-2.5-pro'),
+      expect(agentProps.onChangeAgentModel).toHaveBeenCalledWith('opencode-go/grok-4.6'),
     );
 
-    fireEvent.change(input, { target: { value: '   ' } });
-    fireEvent.blur(input);
+    fireEvent.change(select, { target: { value: '' } });
     await vi.waitFor(() => expect(agentProps.onChangeAgentModel).toHaveBeenCalledWith(null));
+  });
+
+  it('lists every catalog model by name with a qualified value and a default option', () => {
+    render(<SettingsMenu {...agentProps} />);
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+
+    const select = screen.getByRole('combobox', { name: 'エージェントのモデル' });
+    const options = Array.from(select.querySelectorAll('option'));
+    expect(options.map((option) => option.value)).toEqual([
+      '',
+      'opencode-go/kimi-k2.6',
+      'opencode-go/grok-4.6',
+    ]);
+    expect(options.map((option) => option.textContent)).toEqual([
+      '未設定（pi の既定）',
+      'Kimi K2.6',
+      'Grok 4.6',
+    ]);
   });
 
   it('saves the subagent model on Enter key', async () => {

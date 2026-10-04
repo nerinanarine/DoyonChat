@@ -109,6 +109,7 @@ export async function createConversation(
   title = 'New Chat',
   model = DEFAULT_MODEL_ID,
   userId?: string,
+  agentModel?: string | null,
 ): Promise<Conversation> {
   if (isAuthenticationEnabled() && !userId) {
     throw new AppError(401, 'Unauthorized: user identifier not found');
@@ -123,6 +124,8 @@ export async function createConversation(
     model,
     // 新規会話はエージェントモードが既定（P3-014 Phase 3）。切替 UI は廃止済み。
     agentMode: true,
+    // 会話単位の実行モデル（P1-013）。未設定ならフィールド自体を持たない。
+    ...(agentModel ? { agentModel } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -149,6 +152,38 @@ export async function updateConversationTitle(
 
   await ensureConversationContainer();
   const updated: Conversation = { ...existing, title };
+  if (useMemory) {
+    memoryConversations.set(id, updated);
+    return updated;
+  }
+
+  try {
+    const { resource } = await getConversationsContainer().item(id, id).replace(updated);
+    return resource as Conversation;
+  } catch (error) {
+    return databaseUnavailable(error);
+  }
+}
+
+/**
+ * 会話単位のAgent実行モデルを差し替える（P1-013）。
+ * `agentModel` は正規化済みの `opencode-go/<modelId>`。null はフィールドを削除して既定に戻す。
+ */
+export async function updateConversationAgentModel(
+  id: string,
+  agentModel: string | null,
+  userId?: string,
+): Promise<Conversation | null> {
+  const existing = await getConversation(id, userId);
+  if (!existing) return null;
+
+  await ensureConversationContainer();
+  const updated: Conversation = { ...existing };
+  if (agentModel === null) {
+    delete updated.agentModel;
+  } else {
+    updated.agentModel = agentModel;
+  }
   if (useMemory) {
     memoryConversations.set(id, updated);
     return updated;

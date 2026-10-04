@@ -5,6 +5,8 @@ export interface Conversation {
   model: string;
   /** 会話ごとのエージェントモード（未保存時は通常チャット）。 */
   agentMode?: boolean;
+  /** 会話単位のAgent実行モデル（`opencode-go/<modelId>`）。null/未設定は既定を使う。 */
+  agentModel?: string | null;
   createdAt: string;
   updatedAt: string;
 }

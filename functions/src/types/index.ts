@@ -5,6 +5,11 @@ export interface Conversation {
   model: string;
   /** エージェントモード（P3-010）。未定義=false。 */
   agentMode?: boolean;
+  /**
+   * 会話単位のAgent実行モデル（`opencode-go/<modelId>`）。
+   * null/未定義はユーザー設定の agentModel（なければ gateway 既定）を使う（P1-013 FR-005/006）。
+   */
+  agentModel?: string | null;
   createdAt: string;
   updatedAt: string;
 }

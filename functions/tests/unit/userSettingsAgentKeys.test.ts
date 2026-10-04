@@ -59,16 +59,42 @@ describe('Functions user settings agent keys', () => {
     await expect(service.getSettings('alice')).resolves.toEqual(cleared);
   });
 
-  it('saves and trims agentModel and agentSubagentModel', async () => {
+  it('saves and trims agentModel (normalized to a qualified id) and agentSubagentModel', async () => {
     const updated = await service.updateSettings('alice', {
-      agentModel: '  anthropic/claude-sonnet-4  ',
+      agentModel: '  kimi-k2.6  ',
       agentSubagentModel: 'openai/gpt-5.6',
     });
     expect(updated.settings).toEqual({
-      agentModel: 'anthropic/claude-sonnet-4',
+      agentModel: 'opencode-go/kimi-k2.6',
       agentSubagentModel: 'openai/gpt-5.6',
     });
     await expect(service.getSettings('alice')).resolves.toEqual(updated);
+  });
+
+  it('accepts an already-qualified agentModel and keeps the qualified form', async () => {
+    const updated = await service.updateSettings('alice', {
+      agentModel: 'opencode-go/grok-4.6',
+    });
+    expect(updated.settings).toEqual({ agentModel: 'opencode-go/grok-4.6' });
+  });
+
+  it('rejects an unknown agentModel with 400', async () => {
+    await expect(
+      service.updateSettings('alice', { agentModel: 'anthropic/claude-sonnet-4' }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(
+      service.updateSettings('alice', { agentModel: 'totally-unknown' }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it('normalizes bare ids and rejects out-of-catalog refs via normalizeAgentModel', () => {
+    expect(service.normalizeAgentModel('kimi-k2.6')).toBe('opencode-go/kimi-k2.6');
+    expect(service.normalizeAgentModel('opencode-go/kimi-k2.6')).toBe(
+      'opencode-go/kimi-k2.6',
+    );
+    expect(service.normalizeAgentModel('anthropic/claude-sonnet-4')).toBeNull();
+    expect(service.normalizeAgentModel('unknown-model')).toBeNull();
+    expect(service.normalizeAgentModel('')).toBeNull();
   });
 
   it('excludes blank agent model names from responses', async () => {
@@ -83,12 +109,12 @@ describe('Functions user settings agent keys', () => {
     await service.updateSettings('alice', { displayName: 'Alice' });
     const updated = await service.updateSettings('alice', {
       agentApprovalLevel: 'auto',
-      agentModel: 'anthropic/claude-sonnet-4',
+      agentModel: 'kimi-k2.6',
     });
     expect(updated.settings).toEqual({
       displayName: 'Alice',
       agentApprovalLevel: 'auto',
-      agentModel: 'anthropic/claude-sonnet-4',
+      agentModel: 'opencode-go/kimi-k2.6',
     });
   });
 
@@ -156,7 +182,7 @@ describe('Functions user settings agent keys (handler validation)', () => {
     const saved = await userSettingsHandler(
       patch({
         agentApprovalLevel: 'dangerous-only',
-        agentModel: 'anthropic/claude-sonnet-4',
+        agentModel: 'kimi-k2.6',
         agentSubagentModel: 'openai/gpt-5.6',
       }),
       {} as never,
@@ -166,11 +192,19 @@ describe('Functions user settings agent keys (handler validation)', () => {
       expect.objectContaining({
         settings: {
           agentApprovalLevel: 'dangerous-only',
-          agentModel: 'anthropic/claude-sonnet-4',
+          agentModel: 'opencode-go/kimi-k2.6',
           agentSubagentModel: 'openai/gpt-5.6',
         },
       }),
     );
+  });
+
+  it('rejects an unknown agentModel with 400 via the handler', async () => {
+    const { userSettingsHandler } = require('../../src/functions/users');
+    for (const value of ['anthropic/claude-sonnet-4', 'totally-unknown']) {
+      const response = await userSettingsHandler(patch({ agentModel: value }), {} as never);
+      expect(response.status).toBe(400);
+    }
   });
 
   it.each([['agentModel', 123], ['agentSubagentModel', ['x']]])(

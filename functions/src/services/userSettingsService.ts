@@ -1,5 +1,6 @@
 import { AgentApprovalLevel, UserSettings, UserSettingsDocument, UserSettingsResponse } from '../types';
 import { getUserSettingsContainer } from '../db';
+import { hasModel } from '../config/modelCatalog';
 import { AppError } from '../middleware/errorHandler';
 
 let useMemory = false;
@@ -39,6 +40,23 @@ export function isAgentApprovalLevel(value: unknown): value is AgentApprovalLeve
     typeof value === 'string' &&
     (AGENT_APPROVAL_LEVELS as readonly string[]).includes(value)
   );
+}
+
+const AGENT_MODEL_PROVIDER = 'opencode-go';
+
+/**
+ * agentModel を gateway 実行契約の `opencode-go/<modelId>` 形式に正規化する。
+ * 裸ID・qualified いずれも受け付け、カタログ照合は bare 部分で行う。
+ * 空文字・カタログ外・他providerは null（未知IDはハンドラで 400 にする）。
+ */
+export function normalizeAgentModel(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const slash = trimmed.indexOf('/');
+  const bare = slash === -1 ? trimmed : trimmed.slice(slash + 1);
+  if (slash !== -1 && trimmed.slice(0, slash) !== AGENT_MODEL_PROVIDER) return null;
+  if (!hasModel(bare)) return null;
+  return `${AGENT_MODEL_PROVIDER}/${bare}`;
 }
 
 // Blank/out-of-domain values are excluded from responses without rewriting
@@ -128,12 +146,21 @@ export async function updateSettings(
     }
   }
 
+  // agentModel はカタログ検証して `opencode-go/<id>` に正規化する。未知IDは 400。
   if (hasAgentModel) {
     const value = partial.agentModel;
-    if (value === null || value === '') {
+    if (value === null) {
       delete settings.agentModel;
     } else if (typeof value === 'string') {
-      settings.agentModel = value.trim();
+      if (value.trim() === '') {
+        delete settings.agentModel;
+      } else {
+        const normalized = normalizeAgentModel(value);
+        if (normalized === null) {
+          throw new AppError(400, 'agentModel must be a known model');
+        }
+        settings.agentModel = normalized;
+      }
     }
   }
 

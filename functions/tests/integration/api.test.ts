@@ -4,6 +4,7 @@ import {
 import { healthHandler } from '../../src/functions/health';
 import { modelsHandler } from '../../src/functions/models';
 import {
+  agentModelHandler,
   conversationHandler,
   conversationsHandler,
   titleAutoHandler,
@@ -141,7 +142,10 @@ describe('Functions API contract', () => {
     );
     expect(patched.status).toBe(200);
     expect(patched.jsonBody).toEqual(
-      expect.objectContaining({ userId: 'dev-user', settings: { agentModel: 'glm-5.2' } }),
+      expect.objectContaining({
+        userId: 'dev-user',
+        settings: { agentModel: 'opencode-go/glm-5.2' },
+      }),
     );
 
     const fetched = await userSettingsHandler(
@@ -207,7 +211,7 @@ describe('Functions API contract', () => {
       expect(alice.jsonBody).toEqual(
         expect.objectContaining({
           userId: 'alice',
-          settings: { agentModel: 'kimi-k2.6' },
+          settings: { agentModel: 'opencode-go/kimi-k2.6' },
         }),
       );
 
@@ -270,6 +274,65 @@ describe('Functions API contract', () => {
       {} as never,
     );
     expect(deleted.status).toBe(204);
+  });
+
+  it('accepts, updates, clears, and rejects a conversation agent model override (P1-013)', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', {
+        title: 'Model override',
+        agentModel: 'grok-4.6',
+      }),
+      {} as never,
+    );
+    expect(created.status).toBe(201);
+    expect(created.jsonBody).toEqual(
+      expect.objectContaining({ agentModel: 'opencode-go/grok-4.6' }),
+    );
+    const id = (created.jsonBody as { id: string }).id;
+
+    const updated = await agentModelHandler(
+      request('PUT', `/api/conversations/${id}/agent-model`, {
+        agentModel: 'opencode-go/kimi-k2.6',
+      }),
+      {} as never,
+    );
+    expect(updated.status).toBe(200);
+    expect(updated.jsonBody).toEqual(
+      expect.objectContaining({ agentModel: 'opencode-go/kimi-k2.6' }),
+    );
+
+    const cleared = await agentModelHandler(
+      request('PUT', `/api/conversations/${id}/agent-model`, { agentModel: null }),
+      {} as never,
+    );
+    expect(cleared.status).toBe(200);
+    expect(cleared.jsonBody).not.toHaveProperty('agentModel');
+
+    const unknown = await agentModelHandler(
+      request('PUT', `/api/conversations/${id}/agent-model`, {
+        agentModel: 'anthropic/claude-sonnet-4',
+      }),
+      {} as never,
+    );
+    expect(unknown.status).toBe(400);
+
+    const missing = await agentModelHandler(
+      request('PUT', '/api/conversations/missing/agent-model', { agentModel: 'kimi-k2.6' }),
+      {} as never,
+    );
+    expect(missing.status).toBe(404);
+  });
+
+  it.each([
+    ['an unknown model', 'not-a-model'],
+    ['a non-string model', 123],
+  ])('rejects %s when creating a conversation with an agent model', async (_case, agentModel) => {
+    const response = await conversationsHandler(
+      request('POST', '/api/conversations', { title: 'Bad model', agentModel }),
+      {} as never,
+    );
+
+    expect(response.status).toBe(400);
   });
 
   it('creates agent-mode conversations with the default model, ignoring client model and agentMode', async () => {

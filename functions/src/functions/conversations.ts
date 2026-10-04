@@ -7,6 +7,7 @@ import {
 import { authenticateRequest } from '../middleware/auth';
 import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/conversationService';
+import { normalizeAgentModel } from '../services/userSettingsService';
 import { DEFAULT_MODEL_ID } from '../config/modelCatalog';
 import { generateTitle, sanitizeGeneratedTitle } from '../services/opencodeGo';
 import {
@@ -21,6 +22,24 @@ function getConversationId(request: HttpRequest): string {
   return id;
 }
 
+/**
+ * リクエスト本文の agentModel を `opencode-go/<modelId>` に正規化する（P1-013）。
+ * null/未指定/空文字は null（既定に戻す）。未知ID・他provider・非文字列は 400。
+ */
+function resolveAgentModel(body: Record<string, unknown>): string | null {
+  const raw = body.agentModel;
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== 'string') {
+    throw new AppError(400, 'agentModel must be a string');
+  }
+  if (raw.trim() === '') return null;
+  const normalized = normalizeAgentModel(raw);
+  if (normalized === null) {
+    throw new AppError(400, 'agentModel must be a known model');
+  }
+  return normalized;
+}
+
 export async function conversationsHandler(
   request: HttpRequest,
   _context: InvocationContext,
@@ -33,10 +52,12 @@ export async function conversationsHandler(
 
     const body = await readJsonBody(request);
     // 新規会話は常に Agent モード固定。model はクライアント値を受けず既定値で作成する（FR-006）。
+    // agentModel（会話単位の実行モデル）だけはクライアント指定を受け、カタログ検証する（P1-013）。
     const conversation = await service.createConversation(
       getOptionalString(body, 'title'),
       DEFAULT_MODEL_ID,
       userId,
+      resolveAgentModel(body),
     );
     return { status: 201, jsonBody: conversation };
   } catch (error) {
@@ -107,6 +128,25 @@ export async function titleHandler(
   }
 }
 
+export async function agentModelHandler(
+  request: HttpRequest,
+  _context: InvocationContext,
+): Promise<HttpResponseInit> {
+  try {
+    const userId = await authenticateRequest(request);
+    const body = await readJsonBody(request);
+    const updated = await service.updateConversationAgentModel(
+      getConversationId(request),
+      resolveAgentModel(body),
+      userId,
+    );
+    if (!updated) throw new AppError(404, 'Conversation not found');
+    return { status: 200, jsonBody: updated };
+  } catch (error) {
+    return toHttpResponse(error);
+  }
+}
+
 export async function titleAutoHandler(
   request: HttpRequest,
   _context: InvocationContext,
@@ -157,6 +197,13 @@ app.http('conversation-title', {
   authLevel: 'anonymous',
   route: 'conversations/{id}/title',
   handler: titleHandler,
+});
+
+app.http('conversation-agent-model', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  route: 'conversations/{id}/agent-model',
+  handler: agentModelHandler,
 });
 
 app.http('conversation-title-auto', {

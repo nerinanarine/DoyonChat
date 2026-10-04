@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, LogOut } from 'lucide-react';
-import { AgentApprovalLevel, UserSettings, SettingsStatus } from '../../types';
+import { AgentApprovalLevel, ModelInfo, UserSettings, SettingsStatus } from '../../types';
 
 const APPROVAL_LEVEL_LABELS: Record<AgentApprovalLevel, string> = {
   auto: '自動（確認なし）',
@@ -18,6 +18,7 @@ const APPROVAL_LEVEL_OPTIONS: Array<{ value: AgentApprovalLevel | ''; label: str
 interface SettingsMenuProps {
   settings: UserSettings;
   settingsStatus: SettingsStatus;
+  models: ModelInfo[];
   onChangeDisplayName: (name: string | null) => Promise<void>;
   onChangeAgentApprovalLevel?: (level: AgentApprovalLevel | null) => Promise<void>;
   onChangeAgentModel?: (modelId: string | null) => Promise<void>;
@@ -25,9 +26,12 @@ interface SettingsMenuProps {
   onLogout: () => void;
 }
 
+const AGENT_MODEL_PROVIDER = 'opencode-go';
+
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
   settings,
   settingsStatus,
+  models,
   onChangeDisplayName,
   onChangeAgentApprovalLevel,
   onChangeAgentModel,
@@ -37,7 +41,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState(settings.displayName ?? '');
-  const [agentModelDraft, setAgentModelDraft] = useState(settings.agentModel ?? '');
   const [agentSubagentModelDraft, setAgentSubagentModelDraft] = useState(
     settings.agentSubagentModel ?? '',
   );
@@ -45,10 +48,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   useEffect(() => {
     setDisplayNameDraft(settings.displayName ?? '');
   }, [settings.displayName]);
-
-  useEffect(() => {
-    setAgentModelDraft(settings.agentModel ?? '');
-  }, [settings.agentModel]);
 
   useEffect(() => {
     setAgentSubagentModelDraft(settings.agentSubagentModel ?? '');
@@ -73,6 +72,18 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     setSaving(true);
     try {
       await onChangeAgentApprovalLevel(level);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAgentModelChange = async (value: string) => {
+    if (!onChangeAgentModel) return;
+    const next = value === '' ? null : value;
+    if ((next ?? '') === (settings.agentModel ?? '')) return;
+    setSaving(true);
+    try {
+      await onChangeAgentModel(next);
     } finally {
       setSaving(false);
     }
@@ -159,28 +170,21 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
             </select>
 
             <div className="mb-1 mt-3 text-sm text-gray-700">エージェントのモデル</div>
-            <div className="mb-1 text-xs text-gray-500">エージェント実行に使用するモデルIDです。</div>
-            <input
-              type="text"
-              value={agentModelDraft}
-              onChange={(event) => setAgentModelDraft(event.target.value)}
-              onBlur={() =>
-                onChangeAgentModel &&
-                void saveAgentModel(agentModelDraft, settings.agentModel, onChangeAgentModel)
-              }
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  if (onChangeAgentModel) {
-                    void saveAgentModel(agentModelDraft, settings.agentModel, onChangeAgentModel);
-                  }
-                }
-              }}
-              placeholder="未設定（pi の既定）"
+            <div className="mb-1 text-xs text-gray-500">エージェント実行に使用するモデルです。</div>
+            <select
+              value={settings.agentModel ?? ''}
+              onChange={(event) => void handleAgentModelChange(event.target.value)}
               disabled={!onChangeAgentModel || settingsUnavailable || saving}
               className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-400"
               aria-label="エージェントのモデル"
-            />
+            >
+              <option value="">未設定（pi の既定）</option>
+              {models.map((model) => (
+                <option key={model.id} value={`${AGENT_MODEL_PROVIDER}/${model.id}`}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
 
             <div className="mb-1 mt-3 text-sm text-gray-700">サブエージェントのモデル</div>
             <div className="mb-1 text-xs text-gray-500">pi-subagents のデフォルト・サブエージェントのモデルIDです。</div>

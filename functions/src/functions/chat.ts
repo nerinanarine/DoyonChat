@@ -69,7 +69,14 @@ export async function chatHandler(
     }
 
     // エージェントモード会話は gateway 経由（画像非対応・kill switch・中継はすべてこちら）。
-    return await handleAgentChat(conversationId, message, imageBase64, userMessageId, userId);
+    return await handleAgentChat(
+      conversationId,
+      message,
+      imageBase64,
+      userMessageId,
+      userId,
+      conversation.agentModel,
+    );
   } catch (error) {
     return toHttpResponse(error);
   }
@@ -92,6 +99,7 @@ async function handleAgentChat(
   imageBase64: string | undefined,
   userMessageId: string | undefined,
   userId: string,
+  conversationAgentModel?: string | null,
 ): Promise<HttpResponseInit> {
   if (imageBase64) {
     throw new AppError(400, 'Images are not supported in agent mode');
@@ -102,12 +110,15 @@ async function handleAgentChat(
   assertAgentEnabled(config); // AGENT_ENABLED=false → 404（既存エージェントAPIと同じ挙動）
 
   const { settings } = await getSettings(userId);
+  // 実行モデルの解決優先順位（P1-013 FR-006）: 会話override ＞ 設定 agentModel ＞ 未設定。
+  // 未設定のときは payload.model を省略し、gateway 既定に委ねる。
+  const resolvedModel = conversationAgentModel ?? settings.agentModel;
   const payload: GatewayPromptPayload = {
     message,
     userId,
     conversationId,
     approvalLevel: settings.agentApprovalLevel ?? 'dangerous-only',
-    ...(settings.agentModel ? { model: settings.agentModel } : {}),
+    ...(resolvedModel ? { model: resolvedModel } : {}),
     ...(settings.agentSubagentModel ? { subagentModel: settings.agentSubagentModel } : {}),
   };
 
@@ -179,7 +190,7 @@ export async function* createAgentResponseStream(
       role: 'assistant',
       content,
     };
-    // エージェント実行モデル（settings.agentModel）を記録する。未設定時は省略。
+    // エージェント実行モデル（解決済み payload.model）を記録する。未設定時は省略。
     if (payload.model) assistantMessage.model = payload.model;
     if (reasoning) {
       assistantMessage.reasoning = truncateReasoning(reasoning);

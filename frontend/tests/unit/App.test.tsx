@@ -17,7 +17,10 @@ vi.mock('../../src/hooks/useConversations', () => ({
   NEW_CHAT_TITLE: 'New Chat',
 }));
 vi.mock('../../src/hooks/useSettings', () => ({ useSettings: vi.fn() }));
-vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn() }));
+vi.mock('../../src/services/chatApi', () => ({
+  fetchModels: vi.fn(),
+  updateConversationAgentModel: vi.fn(),
+}));
 
 const testModel: ModelInfo = {
   id: 'kimi-k2.6',
@@ -313,5 +316,89 @@ describe('App agent startup loading (P2-018)', () => {
     expect(
       await screen.findByText('エージェントサービスを起動しています...'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('App conversation agent model override (P1-013)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    create.mockResolvedValue(createdConversation);
+    autoTitle.mockResolvedValue(undefined);
+    isRenamed.mockReturnValue(false);
+    vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+  });
+
+  it('persists the override and keeps it across conversation switches', async () => {
+    vi.mocked(api.updateConversationAgentModel).mockResolvedValue({
+      ...createdConversation,
+      id: 'conv-a',
+      agentModel: 'opencode-go/kimi-k2.6',
+    });
+    mockHooks([
+      { ...createdConversation, id: 'conv-a', title: '会話A' },
+      { ...createdConversation, id: 'conv-b', title: '会話B' },
+    ]);
+    render(<App />);
+
+    fireEvent.click(
+      (await screen.findByRole('button', { name: '会話A' })).parentElement as HTMLElement,
+    );
+    const select = await screen.findByRole('combobox', { name: '会話のモデル' });
+    fireEvent.change(select, { target: { value: 'opencode-go/kimi-k2.6' } });
+
+    await waitFor(() =>
+      expect(api.updateConversationAgentModel).toHaveBeenCalledWith(
+        'conv-a',
+        'opencode-go/kimi-k2.6',
+      ),
+    );
+    await waitFor(() => expect(select).toHaveValue('opencode-go/kimi-k2.6'));
+
+    // 別の会話へ切替 → overrideなしで既定表示
+    fireEvent.click(
+      (screen.getByRole('button', { name: '会話B' })).parentElement as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '会話のモデル' })).toHaveValue(''),
+    );
+
+    // 会話Aへ戻る → override維持
+    fireEvent.click(
+      (screen.getByRole('button', { name: '会話A' })).parentElement as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '会話のモデル' })).toHaveValue(
+        'opencode-go/kimi-k2.6',
+      ),
+    );
+  });
+
+  it('clears the override back to the default', async () => {
+    mockHooks([
+      {
+        ...createdConversation,
+        id: 'conv-a',
+        title: '会話A',
+        agentModel: 'opencode-go/kimi-k2.6',
+      },
+    ]);
+    vi.mocked(api.updateConversationAgentModel).mockResolvedValue({
+      ...createdConversation,
+      id: 'conv-a',
+      agentModel: null,
+    });
+    render(<App />);
+
+    fireEvent.click(
+      (await screen.findByRole('button', { name: '会話A' })).parentElement as HTMLElement,
+    );
+    const select = await screen.findByRole('combobox', { name: '会話のモデル' });
+    await waitFor(() => expect(select).toHaveValue('opencode-go/kimi-k2.6'));
+
+    fireEvent.change(select, { target: { value: '' } });
+    await waitFor(() =>
+      expect(api.updateConversationAgentModel).toHaveBeenCalledWith('conv-a', null),
+    );
+    await waitFor(() => expect(select).toHaveValue(''));
   });
 });

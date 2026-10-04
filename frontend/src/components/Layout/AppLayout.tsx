@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import {
   AgentApprovalLevel,
   Conversation,
+  ModelInfo,
   UserSettings,
   SettingsStatus,
 } from '../../types';
@@ -15,10 +16,15 @@ interface AppLayoutProps {
   activeConversationId: string | null;
   settings: UserSettings;
   settingsStatus: SettingsStatus;
+  models: ModelInfo[];
+  /** アクティブ会話の実行モデルoverride（`opencode-go/<id>` または null）。未設定は設定値を使う。 */
+  activeConversationAgentModel?: string | null;
   onChangeDisplayName: (name: string | null) => Promise<void>;
   onChangeAgentApprovalLevel?: (level: AgentApprovalLevel | null) => Promise<void>;
   onChangeAgentModel?: (modelId: string | null) => Promise<void>;
   onChangeAgentSubagentModel?: (modelId: string | null) => Promise<void>;
+  /** アクティブ会話の実行モデルを変更する（null で既定に戻す・P1-013 FR-004/005）。 */
+  onChangeConversationAgentModel?: (modelId: string | null) => Promise<void>;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => Promise<void>;
@@ -26,15 +32,20 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
+const AGENT_MODEL_PROVIDER = 'opencode-go';
+
 const AppLayout: React.FC<AppLayoutProps> = ({
   conversations,
   activeConversationId,
   settings,
   settingsStatus,
+  models,
+  activeConversationAgentModel,
   onChangeDisplayName,
   onChangeAgentApprovalLevel,
   onChangeAgentModel,
   onChangeAgentSubagentModel,
+  onChangeConversationAgentModel,
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
@@ -49,6 +60,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 
   const handleLogout = () => {
     instance.logoutRedirect();
+  };
+
+  // 実効値: 会話override ＞ 設定 agentModel ＞ 未設定。
+  const effectiveAgentModel = activeConversationAgentModel ?? settings.agentModel ?? '';
+
+  const handleConversationAgentModelChange = (value: string) => {
+    if (!onChangeConversationAgentModel) return;
+    void onChangeConversationAgentModel(value === '' ? null : value);
   };
 
   return (
@@ -114,10 +133,27 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <select
+              value={effectiveAgentModel}
+              onChange={(event) => handleConversationAgentModelChange(event.target.value)}
+              disabled={
+                !onChangeConversationAgentModel || !activeConversationId || models.length === 0
+              }
+              aria-label="会話のモデル"
+              className="max-w-[12rem] border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">既定に戻す</option>
+              {models.map((model) => (
+                <option key={model.id} value={`${AGENT_MODEL_PROVIDER}/${model.id}`}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
             {authEnabled && (
               <SettingsMenu
                 settings={settings}
                 settingsStatus={settingsStatus}
+                models={models}
                 onChangeDisplayName={onChangeDisplayName}
                 onChangeAgentApprovalLevel={onChangeAgentApprovalLevel}
                 onChangeAgentModel={onChangeAgentModel}

@@ -35,6 +35,10 @@ function App() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
+  // 会話単位のAgent実行モデルoverride（P1-013）。キーは会話ID、値は `opencode-go/<id>` または null。
+  const [conversationAgentModels, setConversationAgentModels] = useState<
+    Record<string, string | null>
+  >({});
 
   const {
     messages,
@@ -165,9 +169,29 @@ function App() {
     [updateSettings],
   );
 
+  // アクティブ会話の実行モデルoverrideを永続化し、ローカル状態へ反映する（P1-013 FR-005）。
+  const handleChangeConversationAgentModel = useCallback(
+    async (modelId: string | null) => {
+      if (!activeConversationId) return;
+      const updated = await api.updateConversationAgentModel(activeConversationId, modelId);
+      setConversationAgentModels((prev) => ({
+        ...prev,
+        [activeConversationId]: updated.agentModel ?? null,
+      }));
+    },
+    [activeConversationId],
+  );
+
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
+
+  // 実効override: ローカル変更を優先し、未変更ならサーバー値を使う。
+  const activeConversationAgentModel =
+    activeConversationId &&
+    Object.prototype.hasOwnProperty.call(conversationAgentModels, activeConversationId)
+      ? conversationAgentModels[activeConversationId]
+      : activeConversation?.agentModel ?? null;
 
   if (authEnabled && !isAuthenticated) {
     return <LoginPage />;
@@ -203,10 +227,13 @@ function App() {
       activeConversationId={activeConversationId}
       settings={settings}
       settingsStatus={settingsStatus}
+      models={models}
+      activeConversationAgentModel={activeConversationAgentModel}
       onChangeDisplayName={handleChangeDisplayName}
       onChangeAgentApprovalLevel={handleChangeAgentApprovalLevel}
       onChangeAgentModel={handleChangeAgentModel}
       onChangeAgentSubagentModel={handleChangeAgentSubagentModel}
+      onChangeConversationAgentModel={handleChangeConversationAgentModel}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}
