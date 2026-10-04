@@ -103,6 +103,28 @@ describe('AppLayout settings menu', () => {
 
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
+
+  it('opens the AGENTS.md editor from the settings menu when wired (P2-020)', () => {
+    vi.stubEnv('VITE_AUTH_ENABLED', 'true');
+    const onOpenAgentsMd = vi.fn();
+    render(
+      <AppLayout {...props} conversations={[conversation]} onOpenAgentsMd={onOpenAgentsMd} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+    fireEvent.click(screen.getByRole('button', { name: 'AGENTS.md を編集' }));
+
+    expect(onOpenAgentsMd).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the AGENTS.md entry when not wired', () => {
+    vi.stubEnv('VITE_AUTH_ENABLED', 'true');
+    render(<AppLayout {...props} conversations={[conversation]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+
+    expect(screen.queryByRole('button', { name: 'AGENTS.md を編集' })).not.toBeInTheDocument();
+  });
 });
 
 describe('AppLayout agent mode (toggle removed)', () => {

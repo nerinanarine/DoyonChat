@@ -6,6 +6,7 @@ import {
   assertSafeId,
   deleteSessionFile,
   ensureArtifactsUserDir,
+  rematerializeUserAgentsMd,
   sessionFilePath,
   userConfigDir,
   writeSubagentExtensionConfig,
@@ -150,6 +151,53 @@ describe('writeUserAgentSettings', () => {
     const document = JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf8'));
     expect(document.subagents?.agentOverrides).toBeUndefined();
     expect(document.packages).toEqual([]);
+  });
+});
+
+describe('rematerializeUserAgentsMd (P2-020)', () => {
+  it('copies the share AGENTS.md into userConfigDir', () => {
+    const dir = tempDir();
+    const shareFile = path.join(dir, 'artifacts', 'u1', 'config', 'AGENTS.md');
+    fs.mkdirSync(path.dirname(shareFile), { recursive: true });
+    fs.writeFileSync(shareFile, '# instructions');
+
+    rematerializeUserAgentsMd(dir, 'u1');
+
+    expect(fs.readFileSync(path.join(userConfigDir(dir, 'u1'), 'AGENTS.md'), 'utf8')).toBe(
+      '# instructions',
+    );
+  });
+
+  it('overwrites a stale local copy with the latest share content', () => {
+    const dir = tempDir();
+    const shareFile = path.join(dir, 'artifacts', 'u1', 'config', 'AGENTS.md');
+    fs.mkdirSync(path.dirname(shareFile), { recursive: true });
+    fs.writeFileSync(shareFile, 'v1');
+    rematerializeUserAgentsMd(dir, 'u1');
+    fs.writeFileSync(shareFile, 'v2');
+
+    rematerializeUserAgentsMd(dir, 'u1');
+
+    expect(fs.readFileSync(path.join(userConfigDir(dir, 'u1'), 'AGENTS.md'), 'utf8')).toBe('v2');
+  });
+
+  it('deletes the local copy when the share file is absent', () => {
+    const dir = tempDir();
+    const localFile = path.join(userConfigDir(dir, 'u1'), 'AGENTS.md');
+    fs.mkdirSync(path.dirname(localFile), { recursive: true });
+    fs.writeFileSync(localFile, 'stale');
+
+    rematerializeUserAgentsMd(dir, 'u1');
+
+    expect(fs.existsSync(localFile)).toBe(false);
+  });
+
+  it('is a no-op when neither copy exists', () => {
+    expect(() => rematerializeUserAgentsMd(tempDir(), 'u1')).not.toThrow();
+  });
+
+  it('rejects unsafe user ids', () => {
+    expect(() => rematerializeUserAgentsMd(tempDir(), '../x')).toThrow('invalid userId');
   });
 });
 

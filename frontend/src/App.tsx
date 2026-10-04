@@ -7,6 +7,7 @@ import AppLayout from './components/Layout/AppLayout';
 import ChatMessageList from './components/Chat/ChatMessageList';
 import ChatInput from './components/Chat/ChatInput';
 import ArtifactDownload from './components/Chat/ArtifactDownload';
+import AgentsMdEditor from './components/Settings/AgentsMdEditor';
 import LoginPage from './components/Auth/LoginPage';
 import LoadingState from './components/Common/LoadingState';
 import ErrorMessage from './components/Common/ErrorMessage';
@@ -35,6 +36,8 @@ function App() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
+  // AGENTS.md 編集画面の表示状態（P2-020 US1）。開いたときのみ取得・マウントする。
+  const [agentsMdOpen, setAgentsMdOpen] = useState(false);
   // 会話単位のAgent実行モデルoverride（P1-013）。キーは会話ID、値は `opencode-go/<id>` または null。
   const [conversationAgentModels, setConversationAgentModels] = useState<
     Record<string, string | null>
@@ -234,6 +237,7 @@ function App() {
       onChangeAgentModel={handleChangeAgentModel}
       onChangeAgentSubagentModel={handleChangeAgentSubagentModel}
       onChangeConversationAgentModel={handleChangeConversationAgentModel}
+      onOpenAgentsMd={() => setAgentsMdOpen(true)}
       onSelectConversation={handleSelect}
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}
@@ -276,6 +280,7 @@ function App() {
         disabled={convLoading || messagesLoading}
       />
       <ArtifactDownload userId={userId} />
+      {agentsMdOpen && <AgentsMdEditor onClose={() => setAgentsMdOpen(false)} />}
     </AppLayout>
   );
 }

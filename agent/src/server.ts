@@ -12,6 +12,7 @@ import { createVerifier, extractBearer, loadAuthConfig, VerifyAuth } from './aut
 import {
   assertSafeId,
   deleteSessionFile,
+  rematerializeUserAgentsMd,
   sessionFilePath,
   userConfigDir,
   UserAgentSettings,
@@ -381,6 +382,9 @@ async function handlePrompt(
         writeSubagentExtensionConfig(config.gateway.dataDir, safeUserId);
       }
       runEnv.PI_CODING_AGENT_DIR = userConfigDir(config.gateway.dataDir, safeUserId);
+      // 每プロンプトで共有 AGENTS.md を userConfigDir へ再配置する（P2-020 FR-004）。
+      // pi は PI_CODING_AGENT_DIR 配下の AGENTS.md を global context として読む。
+      rematerializeUserAgentsMd(config.gateway.dataDir, safeUserId);
     } catch {
       writeJson(res, 400, { error: { code: 'network' } });
       return;

@@ -148,6 +148,34 @@ export function writeSubagentExtensionConfig(
   return file;
 }
 
+/**
+ * 共有（自マウント）の `artifacts/{userId}/config/AGENTS.md` を `userConfigDir/AGENTS.md` へ
+ * atomic write で再配置する（P2-020 FR-004）。pi は PI_CODING_AGENT_DIR 配下の AGENTS.md を
+ * global context として読む（Phase 0 実機確認済み）。共有に未設定の場合は配置を省略せず
+ * userConfigDir の古いコピーを削除する（stale 残存防止）。
+ */
+export function rematerializeUserAgentsMd(dataDir: string, userId: string): void {
+  const shareFile = path.join(artifactsUserDir(dataDir, userId), 'config', 'AGENTS.md');
+  const localFile = path.join(userConfigDir(dataDir, userId), 'AGENTS.md');
+  let content: string;
+  try {
+    content = fs.readFileSync(shareFile, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    try {
+      fs.unlinkSync(localFile);
+    } catch (unlinkError) {
+      if ((unlinkError as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkError;
+    }
+    return;
+  }
+  fs.mkdirSync(path.dirname(localFile), { recursive: true });
+  // 原子書込（temp+rename）。中断時の半端ファイルで古いコピーを壊さない。
+  const tmpFile = `${localFile}.tmp-${process.pid}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+  fs.writeFileSync(tmpFile, content);
+  fs.renameSync(tmpFile, localFile);
+}
+
 /** 会話削除時のセッション破棄。存在しなくても成功扱い。 */
 export function deleteSessionFile(dataDir: string, userId: string, conversationId: string): boolean {
   const file = sessionFilePath(dataDir, userId, conversationId);

@@ -5,6 +5,7 @@ import {
   Conversation,
   Message,
   ModelInfo,
+  UserAgentsMdResponse,
   UserSettingsResponse,
 } from '../types';
 import { get, post, del, put, patch, getToken, ApiError } from './api';
@@ -65,6 +66,24 @@ export async function updateUserSettings(
   },
 ): Promise<UserSettingsResponse> {
   return patch<UserSettingsResponse>('/users/me/settings', partial);
+}
+
+/**
+ * 自分の AGENTS.md を取得する（P2-020 FR-001）。
+ * 未設定（404）は null として返し、UIは既定文を表示する。それ以外のエラーは ApiError のまま送出する。
+ */
+export async function fetchAgentsMd(): Promise<UserAgentsMdResponse | null> {
+  try {
+    return await get<UserAgentsMdResponse>('/users/me/agents-md');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/** 自分の AGENTS.md を保存する（P2-020 FR-002）。'' はクリア（共有上のコピーを削除）。 */
+export async function updateAgentsMd(content: string): Promise<UserAgentsMdResponse> {
+  return patch<UserAgentsMdResponse>('/users/me/agents-md', { content });
 }
 
 /**

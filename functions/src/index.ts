@@ -5,6 +5,7 @@ import './functions/conversations';
 import './functions/messages';
 import './functions/chat';
 import './functions/users';
+import './functions/userAgentsMd';
 import './functions/agent';
 import './functions/artifacts';
 

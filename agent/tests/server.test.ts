@@ -14,12 +14,13 @@ async function startServer(
   piArgs: string[],
   promptTimeoutMs = 5000,
   onLog: (message: string) => void = () => undefined,
+  dataDir?: string,
 ): Promise<{ server: Server; url: string }> {
   const config: AgentConfig = {
     host: '127.0.0.1',
     port: 0,
     pi: { piBin: process.execPath, piArgs, promptTimeoutMs, approvalTimeoutMs: 5000 },
-    gateway: { heartbeatMs: 60_000, runTtlMs: 600_000, registryMax: 50, maxRuns: 4, modelScope: [], defaultModel: undefined, toolsDangerous: [], tools: [], dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')), webAccessIndex: null },
+    gateway: { heartbeatMs: 60_000, runTtlMs: 600_000, registryMax: 50, maxRuns: 4, modelScope: [], defaultModel: undefined, toolsDangerous: [], tools: [], dataDir: dataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'gw-data-')), webAccessIndex: null },
   };
   const server = createGatewayServer(config, onLog);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -92,6 +93,28 @@ describe('gateway server (stub pi)', () => {
       expect(text).toContain('"error":{"code":"server"}');
     } finally {
       server.close();
+    }
+  });
+
+  it('re-materializes the share AGENTS.md into userConfigDir per prompt (P2-020)', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gw-agents-'));
+    const shareFile = path.join(dataDir, 'artifacts', 'u1', 'config', 'AGENTS.md');
+    fs.mkdirSync(path.dirname(shareFile), { recursive: true });
+    fs.writeFileSync(shareFile, '# Instructions\nBe concise.');
+    const { server, url } = await startServer([STUB], 5000, () => undefined, dataDir);
+    try {
+      const res = await fetch(`${url}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'hi', userId: 'u1', conversationId: 'c1' }),
+      });
+      expect(res.status).toBe(200);
+      await res.text();
+      const localFile = path.join(dataDir, 'users', 'u1', 'config', 'AGENTS.md');
+      expect(fs.readFileSync(localFile, 'utf8')).toBe('# Instructions\nBe concise.');
+    } finally {
+      server.close();
+      fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
 

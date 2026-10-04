@@ -23,6 +23,8 @@ interface SettingsMenuProps {
   onChangeAgentApprovalLevel?: (level: AgentApprovalLevel | null) => Promise<void>;
   onChangeAgentModel?: (modelId: string | null) => Promise<void>;
   onChangeAgentSubagentModel?: (modelId: string | null) => Promise<void>;
+  /** AGENTS.md 編集画面を開く（P2-020 US1）。未指定時はメニュー項目を出さない。 */
+  onOpenAgentsMd?: () => void;
   onLogout: () => void;
 }
 
@@ -36,6 +38,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   onChangeAgentApprovalLevel,
   onChangeAgentModel,
   onChangeAgentSubagentModel,
+  onOpenAgentsMd,
   onLogout,
 }) => {
   const [open, setOpen] = useState(false);
@@ -211,6 +214,25 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
             />
 
             <div className="mt-4 pt-3 border-t border-gray-100">
+              {onOpenAgentsMd && (
+                <>
+                  <div className="mb-1 text-sm text-gray-700">エージェント指示（AGENTS.md）</div>
+                  <div className="mb-2 text-xs text-gray-500">
+                    あなた専用のエージェント指示を参照・編集します。
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onOpenAgentsMd();
+                    }}
+                    className="w-full px-3 py-2 rounded-lg text-sm text-gray-700 bg-gray-100 hover:bg-gray-200"
+                  >
+                    AGENTS.md を編集
+                  </button>
+                  <div className="mt-4 pt-3 border-t border-gray-100" />
+                </>
+              )}
               <button
                 onClick={onLogout}
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"

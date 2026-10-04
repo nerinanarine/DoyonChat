@@ -82,6 +82,12 @@ export interface UserSettingsResponse {
   updatedAt?: string;
 }
 
+/** ユーザー AGENTS.md の取得・保存レスポンス（P2-020）。未設定の GET は 404 のため fetch 側で null に正規化する。 */
+export interface UserAgentsMdResponse {
+  userId: string;
+  content: string;
+}
+
 export type ModelsStatus = 'loading' | 'error' | 'loaded';
 
 export type SettingsStatus = 'loading' | 'error' | 'loaded';

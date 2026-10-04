@@ -23,6 +23,8 @@ interface AppLayoutProps {
   onChangeAgentApprovalLevel?: (level: AgentApprovalLevel | null) => Promise<void>;
   onChangeAgentModel?: (modelId: string | null) => Promise<void>;
   onChangeAgentSubagentModel?: (modelId: string | null) => Promise<void>;
+  /** AGENTS.md 編集画面を開く（P2-020 US1）。未指定時は設定メニューに項目を出さない。 */
+  onOpenAgentsMd?: () => void;
   /** アクティブ会話の実行モデルを変更する（null で既定に戻す・P1-013 FR-004/005）。 */
   onChangeConversationAgentModel?: (modelId: string | null) => Promise<void>;
   onSelectConversation: (id: string) => void;
@@ -45,6 +47,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onChangeAgentApprovalLevel,
   onChangeAgentModel,
   onChangeAgentSubagentModel,
+  onOpenAgentsMd,
   onChangeConversationAgentModel,
   onSelectConversation,
   onDeleteConversation,
@@ -158,6 +161,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 onChangeAgentApprovalLevel={onChangeAgentApprovalLevel}
                 onChangeAgentModel={onChangeAgentModel}
                 onChangeAgentSubagentModel={onChangeAgentSubagentModel}
+                onOpenAgentsMd={onOpenAgentsMd}
                 onLogout={handleLogout}
               />
             )}

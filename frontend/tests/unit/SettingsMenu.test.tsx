@@ -173,3 +173,21 @@ describe('SettingsMenu agent settings', () => {
     );
   });
 });
+
+describe('SettingsMenu AGENTS.md entry (P2-020)', () => {
+  it('opens the AGENTS.md editor from the menu', () => {
+    const onOpenAgentsMd = vi.fn();
+    render(<SettingsMenu {...props} onOpenAgentsMd={onOpenAgentsMd} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+    fireEvent.click(screen.getByRole('button', { name: 'AGENTS.md を編集' }));
+
+    expect(onOpenAgentsMd).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the AGENTS.md entry when no handler is provided', () => {
+    openMenu();
+
+    expect(screen.queryByRole('button', { name: 'AGENTS.md を編集' })).not.toBeInTheDocument();
+  });
+});
