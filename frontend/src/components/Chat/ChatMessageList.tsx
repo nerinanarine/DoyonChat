@@ -12,6 +12,7 @@ import AgentProgress from './AgentProgress';
 import ToolCallConfirmation from './ToolCallConfirmation';
 import MarkdownRenderer from '../Markdown/MarkdownRenderer';
 import LoadingState from '../Common/LoadingState';
+import { modelDisplayName } from './modelDisplayName';
 import { Bot } from 'lucide-react';
 
 interface ChatMessageListProps {
@@ -83,7 +84,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold mb-1 text-gray-900">
-              {models.find((m) => m.id === currentModel)?.name || currentModel || 'AI'}
+              {modelDisplayName(models, currentModel)}
             </div>
             <AgentProgress events={agentProgress} />
             {approvalRequest && !approvalRequest.expired && onRespondApproval && (

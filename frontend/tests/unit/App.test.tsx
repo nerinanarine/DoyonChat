@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
 import { useChat } from '../../src/hooks/useChat';
 import { useConversations } from '../../src/hooks/useConversations';
@@ -34,6 +34,12 @@ const testModel: ModelInfo = {
   bestFor: 'General use',
 };
 
+const grokModel: ModelInfo = {
+  ...testModel,
+  id: 'grok-4.6',
+  name: 'Grok 4.6',
+};
+
 const createdConversation: Conversation = {
   id: 'created-conversation',
   title: 'New Chat',
@@ -49,6 +55,10 @@ const isRenamed = vi.fn();
 const updateSettings = vi.fn().mockResolvedValue(undefined);
 const loadMessages = vi.fn();
 const clearChat = vi.fn();
+
+beforeAll(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+});
 
 function mockHooks(
   conversations: Conversation[] = [],
@@ -400,5 +410,61 @@ describe('App conversation agent model override (P1-013)', () => {
       expect(api.updateConversationAgentModel).toHaveBeenCalledWith('conv-a', null),
     );
     await waitFor(() => expect(select).toHaveValue(''));
+  });
+
+  it('shows the effective override model while the assistant reply is pending', async () => {
+    vi.mocked(api.fetchModels).mockResolvedValue([testModel, grokModel]);
+    mockHooks(
+      [
+        {
+          ...createdConversation,
+          id: 'conv-a',
+          title: '会話A',
+          agentModel: 'opencode-go/grok-4.6',
+        },
+      ],
+      { isStreaming: true },
+    );
+    render(<App />);
+
+    fireEvent.click(
+      (await screen.findByRole('button', { name: '会話A' })).parentElement as HTMLElement,
+    );
+
+    // 応答待ちのあいだも実効モデル（会話override）を表示する（conversation.model ではない）
+    expect(await screen.findByText('Grok 4.6', { selector: 'div' })).toBeInTheDocument();
+    expect(screen.queryByText('Kimi K2.6', { selector: 'div' })).not.toBeInTheDocument();
+  });
+
+  it('shows the settings agentModel while the assistant reply is pending', async () => {
+    vi.mocked(api.fetchModels).mockResolvedValue([testModel, grokModel]);
+    mockHooks([{ ...createdConversation, id: 'conv-a', title: '会話A' }], { isStreaming: true });
+    vi.mocked(useSettings).mockReturnValue({
+      userId: 'test-user',
+      settings: { agentModel: 'opencode-go/grok-4.6' },
+      status: 'loaded',
+      error: null,
+      updateSettings,
+      reload: vi.fn(),
+    });
+    render(<App />);
+
+    fireEvent.click(
+      (await screen.findByRole('button', { name: '会話A' })).parentElement as HTMLElement,
+    );
+
+    expect(await screen.findByText('Grok 4.6', { selector: 'div' })).toBeInTheDocument();
+    expect(screen.queryByText('Kimi K2.6', { selector: 'div' })).not.toBeInTheDocument();
+  });
+
+  it('falls back to conversation.model while pending when no override or settings exist', async () => {
+    mockHooks([{ ...createdConversation, id: 'conv-a', title: '会話A' }], { isStreaming: true });
+    render(<App />);
+
+    fireEvent.click(
+      (await screen.findByRole('button', { name: '会話A' })).parentElement as HTMLElement,
+    );
+
+    expect(await screen.findByText('Kimi K2.6', { selector: 'div' })).toBeInTheDocument();
   });
 });

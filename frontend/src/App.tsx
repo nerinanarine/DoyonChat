@@ -196,6 +196,11 @@ function App() {
       ? conversationAgentModels[activeConversationId]
       : activeConversation?.agentModel ?? null;
 
+  // 表示用の実効モデル: 会話override ＞ 設定 agentModel ＞ conversation.model（P1-013）。
+  // 実行・記録のモデル解決はサーバー側が正であり、ここは表示専用の値。
+  const effectiveModelId =
+    activeConversationAgentModel ?? settings.agentModel ?? activeConversation?.model;
+
   if (authEnabled && !isAuthenticated) {
     return <LoginPage />;
   }
@@ -267,7 +272,7 @@ function App() {
         loading={messagesLoading}
         models={models}
         settings={settings}
-        currentModel={activeConversation?.model}
+        currentModel={effectiveModelId}
         agentProgress={agentProgress}
         approvalRequest={approvalRequest}
         approvalBusy={approvalBusy}

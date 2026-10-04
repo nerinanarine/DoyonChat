@@ -138,6 +138,20 @@ describe('ChatMessageList', () => {
     expect(screen.getByText('GPT-4o')).toBeInTheDocument();
   });
 
+  it('resolves a qualified currentModel to its catalog name while streaming', () => {
+    render(
+      <ChatMessageList
+        messages={[]}
+        streamingText="回答中"
+        streamingReasoning=""
+        isStreaming
+        models={models}
+        currentModel="opencode-go/gpt-4o"
+      />,
+    );
+    expect(screen.getByText('GPT-4o')).toBeInTheDocument();
+  });
+
   it('passes displayName and model fallback to ChatMessage', () => {
     render(
       <ChatMessageList

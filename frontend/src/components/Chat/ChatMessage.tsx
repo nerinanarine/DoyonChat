@@ -2,6 +2,7 @@ import React from 'react';
 import { Message, ModelInfo, UserSettings } from '../../types';
 import MarkdownRenderer from '../Markdown/MarkdownRenderer';
 import CollapsibleReasoning from './CollapsibleReasoning';
+import { modelDisplayName } from './modelDisplayName';
 import { User, Bot } from 'lucide-react';
 
 interface ChatMessageProps {
@@ -14,10 +15,11 @@ interface ChatMessageProps {
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, models = [], settings, currentModel }) => {
   const isUser = message.role === 'user';
 
+  // 記録済みモデルが最優先。なければ表示用の実効モデル（currentModel）へ落とす。
   const effectiveModelId = message.model ?? currentModel;
   const displayName = isUser
     ? settings?.displayName || 'あなた'
-    : models.find((m) => m.id === effectiveModelId)?.name || effectiveModelId || 'AI';
+    : modelDisplayName(models, effectiveModelId);
 
   return (
     <div className={`flex gap-3 px-4 py-5 ${isUser ? 'bg-white' : 'bg-gray-50'}`}>

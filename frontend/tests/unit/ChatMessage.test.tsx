@@ -98,6 +98,29 @@ describe('ChatMessage', () => {
     expect(screen.getByText('Claude 3.5 Sonnet')).toBeInTheDocument();
   });
 
+  it('prefers the recorded model over currentModel and resolves qualified IDs', () => {
+    render(
+      <ChatMessage
+        message={{ ...assistantMessage, model: 'opencode-go/claude-3' }}
+        models={models}
+        currentModel="gpt-4o"
+      />,
+    );
+    expect(screen.getByText('Claude 3.5 Sonnet')).toBeInTheDocument();
+    expect(screen.queryByText('GPT-4o')).not.toBeInTheDocument();
+  });
+
+  it('resolves a qualified currentModel fallback to its catalog name', () => {
+    render(
+      <ChatMessage
+        message={{ ...assistantMessage, model: undefined }}
+        models={models}
+        currentModel="opencode-go/claude-3"
+      />,
+    );
+    expect(screen.getByText('Claude 3.5 Sonnet')).toBeInTheDocument();
+  });
+
   it('falls back to model ID when not in catalog, and to AI when no model', () => {
     const { rerender } = render(
       <ChatMessage message={{ ...assistantMessage, model: 'unknown-model' }} models={models} />,
