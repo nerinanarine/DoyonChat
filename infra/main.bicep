@@ -69,6 +69,8 @@ var containerAppEnvironmentName = 'cae-${environment}-${uniqueString(resourceGro
 var containerAppName = 'agent-${environment}-${uniqueString(resourceGroup().id)}'
 var containerRegistryName = 'acr${environment}${uniqueString(resourceGroup().id)}'
 var userAssignedIdentityName = 'uami-${environment}-${uniqueString(resourceGroup().id)}'
+var artifactsStorageAccountName = 'st${environment}af${uniqueString(resourceGroup().id)}'
+var artifactsShareName = 'artifacts'
 
 module monitor './modules/monitor.bicep' = {
   name: 'monitor-module'
@@ -111,6 +113,17 @@ module keyVault './modules/keyVault.bicep' = {
   }
 }
 
+module storage './modules/storage.bicep' = {
+  name: 'storage-module'
+  params: {
+    location: location
+    tags: tags
+    storageAccountName: artifactsStorageAccountName
+    fileShareName: artifactsShareName
+    keyVaultName: keyVault.outputs.keyVaultName
+  }
+}
+
 module agentPool './modules/agentPool.bicep' = {
   name: 'agentpool-module'
   params: {
@@ -129,6 +142,8 @@ module agentPool './modules/agentPool.bicep' = {
     agentModelScope: agentModelScope
     agentDefaultModel: agentDefaultModel
     appInsightsConnectionString: appInsights.outputs.appInsightsConnectionString
+    artifactsStorageAccountName: storage.outputs.storageAccountName
+    artifactsShareName: storage.outputs.fileShareName
   }
 }
 
@@ -162,6 +177,12 @@ module functions './modules/functions.bicep' = {
     agentGatewayUrl: agentPool.outputs.agentGatewayUrl
     agentGatewayAudience: agentAuthAudience
     agentEnabled: agentEnabled
+    artifactsStorageAccountName: storage.outputs.storageAccountName
+    artifactsShareName: storage.outputs.fileShareName
+    keyVaultUri: keyVault.outputs.keyVaultUri
+    keyVaultName: keyVault.outputs.keyVaultName
+    tenantId: tenantId
+    artifactsStorageKeySecretName: storage.outputs.storageAccountKeySecretName
   }
 }
 

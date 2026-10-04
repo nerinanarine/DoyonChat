@@ -23,6 +23,7 @@ describe('useSettings', () => {
     expect(result.current.status).toBe('loading');
     await waitFor(() => expect(result.current.status).toBe('loaded'));
     expect(api.fetchUserSettings).toHaveBeenCalledTimes(1);
+    expect(result.current.userId).toBe('alice');
     expect(result.current.settings).toEqual({ agentModel: 'kimi-k2.6' });
   });
 

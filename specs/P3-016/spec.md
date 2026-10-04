@@ -58,6 +58,7 @@
 
 - **FR-001**: agent gateway の ContainerApp に Azure Files をマウントし、`<dataDir>/artifacts/{userId}/` 配下を永続化しなければならない（既存 `sessions/{userId}/` 規約と同型）。マウントポイントは artifacts 専用とし（例: `/app/data/artifacts`）、`sessions/`・`users/` 等の ephemeral な `<dataDir>` 配下はローカルに残す（SMB上の大量小ファイルI/O回避）
 - **FR-002**: マウント認証情報を Key Vault 参照＋UAMI で配線し、キー直書きをしてはならない（既存 `secrets[]`・`keyVaultAccessPolicy` 規約）
+  - **制約（Phase 0 確定・2026-10-03）**: ACA の Azure Files マウント資格情報（`AzureFileProperties.accountKey`）には UAMI/Key Vault 参照を使用できない（`identity` 非対応＝BCP037、`getSecret` は secure module param 限定＝BCP180）。このため共有マウントの `accountKey` はデプロイ時 `listKeys()` 取得とし、Key Vault secret（Storageキー）＋UAMI `secrets:get` は Phase 2 の Functions 直接読み取り経路で参照する。
 - **FR-003**: Functions にダウンロード配信エンドポイントを追加し、`authenticateRequest`＋`verifyRunOwnership` 規約で所有者検証しなければならない。配信経路は「Functions が Storage アカウントから共有を直接読む」（KV参照キーまたはUAMI。既定案） とし、Phase 0 で確定しなければならない
 - **FR-004**: Frontend にダウンロード導線を追加しなければならない
 - **FR-005**: 他ユーザーの領域への参照・一覧ができないことをテストで固定しなければならない

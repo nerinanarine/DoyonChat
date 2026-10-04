@@ -6,6 +6,7 @@ import { useSettings } from './hooks/useSettings';
 import AppLayout from './components/Layout/AppLayout';
 import ChatMessageList from './components/Chat/ChatMessageList';
 import ChatInput from './components/Chat/ChatInput';
+import ArtifactDownload from './components/Chat/ArtifactDownload';
 import LoginPage from './components/Auth/LoginPage';
 import LoadingState from './components/Common/LoadingState';
 import ErrorMessage from './components/Common/ErrorMessage';
@@ -56,7 +57,7 @@ function App() {
     clearChat,
   } = useChat(activeConversationId);
 
-  const { settings, status: settingsStatus, updateSettings, reload: reloadSettings } =
+  const { userId, settings, status: settingsStatus, updateSettings, reload: reloadSettings } =
     useSettings(dataEnabled);
 
   const loadModels = useCallback(() => {
@@ -247,6 +248,7 @@ function App() {
         isStreaming={isStreaming}
         disabled={convLoading || messagesLoading}
       />
+      <ArtifactDownload userId={userId} />
     </AppLayout>
   );
 }

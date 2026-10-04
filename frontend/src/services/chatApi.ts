@@ -7,7 +7,7 @@ import {
   ModelInfo,
   UserSettingsResponse,
 } from '../types';
-import { get, post, del, put, patch, getToken } from './api';
+import { get, post, del, put, patch, getToken, ApiError } from './api';
 import { ChatStreamError, isSafeCode } from './errorMessages';
 import { msalInstance } from '../auth/msalConfig';
 
@@ -23,6 +23,33 @@ export async function fetchModels(): Promise<ModelInfo[]> {
  */
 export async function fetchAgentModels(): Promise<unknown> {
   return get<unknown>('/agent/models');
+}
+
+/**
+ * ユーザー専用 artifacts のダウンロード（P3-016 FR-004）。
+ * 認証ヘッダを付けて Functions の `/agent/artifacts/{userId}/{fileName}` を取得し、Blob を返す。
+ * 共通 request ヘルパは JSON 前提のため、バイナリ取得は専用に fetch する。
+ */
+export async function downloadArtifact(userId: string, fileName: string): Promise<Blob> {
+  const API_URL = import.meta.env.VITE_API_URL || '/api';
+  const token = await getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(
+    `${API_URL}/agent/artifacts/${encodeURIComponent(userId)}/${encodeURIComponent(fileName)}`,
+    { method: 'GET', headers },
+  );
+
+  // トークン付き 401 = セッション期限切れ → 既存のログアウト・再ログインフローへ
+  if (response.status === 401 && authEnabled && token) {
+    msalInstance.logoutRedirect();
+    throw new ApiError(401, 'Unauthorized: session expired');
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, 'Artifact download failed');
+  }
+  return response.blob();
 }
 
 export async function fetchUserSettings(): Promise<UserSettingsResponse> {

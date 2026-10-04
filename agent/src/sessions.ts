@@ -29,6 +29,23 @@ export function userConfigDir(dataDir: string, userId: string): string {
   return path.join(dataDir, 'users', userId, 'config');
 }
 
+/**
+ * per-user 作成物の永続領域（P3-016 FR-001）。
+ * `<dataDir>/artifacts/{userId}` は Azure Files 共有のマウント先（artifacts 専用）で、
+ * `sessions/`・`users/` と同様に `assertSafeId` でパストラバーサルを防ぐ。
+ */
+export function artifactsUserDir(dataDir: string, userId: string): string {
+  assertSafeId('userId', userId);
+  return path.join(dataDir, 'artifacts', userId);
+}
+
+/** artifacts/{userId}/ を初回利用時に再帰作成し、そのパスを返す（IaC は共有のみ作成）。 */
+export function ensureArtifactsUserDir(dataDir: string, userId: string): string {
+  const dir = artifactsUserDir(dataDir, userId);
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
 export interface UserAgentSettings {
   subagentModel?: string;
   /** pi-web-access の index パス。researcher(child-only)への配線に使う。未指定/空は配線なし。 */

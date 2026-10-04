@@ -85,6 +85,7 @@ function mockHooks(
     ...chatOverrides,
   });
   vi.mocked(useSettings).mockReturnValue({
+    userId: 'test-user',
     settings: {},
     status: 'loaded',
     error: null,

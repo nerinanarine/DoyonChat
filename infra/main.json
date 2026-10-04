@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "1992007206447186143"
+      "templateHash": "17154704336185874638"
     }
   },
   "parameters": {
@@ -134,7 +134,9 @@
     "containerAppEnvironmentName": "[format('cae-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "containerAppName": "[format('agent-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
     "containerRegistryName": "[format('acr{0}{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
-    "userAssignedIdentityName": "[format('uami-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]"
+    "userAssignedIdentityName": "[format('uami-{0}-{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "artifactsStorageAccountName": "[format('st{0}af{1}', parameters('environment'), uniqueString(resourceGroup().id))]",
+    "artifactsShareName": "artifacts"
   },
   "resources": [
     {
@@ -581,6 +583,129 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
+      "name": "storage-module",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "storageAccountName": {
+            "value": "[variables('artifactsStorageAccountName')]"
+          },
+          "fileShareName": {
+            "value": "[variables('artifactsShareName')]"
+          },
+          "keyVaultName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-module'), '2025-04-01').outputs.keyVaultName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "4323188466497996763"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "fileShareName": {
+              "type": "string",
+              "defaultValue": "artifacts"
+            },
+            "keyVaultName": {
+              "type": "string"
+            },
+            "storageAccountKeySecretName": {
+              "type": "string",
+              "defaultValue": "artifacts-storage-key"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "supportsHttpsTrafficOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('fileShareName'))]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/fileServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), parameters('storageAccountKeySecretName'))]",
+              "properties": {
+                "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').keys[0].value]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "storageAccountKeySecretName": {
+              "type": "string",
+              "value": "[parameters('storageAccountKeySecretName')]"
+            },
+            "fileShareName": {
+              "type": "string",
+              "value": "[parameters('fileShareName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'keyvault-module')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
       "name": "agentpool-module",
       "properties": {
         "expressionEvaluationOptions": {
@@ -632,6 +757,12 @@
           },
           "appInsightsConnectionString": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appinsights-module'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+          },
+          "artifactsStorageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-module'), '2025-04-01').outputs.storageAccountName.value]"
+          },
+          "artifactsShareName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-module'), '2025-04-01').outputs.fileShareName.value]"
           }
         },
         "template": {
@@ -641,7 +772,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "16560621723799130579"
+              "templateHash": "15800966452376853081"
             }
           },
           "parameters": {
@@ -695,6 +826,19 @@
             "agentDefaultModel": {
               "type": "string",
               "defaultValue": ""
+            },
+            "artifactsStorageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Artifacts 用 Azure Files 共有を保持する Storage Account 名 (P3-016 FR-001)"
+              }
+            },
+            "artifactsShareName": {
+              "type": "string",
+              "defaultValue": "artifacts",
+              "metadata": {
+                "description": "Artifacts 用 Azure Files 共有名"
+              }
             },
             "agentMaxRuns": {
               "type": "int",
@@ -866,6 +1010,22 @@
               }
             },
             {
+              "type": "Microsoft.App/managedEnvironments/storages",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/{1}', parameters('containerAppEnvironmentName'), 'artifacts')]",
+              "properties": {
+                "azureFile": {
+                  "accountName": "[parameters('artifactsStorageAccountName')]",
+                  "accountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('artifactsStorageAccountName')), '2023-05-01').keys[0].value]",
+                  "shareName": "[parameters('artifactsShareName')]",
+                  "accessMode": "ReadWrite"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]"
+              ]
+            },
+            {
               "type": "Microsoft.App/containerApps",
               "apiVersion": "2024-03-01",
               "name": "[parameters('containerAppName')]",
@@ -902,6 +1062,13 @@
                   ]
                 },
                 "template": {
+                  "volumes": [
+                    {
+                      "name": "artifacts",
+                      "storageType": "AzureFile",
+                      "storageName": "artifacts"
+                    }
+                  ],
                   "containers": [
                     {
                       "name": "agent-gateway",
@@ -910,7 +1077,13 @@
                         "cpu": "[parameters('cpu')]",
                         "memory": "[parameters('memory')]"
                       },
-                      "env": "[concat(variables('envCore'), variables('envOptional'))]"
+                      "env": "[concat(variables('envCore'), variables('envOptional'))]",
+                      "volumeMounts": [
+                        {
+                          "volumeName": "artifacts",
+                          "mountPath": "[format('{0}/artifacts', parameters('dataDir'))]"
+                        }
+                      ]
                     }
                   ],
                   "scale": {
@@ -921,6 +1094,7 @@
               },
               "dependsOn": [
                 "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), 'Microsoft.Authorization/roleAssignments', guid(format('acr-pull-{0}-{1}', parameters('containerRegistryName'), parameters('userAssignedIdentityName'))))]",
+                "[resourceId('Microsoft.App/managedEnvironments/storages', parameters('containerAppEnvironmentName'), 'artifacts')]",
                 "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
                 "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
                 "[resourceId('Microsoft.KeyVault/vaults/accessPolicies', parameters('keyVaultName'), 'add')]",
@@ -954,7 +1128,8 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'appinsights-module')]",
-        "[resourceId('Microsoft.Resources/deployments', 'keyvault-module')]"
+        "[resourceId('Microsoft.Resources/deployments', 'keyvault-module')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storage-module')]"
       ]
     },
     {
@@ -1086,6 +1261,24 @@
           },
           "agentEnabled": {
             "value": "[parameters('agentEnabled')]"
+          },
+          "artifactsStorageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-module'), '2025-04-01').outputs.storageAccountName.value]"
+          },
+          "artifactsShareName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-module'), '2025-04-01').outputs.fileShareName.value]"
+          },
+          "keyVaultUri": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-module'), '2025-04-01').outputs.keyVaultUri.value]"
+          },
+          "keyVaultName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-module'), '2025-04-01').outputs.keyVaultName.value]"
+          },
+          "tenantId": {
+            "value": "[parameters('tenantId')]"
+          },
+          "artifactsStorageKeySecretName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-module'), '2025-04-01').outputs.storageAccountKeySecretName.value]"
           }
         },
         "template": {
@@ -1095,7 +1288,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "15577299983734637525"
+              "templateHash": "9095364432272705282"
             }
           },
           "parameters": {
@@ -1184,6 +1377,44 @@
             "agentEnabled": {
               "type": "string",
               "defaultValue": "false"
+            },
+            "artifactsStorageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Artifacts 用 Azure Files 共有を保持する Storage Account 名 (P3-016 FR-003)"
+              }
+            },
+            "artifactsShareName": {
+              "type": "string",
+              "defaultValue": "artifacts",
+              "metadata": {
+                "description": "Artifacts 用 Azure Files 共有名"
+              }
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Artifacts Storage キー secret を保持する Key Vault の URI"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Artifacts Storage キー secret を保持する Key Vault 名"
+              }
+            },
+            "tenantId": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure AD tenant ID for the Key Vault access policy"
+              }
+            },
+            "artifactsStorageKeySecretName": {
+              "type": "string",
+              "defaultValue": "artifacts-storage-key",
+              "metadata": {
+                "description": "Artifacts Storage キーを格納した Key Vault secret 名"
+              }
             }
           },
           "resources": [
@@ -1286,6 +1517,27 @@
               ]
             },
             {
+              "type": "Microsoft.KeyVault/vaults/accessPolicies",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'add')]",
+              "properties": {
+                "accessPolicies": [
+                  {
+                    "tenantId": "[parameters('tenantId')]",
+                    "objectId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2024-04-01', 'full').identity.principalId]",
+                    "permissions": {
+                      "secrets": [
+                        "get"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            },
+            {
               "type": "Microsoft.Web/sites/config",
               "apiVersion": "2024-04-01",
               "name": "[format('{0}/{1}', parameters('functionAppName'), 'appsettings')]",
@@ -1305,10 +1557,14 @@
                 "APPLICATIONINSIGHTS_CONNECTION_STRING": "[parameters('appInsightsConnectionString')]",
                 "AGENT_GATEWAY_URL": "[parameters('agentGatewayUrl')]",
                 "AGENT_GATEWAY_AUDIENCE": "[parameters('agentGatewayAudience')]",
-                "AGENT_ENABLED": "[parameters('agentEnabled')]"
+                "AGENT_ENABLED": "[parameters('agentEnabled')]",
+                "ARTIFACTS_STORAGE_ACCOUNT": "[parameters('artifactsStorageAccountName')]",
+                "ARTIFACTS_SHARE_NAME": "[parameters('artifactsShareName')]",
+                "ARTIFACTS_STORAGE_KEY": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/{1})', parameters('keyVaultUri'), parameters('artifactsStorageKeySecretName'))]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
+                "[resourceId('Microsoft.KeyVault/vaults/accessPolicies', parameters('keyVaultName'), 'add')]",
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
               ]
             }
@@ -1337,7 +1593,9 @@
         "[resourceId('Microsoft.Resources/deployments', 'agentpool-module')]",
         "[resourceId('Microsoft.Resources/deployments', 'appinsights-module')]",
         "[resourceId('Microsoft.Resources/deployments', 'cosmosdb-module')]",
-        "[resourceId('Microsoft.Resources/deployments', 'staticwebapp-module')]"
+        "[resourceId('Microsoft.Resources/deployments', 'keyvault-module')]",
+        "[resourceId('Microsoft.Resources/deployments', 'staticwebapp-module')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storage-module')]"
       ]
     }
   ],

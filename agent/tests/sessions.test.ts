@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  artifactsUserDir,
   assertSafeId,
   deleteSessionFile,
+  ensureArtifactsUserDir,
   sessionFilePath,
   userConfigDir,
   writeSubagentExtensionConfig,
@@ -28,6 +30,24 @@ describe('session paths', () => {
     const dir = tempDir();
     expect(sessionFilePath(dir, 'u1', 'c1')).toBe(path.join(dir, 'sessions', 'u1', 'c1.jsonl'));
     expect(userConfigDir(dir, 'u1')).toBe(path.join(dir, 'users', 'u1', 'config'));
+  });
+});
+
+describe('artifacts paths (P3-016)', () => {
+  it('builds the per-user artifacts dir under dataDir', () => {
+    const dir = tempDir();
+    expect(artifactsUserDir(dir, 'u1')).toBe(path.join(dir, 'artifacts', 'u1'));
+  });
+
+  it('rejects unsafe user ids', () => {
+    expect(() => artifactsUserDir(tempDir(), '../x')).toThrow('invalid userId');
+  });
+
+  it('creates the artifacts dir recursively on first use', () => {
+    const dir = tempDir();
+    const out = ensureArtifactsUserDir(dir, 'u1');
+    expect(out).toBe(path.join(dir, 'artifacts', 'u1'));
+    expect(fs.statSync(out).isDirectory()).toBe(true);
   });
 });
 

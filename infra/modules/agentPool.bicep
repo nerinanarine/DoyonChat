@@ -23,6 +23,10 @@ param agentAuthTenant string
 param agentAuthAudience string
 param agentModelScope string = ''
 param agentDefaultModel string = ''
+@description('Artifacts 用 Azure Files 共有を保持する Storage Account 名 (P3-016 FR-001)')
+param artifactsStorageAccountName string
+@description('Artifacts 用 Azure Files 共有名')
+param artifactsShareName string = 'artifacts'
 param agentMaxRuns int = 4
 param agentPromptTimeoutMs int = 180000
 param agentApprovalTimeoutMs int = 120000
@@ -74,6 +78,12 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
 }
 
+// Artifacts 共有を保持する Storage Account（マウント資格情報は下記 managedEnvironments/storages で
+// デプロイ時 listKeys 取得。ACA 制約により UAMI/KV 参照はマウントに使えない＝Phase 0 確定）
+resource artifactsStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+  name: artifactsStorageAccountName
+}
+
 // Container App の UAMI に Key Vault secret の取得権限を追加（既存 accessPolicies 流儀）
 resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2023-07-01' = {
   parent: keyVault
@@ -102,6 +112,20 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' 
         workloadProfileType: 'Consumption'
       }
     ]
+  }
+}
+
+// Artifacts 専用の Azure Files 共有を環境ストレージとして登録する（sessions/users はローカルに残す）
+resource artifactsFileStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
+  parent: containerAppEnvironment
+  name: 'artifacts'
+  properties: {
+    azureFile: {
+      accountName: artifactsStorageAccount.name
+      accountKey: artifactsStorageAccount.listKeys().keys[0].value
+      shareName: artifactsShareName
+      accessMode: 'ReadWrite'
+    }
   }
 }
 
@@ -134,6 +158,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   dependsOn: [
     keyVaultAccessPolicy
     acrPullAssignment
+    artifactsFileStorage
   ]
   identity: {
     type: 'UserAssigned'
@@ -166,6 +191,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
     }
     template: {
+      volumes: [
+        {
+          name: 'artifacts'
+          storageType: 'AzureFile'
+          storageName: 'artifacts'
+        }
+      ]
       containers: [
         {
           name: 'agent-gateway'
@@ -175,6 +207,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             memory: memory
           }
           env: concat(envCore, envOptional)
+          volumeMounts: [
+            {
+              volumeName: 'artifacts'
+              mountPath: '${dataDir}/artifacts'
+            }
+          ]
         }
       ]
       scale: {

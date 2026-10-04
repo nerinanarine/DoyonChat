@@ -6,6 +6,7 @@ import { errorMessage } from '../services/errorMessages';
 export type SettingsStatus = 'loading' | 'error' | 'loaded';
 
 export function useSettings(enabled = true) {
+  const [userId, setUserId] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>({});
   const [status, setStatus] = useState<SettingsStatus>(enabled ? 'loading' : 'loaded');
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +16,7 @@ export function useSettings(enabled = true) {
     setError(null);
     try {
       const response = await api.fetchUserSettings();
+      setUserId(response.userId);
       setSettings(response.settings);
       setStatus('loaded');
     } catch (err) {
@@ -73,6 +75,7 @@ export function useSettings(enabled = true) {
       setSettings(next);
       try {
         const response = await api.updateUserSettings(partial);
+        setUserId(response.userId);
         setSettings(response.settings);
         setStatus('loaded');
         setError(null);
@@ -86,5 +89,5 @@ export function useSettings(enabled = true) {
     [settings],
   );
 
-  return { settings, status, error, updateSettings, reload: load };
+  return { userId, settings, status, error, updateSettings, reload: load };
 }
