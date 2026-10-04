@@ -30,7 +30,7 @@
 - 実装コミット: `0014324`
 - 実装コミット`0014324`を含むmainコミット: `29d70bb`（PR #24）
 - 本番デプロイ: mainコミット`29d70bb`を対象としたGitHub Actions Deploy run `32608281147`成功（2026-08-23）
-- Messages protocolモデルへの新規画像送信は非対応。画像送信時はカタログ上画像対応のChat Completionsモデル（`glm-5.2` / `glm-5.1` / `deepseek-v4-flash-vision-exp`）を使用する
+- Messages protocolモデルへの新規画像送信は非対応。画像送信時はカタログ上画像対応のChat Completionsモデル（`glm-5.2` / `deepseek-v4-flash-vision-exp`）を使用する
 
 ---
 

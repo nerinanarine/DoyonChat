@@ -139,29 +139,6 @@ export async function createConversation(
   }
 }
 
-export async function updateConversationModel(
-  id: string,
-  model: string,
-  userId?: string,
-): Promise<Conversation | null> {
-  const existing = await getConversation(id, userId);
-  if (!existing) return null;
-
-  await ensureConversationContainer();
-  const updated: Conversation = { ...existing, model, updatedAt: new Date().toISOString() };
-  if (useMemory) {
-    memoryConversations.set(id, updated);
-    return updated;
-  }
-
-  try {
-    const { resource } = await getConversationsContainer().item(id, id).replace(updated);
-    return resource as Conversation;
-  } catch (error) {
-    return databaseUnavailable(error);
-  }
-}
-
 export async function updateConversationTitle(
   id: string,
   title: string,
@@ -172,30 +149,6 @@ export async function updateConversationTitle(
 
   await ensureConversationContainer();
   const updated: Conversation = { ...existing, title };
-  if (useMemory) {
-    memoryConversations.set(id, updated);
-    return updated;
-  }
-
-  try {
-    const { resource } = await getConversationsContainer().item(id, id).replace(updated);
-    return resource as Conversation;
-  } catch (error) {
-    return databaseUnavailable(error);
-  }
-}
-
-/** エージェントモード切替。所有者チェックは getConversation が担う。 */
-export async function updateConversationAgentMode(
-  id: string,
-  agentMode: boolean,
-  userId?: string,
-): Promise<Conversation | null> {
-  const existing = await getConversation(id, userId);
-  if (!existing) return null;
-
-  await ensureConversationContainer();
-  const updated: Conversation = { ...existing, agentMode };
   if (useMemory) {
     memoryConversations.set(id, updated);
     return updated;

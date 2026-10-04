@@ -27,7 +27,6 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   reasoning?: string;
-  imageUrl?: string;
   model?: string;
   createdAt: string;
 }
@@ -35,13 +34,11 @@ export interface Message {
 export interface ChatRequest {
   conversationId: string;
   message: string;
-  imageBase64?: string;
 }
 
 export type AgentApprovalLevel = 'auto' | 'dangerous-only' | 'always';
 
 export interface UserSettings {
-  defaultModel?: string;
   displayName?: string;
   agentApprovalLevel?: AgentApprovalLevel;
   agentModel?: string;

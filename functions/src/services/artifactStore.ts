@@ -1,0 +1,183 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { AppError } from '../middleware/errorHandler';
+
+/**
+ * ユーザー専用 artifacts 共有の読み取り（P3-016 FR-003）。
+ *
+ * 配信経路（Phase 0 確定）: Functions が Azure Files 共有を直接読む（gateway 経由の proxy は使わない）。
+ * - 共有ルートは agent gateway の `<dataDir>/artifacts` マウントに対応し、共有内は `{userId}/{fileName}` 配置
+ *   （agent の `artifactsUserDir` と同型。`agent/src/sessions.ts`）。
+ * - Storage キーは Key Vault secret `artifacts-storage-key` を参照する app setting
+ *   `ARTIFACTS_STORAGE_KEY` から供給する（平文キーをコード・env 例・ログに置かない）。
+ * - dev/test は `AGENT_DATA_DIR` 配下のローカル FS へフォールバックする（実 Azure には触れない）。
+ *
+ * セキュリティ: userId / fileName は単一セグメントに限定して検証し、パストラバーサルを不可能にする。
+ */
+
+// agent/src/sessions.ts の SAFE_ID と同型（`{userId}` 配置規約を踏襲）
+const SAFE_USER_ID = /^[A-Za-z0-9_-]{1,128}$/;
+// ファイル名は単一セグメント。拡張子のドットは許可し、パス区切りは正規表現で排除する。
+const SAFE_FILE_NAME = /^[A-Za-z0-9._-]{1,255}$/;
+
+export function assertSafeUserId(userId: unknown): string {
+  if (typeof userId !== 'string' || !SAFE_USER_ID.test(userId)) {
+    throw new AppError(400, 'invalid userId');
+  }
+  return userId;
+}
+
+export function assertSafeFileName(fileName: unknown): string {
+  if (
+    typeof fileName !== 'string' ||
+    !SAFE_FILE_NAME.test(fileName) ||
+    fileName === '.' ||
+    fileName === '..'
+  ) {
+    throw new AppError(400, 'invalid file name');
+  }
+  return fileName;
+}
+
+export interface ArtifactStoreConfig {
+  /** dev/test フォールバックのローカルルート。`<localDataDir>/artifacts/{userId}/...` を読む。空なら Azure Files。 */
+  localDataDir: string;
+  storageAccount: string;
+  shareName: string;
+  /** Key Vault 参照 app setting（secret: artifacts-storage-key）。 */
+  storageKey: string;
+  /** Storage エンドポイント suffix（既定: core.windows.net）。 */
+  endpointSuffix: string;
+}
+
+export function loadArtifactStoreConfig(env: NodeJS.ProcessEnv = process.env): ArtifactStoreConfig {
+  return {
+    localDataDir: env.AGENT_DATA_DIR || '',
+    storageAccount: env.ARTIFACTS_STORAGE_ACCOUNT || '',
+    shareName: env.ARTIFACTS_SHARE_NAME || 'artifacts',
+    storageKey: env.ARTIFACTS_STORAGE_KEY || '',
+    endpointSuffix: env.ARTIFACTS_STORAGE_ENDPOINT_SUFFIX || 'core.windows.net',
+  };
+}
+
+const CONTENT_TYPES: Record<string, string> = {
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.csv': 'text/csv; charset=utf-8',
+  '.json': 'application/json',
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.zip': 'application/zip',
+};
+
+export function artifactContentType(fileName: string): string {
+  return CONTENT_TYPES[path.extname(fileName).toLowerCase()] ?? 'application/octet-stream';
+}
+
+export interface ArtifactFile {
+  data: Buffer;
+  contentType: string;
+}
+
+/** 共有内の相対パス `{userId}/{fileName}`（agent の `<dataDir>/artifacts/{userId}` に対応）。 */
+function artifactSharePath(userId: string, fileName: string): string {
+  return `${assertSafeUserId(userId)}/${assertSafeFileName(fileName)}`;
+}
+
+/** dev/test フォールバックのローカルパス（agent の artifactsUserDir と同型）。 */
+function artifactLocalPath(localDataDir: string, userId: string, fileName: string): string {
+  return path.join(localDataDir, 'artifacts', assertSafeUserId(userId), assertSafeFileName(fileName));
+}
+
+/**
+ * 所有者ディレクトリ配下のファイルを読む。ローカル設定時は FS、それ以外は Azure Files 共有を読む。
+ * 不在は 404、共有設定不備は 503、共有エラーは 502 に正規化する。
+ */
+export async function readArtifactFile(
+  config: ArtifactStoreConfig,
+  userId: string,
+  fileName: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ArtifactFile> {
+  const safeUserId = assertSafeUserId(userId);
+  const safeFileName = assertSafeFileName(fileName);
+  if (config.localDataDir) {
+    return readLocalArtifact(config.localDataDir, safeUserId, safeFileName);
+  }
+  return readShareArtifact(config, safeUserId, safeFileName, fetchImpl);
+}
+
+async function readLocalArtifact(
+  localDataDir: string,
+  userId: string,
+  fileName: string,
+): Promise<ArtifactFile> {
+  try {
+    const data = await fs.promises.readFile(artifactLocalPath(localDataDir, userId, fileName));
+    return { data, contentType: artifactContentType(fileName) };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new AppError(404, 'Artifact not found');
+    }
+    throw error;
+  }
+}
+
+async function readShareArtifact(
+  config: ArtifactStoreConfig,
+  userId: string,
+  fileName: string,
+  fetchImpl: typeof fetch,
+): Promise<ArtifactFile> {
+  if (!config.storageAccount || !config.storageKey) {
+    throw new AppError(503, 'Artifact storage is not configured');
+  }
+  const url = new URL(
+    `https://${config.storageAccount}.file.${config.endpointSuffix}/` +
+      `${config.shareName}/${artifactSharePath(userId, fileName)}`,
+  );
+  const response = await fetchImpl(url.toString(), {
+    method: 'GET',
+    headers: buildSharedKeyHeaders(config, 'GET', url.pathname),
+  });
+  if (response.status === 404) throw new AppError(404, 'Artifact not found');
+  if (!response.ok) throw new AppError(502, 'Artifact storage error');
+  const data = Buffer.from(await response.arrayBuffer());
+  return { data, contentType: artifactContentType(fileName) };
+}
+
+/**
+ * Azure Files SharedKey 認証ヘッダを組み立てる（`x-ms-date` + HMAC-SHA256 署名）。
+ * GET のため content 系フィールドは空、CanonicalizedHeaders は `x-ms-*` を辞書順に並べる。
+ */
+function buildSharedKeyHeaders(
+  config: Pick<ArtifactStoreConfig, 'storageAccount' | 'storageKey'>,
+  method: string,
+  resourcePath: string,
+  now: Date = new Date(),
+): Record<string, string> {
+  const date = now.toUTCString();
+  const version = '2021-12-02';
+  const canonicalizedHeaders = `x-ms-date:${date}\nx-ms-version:${version}\n`;
+  const canonicalizedResource = `/${config.storageAccount}${resourcePath}`;
+  // VERB + Content-Encoding/Language/Length/MD5/Type + Date + 条件ヘッダ + Range（すべて空）
+  const contentFields = [method, '', '', '', '', '', '', '', '', '', '', ''];
+  const stringToSign = `${contentFields.join('\n')}\n${canonicalizedHeaders}${canonicalizedResource}`;
+  const signature = crypto
+    .createHmac('sha256', Buffer.from(config.storageKey, 'base64'))
+    .update(stringToSign, 'utf8')
+    .digest('base64');
+  return {
+    'x-ms-date': date,
+    'x-ms-version': version,
+    Authorization: `SharedKey ${config.storageAccount}:${signature}`,
+  };
+}

@@ -6,6 +6,7 @@ import { errorMessage } from '../services/errorMessages';
 export type SettingsStatus = 'loading' | 'error' | 'loaded';
 
 export function useSettings(enabled = true) {
+  const [userId, setUserId] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>({});
   const [status, setStatus] = useState<SettingsStatus>(enabled ? 'loading' : 'loaded');
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +16,7 @@ export function useSettings(enabled = true) {
     setError(null);
     try {
       const response = await api.fetchUserSettings();
+      setUserId(response.userId);
       setSettings(response.settings);
       setStatus('loaded');
     } catch (err) {
@@ -30,7 +32,6 @@ export function useSettings(enabled = true) {
 
   const updateSettings = useCallback(
     async (partial: {
-      defaultModel?: string | null;
       displayName?: string | null;
       agentApprovalLevel?: AgentApprovalLevel | null;
       agentModel?: string | null;
@@ -39,13 +40,6 @@ export function useSettings(enabled = true) {
       const previous = settings;
       // Optimistic update; rollback on failure.
       const next = { ...settings };
-      if (Object.prototype.hasOwnProperty.call(partial, 'defaultModel')) {
-        if (partial.defaultModel === null || partial.defaultModel === undefined) {
-          delete next.defaultModel;
-        } else if (typeof partial.defaultModel === 'string') {
-          next.defaultModel = partial.defaultModel;
-        }
-      }
       if (Object.prototype.hasOwnProperty.call(partial, 'displayName')) {
         if (partial.displayName === null || partial.displayName === '' || partial.displayName === undefined) {
           delete next.displayName;
@@ -81,6 +75,7 @@ export function useSettings(enabled = true) {
       setSettings(next);
       try {
         const response = await api.updateUserSettings(partial);
+        setUserId(response.userId);
         setSettings(response.settings);
         setStatus('loaded');
         setError(null);
@@ -94,5 +89,5 @@ export function useSettings(enabled = true) {
     [settings],
   );
 
-  return { settings, status, error, updateSettings, reload: load };
+  return { userId, settings, status, error, updateSettings, reload: load };
 }

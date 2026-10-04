@@ -16,9 +16,17 @@ describe('error message mapping', () => {
     [403, 'authentication'],
     [500, 'server'],
     [503, 'server'],
+    [409, 'legacy-conversation'],
     [400, 'network'],
   ])('classifies ApiError status %i as %s', (status, code) => {
     expect(classifyError(new ApiError(status, 'raw body'))).toBe(code);
+  });
+
+  it('maps a legacy conversation (409) to guidance for a new Agent conversation (FR-009)', () => {
+    expect(errorMessage(new ApiError(409, 'raw body'))).toBe(
+      SAFE_ERROR_MESSAGES['legacy-conversation'],
+    );
+    expect(SAFE_ERROR_MESSAGES['legacy-conversation']).toContain('新規のAgent会話');
   });
 
   it('maps a ChatStreamError by its safe code', () => {

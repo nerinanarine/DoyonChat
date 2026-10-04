@@ -21,6 +21,8 @@ describe('OpenCode Go official model catalog', () => {
           model: modelId,
           maxTokens: 512,
           signal,
+          // 上流は x-opencode-session を必須化（MissingSessionID）。本番経路と同様に送る。
+          sessionId: 'live-test',
         }),
       {
         timeoutMs: 120_000,
@@ -38,7 +40,7 @@ describe('OpenCode Go official model catalog', () => {
       throw new Error(`Live model checks failed: ${summary}`);
     }
 
-    expect(results).toHaveLength(27);
+    expect(results).toHaveLength(30);
   });
 });
 

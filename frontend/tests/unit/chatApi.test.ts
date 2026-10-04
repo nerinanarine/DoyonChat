@@ -44,7 +44,6 @@ describe('chat stream API', () => {
       streamChat(
         'conversation-1',
         '質問',
-        undefined,
         (chunk) => chunks.push(chunk),
         resolve,
         (error) => {
@@ -74,7 +73,6 @@ describe('chat stream API', () => {
         'conversation-1',
         '質問',
         undefined,
-        undefined,
         resolve,
         undefined,
         { userMessageId: 'client-id-1' },
@@ -88,7 +86,6 @@ describe('chat stream API', () => {
           body: JSON.stringify({
             conversationId: 'conversation-1',
             message: '質問',
-            imageBase64: undefined,
             userMessageId: 'client-id-1',
           }),
         }),
@@ -111,7 +108,6 @@ describe('chat stream API', () => {
       streamChat(
         'conversation-1',
         '質問',
-        undefined,
         (chunk) => chunks.push(chunk),
         () => {
           doneCount += 1;
@@ -138,7 +134,6 @@ describe('chat stream API', () => {
         '質問',
         undefined,
         undefined,
-        undefined,
         (error) => {
           errors.push(error);
           resolve();
@@ -147,6 +142,26 @@ describe('chat stream API', () => {
     });
 
     expect(errors[0]).toMatchObject({ name: 'ChatStreamError', code: 'rate_limit' });
+  });
+
+  it('maps an HTTP 409 (legacy conversation) to a legacy-conversation stream error (FR-009)', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 409, body: null });
+
+    const errors: Error[] = [];
+    await new Promise<void>((resolve) => {
+      streamChat(
+        'conversation-1',
+        '質問',
+        undefined,
+        undefined,
+        (error) => {
+          errors.push(error);
+          resolve();
+        },
+      );
+    });
+
+    expect(errors[0]).toMatchObject({ name: 'ChatStreamError', code: 'legacy-conversation' });
   });
 
   it('does not call onError when the stream is aborted by the user', async () => {
@@ -164,7 +179,6 @@ describe('chat stream API', () => {
     const controller = streamChat(
       'conversation-1',
       '質問',
-      undefined,
       undefined,
       () => {
         doneCount += 1;
@@ -244,7 +258,7 @@ describe('user settings API', () => {
   it('fetches user settings from the settings endpoint', async () => {
     const response = {
       userId: 'alice',
-      settings: { defaultModel: 'kimi-k2.6' },
+      settings: { agentModel: 'glm-5.2' },
     };
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -267,12 +281,12 @@ describe('user settings API', () => {
       json: vi.fn().mockResolvedValue(response),
     });
 
-    await expect(updateUserSettings({ defaultModel: null })).resolves.toEqual(response);
+    await expect(updateUserSettings({ agentModel: null })).resolves.toEqual(response);
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/users/me/settings'),
       expect.objectContaining({
         method: 'PATCH',
-        body: JSON.stringify({ defaultModel: null }),
+        body: JSON.stringify({ agentModel: null }),
       }),
     );
   });

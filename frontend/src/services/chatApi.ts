@@ -7,7 +7,7 @@ import {
   ModelInfo,
   UserSettingsResponse,
 } from '../types';
-import { get, post, del, put, patch, getToken } from './api';
+import { get, post, del, put, patch, getToken, ApiError } from './api';
 import { ChatStreamError, isSafeCode } from './errorMessages';
 import { msalInstance } from '../auth/msalConfig';
 
@@ -17,13 +17,47 @@ export async function fetchModels(): Promise<ModelInfo[]> {
   return get<ModelInfo[]>('/models');
 }
 
+/**
+ * gateway 稼働検出（Functions の `/agent/models` 中継。P2-018）。
+ * コールドスタートのポーリングに使用し、未起動（503）や一時的な 5xx は呼び出し側で継続する。
+ */
+export async function fetchAgentModels(): Promise<unknown> {
+  return get<unknown>('/agent/models');
+}
+
+/**
+ * ユーザー専用 artifacts のダウンロード（P3-016 FR-004）。
+ * 認証ヘッダを付けて Functions の `/agent/artifacts/{userId}/{fileName}` を取得し、Blob を返す。
+ * 共通 request ヘルパは JSON 前提のため、バイナリ取得は専用に fetch する。
+ */
+export async function downloadArtifact(userId: string, fileName: string): Promise<Blob> {
+  const API_URL = import.meta.env.VITE_API_URL || '/api';
+  const token = await getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(
+    `${API_URL}/agent/artifacts/${encodeURIComponent(userId)}/${encodeURIComponent(fileName)}`,
+    { method: 'GET', headers },
+  );
+
+  // トークン付き 401 = セッション期限切れ → 既存のログアウト・再ログインフローへ
+  if (response.status === 401 && authEnabled && token) {
+    msalInstance.logoutRedirect();
+    throw new ApiError(401, 'Unauthorized: session expired');
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, 'Artifact download failed');
+  }
+  return response.blob();
+}
+
 export async function fetchUserSettings(): Promise<UserSettingsResponse> {
   return get<UserSettingsResponse>('/users/me/settings');
 }
 
 export async function updateUserSettings(
   partial: {
-    defaultModel?: string | null;
     displayName?: string | null;
     agentApprovalLevel?: AgentApprovalLevel | null;
     agentModel?: string | null;
@@ -61,17 +95,6 @@ export async function fetchConversationWithMessages(
 
 export async function deleteConversation(id: string): Promise<void> {
   await del(`/conversations/${id}`);
-}
-
-export async function updateConversationModel(id: string, model: string): Promise<Conversation> {
-  return put<Conversation>(`/conversations/${id}/model`, { model });
-}
-
-export async function updateConversationAgentMode(
-  id: string,
-  enabled: boolean,
-): Promise<Conversation> {
-  return put<Conversation>(`/conversations/${id}/agent-mode`, { enabled });
 }
 
 export async function updateConversationTitle(id: string, title: string): Promise<Conversation> {
@@ -180,7 +203,6 @@ export function normalizeAgentEvent(
 export function streamChat(
   conversationId: string,
   message: string,
-  imageBase64?: string,
   onChunk: (chunk: ChatStreamChunk) => void = () => {},
   onDone: () => void = () => {},
   onError: (err: Error) => void = () => {},
@@ -211,7 +233,6 @@ export function streamChat(
         body: JSON.stringify({
           conversationId,
           message,
-          imageBase64,
           userMessageId: options.userMessageId,
         }),
         signal: controller.signal,
@@ -227,6 +248,8 @@ export function streamChat(
         const status = response.status;
         if (status === 429) throw new ChatStreamError('rate_limit');
         if (status === 408 || status === 504) throw new ChatStreamError('timeout');
+        // 旧通常チャット会話（agentMode: false）への送信は 409（FR-009）。
+        if (status === 409) throw new ChatStreamError('legacy-conversation');
         if (status >= 500) throw new ChatStreamError('server');
         throw new ChatStreamError('network');
       }

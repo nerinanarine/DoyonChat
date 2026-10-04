@@ -3,7 +3,7 @@ import {
   getModelConfig,
   OpenCodeGoProtocol,
 } from '../config/modelCatalog';
-import { Message, OpenCodeGoMessage } from '../types';
+import { OpenCodeGoMessage } from '../types';
 import {
   createReasoningMarkupParser,
   normalizeChatCompletionDelta,
@@ -72,9 +72,7 @@ export function classifyUpstreamError(error: unknown): UpstreamClassification {
   return 'server';
 }
 
-type ResponsesInputPart =
-  | { type: 'input_text' | 'output_text'; text: string }
-  | { type: 'input_image'; image_url: string };
+type ResponsesInputPart = { type: 'input_text' | 'output_text'; text: string };
 
 interface MessagesInput {
   role: 'user' | 'assistant';
@@ -108,8 +106,6 @@ function toResponsesInput(messages: OpenCodeGoMessage[]) {
       for (const part of message.content) {
         if (part.type === 'text') {
           content.push({ type: contentType, text: part.text || '' });
-        } else if (part.image_url?.url) {
-          content.push({ type: 'input_image', image_url: part.image_url.url });
         }
       }
     }
@@ -619,16 +615,4 @@ function parseMessagesSSELine(
       : null;
   }
   return null;
-}
-
-export function formatMessagesForApi(messages: Message[]): OpenCodeGoMessage[] {
-  return messages.map((message) => ({
-    role: message.role,
-    content: message.imageUrl
-      ? [
-          { type: 'text' as const, text: message.content },
-          { type: 'image_url' as const, image_url: { url: message.imageUrl } },
-        ]
-      : message.content,
-  }));
 }

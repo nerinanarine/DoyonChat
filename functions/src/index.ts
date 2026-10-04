@@ -6,5 +6,6 @@ import './functions/messages';
 import './functions/chat';
 import './functions/users';
 import './functions/agent';
+import './functions/artifacts';
 
 app.setup({ enableHttpStream: true });

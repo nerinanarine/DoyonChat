@@ -286,7 +286,7 @@ curl http://localhost:7071/api/conversations/<conversation-id>/messages
 # モデル変更
 curl -X PUT http://localhost:7071/api/conversations/<conversation-id>/model \
   -H "Content-Type: application/json" \
-  -d '{"model":"glm-5.1"}'
+  -d '{"model":"glm-5.2"}'
 
 # 会話削除
 curl -i -X DELETE http://localhost:7071/api/conversations/<conversation-id>

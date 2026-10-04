@@ -46,7 +46,7 @@ describe('Functions user settings agent keys', () => {
   });
 
   it('excludes an out-of-domain agentApprovalLevel from responses via sanitize', async () => {
-    // ストアには保存される（defaultModel と同流儀）が、レスポンスには現れない
+    // ストアには保存されるが、レスポンスには現れない
     await service.updateSettings('alice', { agentApprovalLevel: 'bogus' });
     const stored = await service.getSettings('alice');
     expect(stored.settings).toEqual({});
@@ -80,13 +80,13 @@ describe('Functions user settings agent keys', () => {
   });
 
   it('keeps existing keys when merging agent keys', async () => {
-    await service.updateSettings('alice', { defaultModel: 'kimi-k2.6' });
+    await service.updateSettings('alice', { displayName: 'Alice' });
     const updated = await service.updateSettings('alice', {
       agentApprovalLevel: 'auto',
       agentModel: 'anthropic/claude-sonnet-4',
     });
     expect(updated.settings).toEqual({
-      defaultModel: 'kimi-k2.6',
+      displayName: 'Alice',
       agentApprovalLevel: 'auto',
       agentModel: 'anthropic/claude-sonnet-4',
     });

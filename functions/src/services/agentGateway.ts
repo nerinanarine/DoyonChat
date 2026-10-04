@@ -108,6 +108,25 @@ export function forwardApprove(
   });
 }
 
+/**
+ * gateway 未起動（コールドスタート）を他の中継エラーと区別する SSE エラーコード。
+ * 既存 SafeErrorCode（rate_limit/timeout/authentication/server/network）とは衝突しない。
+ */
+export const AGENT_STARTING = 'agent-starting';
+
+/**
+ * gateway 未起動を示す 503 か。gateway 未到達時に forward 系が投げる
+ * 'Agent service unavailable' のみを対象とし、設定不備の
+ * 'Agent service is not configured' はコールドスタート扱いしない。
+ */
+export function isGatewayUnavailable(error: unknown): boolean {
+  return (
+    error instanceof AppError &&
+    error.statusCode === 503 &&
+    error.message === 'Agent service unavailable'
+  );
+}
+
 /** GET /runs/:id を gateway へ転送する。 */
 export function forwardGetRun(
   config: AgentGatewayConfig,
@@ -125,6 +144,28 @@ export function forwardGetRun(
         signal: AbortSignal.timeout(timeoutMs),
       },
     );
+    if (!response.ok) throw mapGatewayStatus(response.status);
+    const body = await response.json().catch(() => undefined);
+    return { status: response.status, body };
+  });
+}
+
+/**
+ * GET /models を gateway へ転送する（gateway 稼働検出・コールドスタート検出用）。
+ * `/health` は pi 準備完了を証明できないため、`client.start()` を伴う `/models` を使う。
+ */
+export function forwardGetModels(
+  config: AgentGatewayConfig,
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = 30_000,
+): Promise<GatewayResult> {
+  return forward(async () => {
+    if (!config.baseUrl) throw new AppError(503, 'Agent service is not configured');
+    const response = await fetchImpl(buildUrl(config.baseUrl, '/models'), {
+      method: 'GET',
+      headers: await buildHeaders(config),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
     if (!response.ok) throw mapGatewayStatus(response.status);
     const body = await response.json().catch(() => undefined);
     return { status: response.status, body };

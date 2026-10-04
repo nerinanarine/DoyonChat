@@ -7,7 +7,6 @@ import {
 import { authenticateRequest } from '../middleware/auth';
 import { AppError, toHttpResponse } from '../middleware/errorHandler';
 import * as service from '../services/userSettingsService';
-import { hasModel } from '../config/modelCatalog';
 import { readJsonBody } from './request';
 
 export async function userSettingsHandler(
@@ -21,18 +20,6 @@ export async function userSettingsHandler(
     }
 
     const body = await readJsonBody(request);
-    if (
-      Object.prototype.hasOwnProperty.call(body, 'defaultModel') &&
-      body.defaultModel !== null
-    ) {
-      const model = body.defaultModel;
-      if (typeof model !== 'string' || !model.trim()) {
-        throw new AppError(400, 'model is required');
-      }
-      if (!hasModel(model)) {
-        throw new AppError(400, 'model is not supported');
-      }
-    }
     if (
       Object.prototype.hasOwnProperty.call(body, 'displayName') &&
       body.displayName !== null &&

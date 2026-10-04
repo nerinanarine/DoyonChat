@@ -1,24 +1,21 @@
 import {
   HttpRequest,
-  HttpResponseInit,
 } from '@azure/functions';
 import { healthHandler } from '../../src/functions/health';
 import { modelsHandler } from '../../src/functions/models';
 import {
   conversationHandler,
   conversationsHandler,
-  modelHandler,
   titleAutoHandler,
   titleHandler,
 } from '../../src/functions/conversations';
-import { messagesHandler } from '../../src/functions/messages';
-import { chatHandler } from '../../src/functions/chat';
 import { userSettingsHandler } from '../../src/functions/users';
+import { chatHandler } from '../../src/functions/chat';
 import { AppError, toHttpResponse } from '../../src/middleware/errorHandler';
 import * as auth from '../../src/middleware/auth';
 import * as conversationService from '../../src/services/conversationService';
 import * as opencodeGo from '../../src/services/opencodeGo';
-import { DEFAULT_MODEL_ID, MODEL_CATALOG } from '../../src/config/modelCatalog';
+import { DEFAULT_MODEL_ID } from '../../src/config/modelCatalog';
 
 jest.mock('../../src/db', () => {
   const unavailableContainer = {
@@ -46,21 +43,6 @@ function request(
   });
 }
 
-async function readStream(response: HttpResponseInit): Promise<string> {
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of response.body as AsyncIterable<Uint8Array>) {
-    chunks.push(chunk);
-  }
-  return new TextDecoder().decode(
-    chunks.reduce((result, chunk) => {
-      const merged = new Uint8Array(result.length + chunk.length);
-      merged.set(result);
-      merged.set(chunk, result.length);
-      return merged;
-    }, new Uint8Array()),
-  );
-}
-
 describe('Functions API contract', () => {
   const originalAuthEnabled = process.env.AUTH_ENABLED;
   const originalApiKey = process.env.OPENCODE_GO_API_KEY;
@@ -86,43 +68,38 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
-    expect(models.jsonBody).toHaveLength(35);
+    expect(models.jsonBody).toHaveLength(30);
     expect((models.jsonBody as Array<{ id: string }>).map(({ id }) => id)).toEqual([
-      'grok-4.5',
+      'grok-4.7',
       'grok-4.6',
+      'gpt-6-luna',
       'gpt-5.6-luna',
-      'glm-5',
       'glm-5.3-flash',
       'glm-5.3',
       'glm-5.2',
-      'glm-5.1',
       'kimi-k3',
       'kimi-k2.7-code',
       'kimi-k2.6',
-      'kimi-k2.5',
+      'longcat-2.5-preview-free',
       'longcat-2.0',
+      'deepseek-v4.1-flash',
       'deepseek-v4-pro',
       'deepseek-v4-flash',
       'deepseek-v4-flash-vision-exp',
-      'mimo-v2-pro',
-      'mimo-v2-omni',
+      'mimo-v2.6-flash',
+      'mimo-v2.6-pro',
       'mimo-v2.5',
       'mimo-v2.5-pro',
       'minimax-m3',
       'minimax-m2.7',
-      'minimax-m2.5',
       'muse-spark-1.3-contributor',
       'muse-spark-1.2-contributor',
       'qwen3.8-max',
       'qwen3.8-flash',
-      'qwen3.7-max',
       'qwen3.7-plus',
-      'qwen3.6-plus',
-      'qwen3.5-plus',
       'hy4-preview',
-      'hy3-preview',
       'hy3',
-      'omen-alpha',
+      'space-bunny-free',
     ]);
   });
 
@@ -159,12 +136,12 @@ describe('Functions API contract', () => {
     expect(empty.jsonBody).toEqual({ userId: 'dev-user', settings: {} });
 
     const patched = await userSettingsHandler(
-      request('PATCH', '/api/users/me/settings', { defaultModel: 'glm-5.1' }),
+      request('PATCH', '/api/users/me/settings', { agentModel: 'glm-5.2' }),
       {} as never,
     );
     expect(patched.status).toBe(200);
     expect(patched.jsonBody).toEqual(
-      expect.objectContaining({ userId: 'dev-user', settings: { defaultModel: 'glm-5.1' } }),
+      expect.objectContaining({ userId: 'dev-user', settings: { agentModel: 'glm-5.2' } }),
     );
 
     const fetched = await userSettingsHandler(
@@ -174,25 +151,12 @@ describe('Functions API contract', () => {
     expect(fetched.jsonBody).toEqual(patched.jsonBody);
 
     const cleared = await userSettingsHandler(
-      request('PATCH', '/api/users/me/settings', { defaultModel: null }),
+      request('PATCH', '/api/users/me/settings', { agentModel: null }),
       {} as never,
     );
     expect(cleared.jsonBody).toEqual(
       expect.objectContaining({ userId: 'dev-user', settings: {} }),
     );
-  });
-
-  it.each([
-    ['a non-string model', 123],
-    ['a blank string model', '   '],
-    ['an unknown model', 'unknown-model'],
-  ])('rejects %s when patching user settings', async (_case, model) => {
-    const response = await userSettingsHandler(
-      request('PATCH', '/api/users/me/settings', { defaultModel: model }),
-      {} as never,
-    );
-
-    expect(response.status).toBe(400);
   });
 
   it('saves and clears displayName via user settings', async () => {
@@ -232,7 +196,7 @@ describe('Functions API contract', () => {
         .mockResolvedValueOnce('alice')
         .mockResolvedValueOnce('bob');
       await userSettingsHandler(
-        request('PATCH', '/api/users/me/settings', { defaultModel: 'kimi-k2.6' }),
+        request('PATCH', '/api/users/me/settings', { agentModel: 'kimi-k2.6' }),
         {} as never,
       );
 
@@ -243,7 +207,7 @@ describe('Functions API contract', () => {
       expect(alice.jsonBody).toEqual(
         expect.objectContaining({
           userId: 'alice',
-          settings: { defaultModel: 'kimi-k2.6' },
+          settings: { agentModel: 'kimi-k2.6' },
         }),
       );
 
@@ -260,11 +224,10 @@ describe('Functions API contract', () => {
     }
   });
 
-  it('supports conversation CRUD, model updates, and title updates', async () => {
+  it('supports conversation CRUD and title updates', async () => {
     const created = await conversationsHandler(
       request('POST', '/api/conversations', {
         title: 'Functions chat',
-        model: 'kimi-k2.6',
         userId: 'spoofed-user',
       }),
       {} as never,
@@ -286,14 +249,7 @@ describe('Functions API contract', () => {
       expect.objectContaining({ conversation: expect.objectContaining({ id }) }),
     );
 
-    const updated = await modelHandler(
-      request('PUT', `/api/conversations/${id}/model`, { model: 'glm-5.1' }),
-      {} as never,
-    );
-    expect(updated.status).toBe(200);
-    expect((updated.jsonBody as { model: string }).model).toBe('glm-5.1');
-
-    const beforeRename = updated.jsonBody as Record<string, unknown>;
+    const beforeRename = created.jsonBody as Record<string, unknown>;
     const renamed = await titleHandler(
       request('PUT', `/api/conversations/${id}/title`, { title: '  Renamed chat  ' }),
       {} as never,
@@ -316,81 +272,42 @@ describe('Functions API contract', () => {
     expect(deleted.status).toBe(204);
   });
 
-  it('defaults omitted models and accepts every catalog model', async () => {
+  it('creates agent-mode conversations with the default model, ignoring client model and agentMode', async () => {
+    const created = await conversationsHandler(
+      request('POST', '/api/conversations', {
+        title: 'Always agent',
+        model: 'glm-5.2',
+        agentMode: false,
+      }),
+      {} as never,
+    );
+    expect(created.status).toBe(201);
+    expect(created.jsonBody).toEqual(
+      expect.objectContaining({ model: DEFAULT_MODEL_ID, agentMode: true }),
+    );
+
     const defaulted = await conversationsHandler(
       request('POST', '/api/conversations', { title: 'Default model' }),
       {} as never,
     );
     expect(defaulted.status).toBe(201);
     expect(defaulted.jsonBody).toEqual(
-      expect.objectContaining({ model: DEFAULT_MODEL_ID }),
+      expect.objectContaining({ model: DEFAULT_MODEL_ID, agentMode: true }),
     );
-    for (const { info } of MODEL_CATALOG) {
-      const created = await conversationsHandler(
-        request('POST', '/api/conversations', {
-          title: `Create ${info.id}`,
-          model: info.id,
-        }),
-        {} as never,
-      );
-      expect(created.status).toBe(201);
-      expect(created.jsonBody).toEqual(expect.objectContaining({ model: info.id }));
-      const id = (created.jsonBody as { id: string }).id;
-      const updated = await modelHandler(
-        request('PUT', `/api/conversations/${id}/model`, { model: info.id }),
-        {} as never,
-      );
-      expect(updated.status).toBe(200);
-      expect(updated.jsonBody).toEqual(expect.objectContaining({ model: info.id }));
-    }
   });
 
   it.each([
     ['a non-string model', 123],
     ['an unknown model', 'unknown-model'],
-  ])('rejects %s on create without saving', async (_case, model) => {
-    const before = await conversationsHandler(
-      request('GET', '/api/conversations'),
-      {} as never,
-    );
-
+  ])('ignores %s on create and still creates the conversation', async (_case, model) => {
     const response = await conversationsHandler(
-      request('POST', '/api/conversations', { title: 'Invalid', model }),
+      request('POST', '/api/conversations', { title: 'Any model', model }),
       {} as never,
     );
 
-    const after = await conversationsHandler(
-      request('GET', '/api/conversations'),
-      {} as never,
-    );
-    expect(response.status).toBe(400);
-    expect(after.jsonBody).toHaveLength((before.jsonBody as unknown[]).length);
-  });
-
-  it.each([
-    ['a non-string model', 123],
-    ['an unknown model', 'unknown-model'],
-  ])('rejects %s on update without changing the saved model', async (_case, model) => {
-    const created = await conversationsHandler(
-      request('POST', '/api/conversations', { title: 'Valid model' }),
-      {} as never,
-    );
-    const conversation = created.jsonBody as { id: string; model: string };
-
-    const response = await modelHandler(
-      request('PUT', `/api/conversations/${conversation.id}/model`, { model }),
-      {} as never,
-    );
-
-    const detail = await conversationHandler(
-      request('GET', `/api/conversations/${conversation.id}`),
-      {} as never,
-    );
-    expect(response.status).toBe(400);
-    expect(detail.jsonBody).toEqual(
-      expect.objectContaining({
-        conversation: expect.objectContaining({ model: conversation.model }),
-      }),
+    expect(response.status).toBe(201);
+    expect(response.jsonBody).toEqual(
+      expect.objectContaining({ model: DEFAULT_MODEL_ID }),
     );
   });
 
@@ -592,91 +509,59 @@ describe('Functions API contract', () => {
     }
   });
 
-  it('streams chat events and saves the assistant message', async () => {
+  it('keeps legacy (agentMode: false) conversations readable but blocks sends without saving', async () => {
     const created = await conversationsHandler(
-      request('POST', '/api/conversations', { title: 'SSE chat' }),
+      request('POST', '/api/conversations', { title: 'Legacy chat' }),
       {} as never,
     );
     const id = (created.jsonBody as { id: string }).id;
-    // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
-    await conversationService.updateConversationAgentMode(id, false, 'dev-user');
+    // 旧通常チャット相当（agentMode: false）のデータを直接 seed する。
+    // 削除済みの agentMode 切替 API は使わず、getConversation を fixture で差し替える。
+    const legacyConversation = {
+      id,
+      userId: 'dev-user',
+      title: 'Legacy chat',
+      model: DEFAULT_MODEL_ID,
+      agentMode: false,
+      createdAt: '2026-08-22T00:00:00.000Z',
+      updatedAt: '2026-08-22T00:00:00.000Z',
+    };
+    const getSpy = jest
+      .spyOn(conversationService, 'getConversation')
+      .mockResolvedValue(legacyConversation);
+    try {
+      await conversationService.addMessage(
+        { conversationId: id, role: 'user', content: '旧形式の質問' },
+        'dev-user',
+      );
 
-    const response = await chatHandler(
-      request('POST', '/api/chat', { conversationId: id, message: 'Hello' }),
-      {} as never,
-    );
-    expect(response.status).toBe(200);
-    expect(response.headers).toEqual(
-      expect.objectContaining({ 'Content-Type': 'text/event-stream' }),
-    );
+      // 履歴は閲覧できる（FR-009）
+      const detail = await conversationHandler(
+        request('GET', `/api/conversations/${id}`),
+        {} as never,
+      );
+      expect(detail.status).toBe(200);
+      expect(detail.jsonBody).toEqual(
+        expect.objectContaining({
+          conversation: expect.objectContaining({ id, agentMode: false }),
+          messages: [expect.objectContaining({ role: 'user', content: '旧形式の質問' })],
+        }),
+      );
 
-    const text = await readStream(response);
-    expect(text).toContain('"done":false');
-    expect(text).toContain('"done":true');
+      // 送信は 409 + 新規 Agent 会話への案内でブロックし、user メッセージを保存しない（FR-009）
+      const response = await chatHandler(
+        request('POST', '/api/chat', { conversationId: id, message: '続きを送る' }),
+        {} as never,
+      );
+      expect(response.status).toBe(409);
+      expect((response.jsonBody as { error: string }).error).toContain('新規のAgent会話');
 
-    const messages = await messagesHandler(
-      request('GET', `/api/conversations/${id}/messages`),
-      {} as never,
-    );
-    expect(messages.status).toBe(200);
-    expect(messages.jsonBody).toHaveLength(2);
-  });
-
-  it('rejects a new image for Messages models before saving the user message', async () => {
-    const created = await conversationsHandler(
-      request('POST', '/api/conversations', {
-        title: 'Messages image',
-        model: 'minimax-m3',
-      }),
-      {} as never,
-    );
-    const id = (created.jsonBody as { id: string }).id;
-
-    const response = await chatHandler(
-      request('POST', '/api/chat', {
-        conversationId: id,
-        message: 'Describe this',
-        imageBase64: 'data:image/png;base64,image',
-      }),
-      {} as never,
-    );
-
-    expect(response.status).toBe(400);
-    await expect(conversationService.listMessages(id, 'dev-user')).resolves.toEqual([]);
-  });
-
-  it('rejects unavailable saved models before saving messages', async () => {
-    const conversation = await conversationService.createConversation(
-      'Unavailable model',
-      'retired-model',
-      'dev-user',
-    );
-    // 通常経路の検証のため agentMode を明示的に無効化する（新規既定は true）。
-    await conversationService.updateConversationAgentMode(conversation.id, false, 'dev-user');
-
-    const response = await chatHandler(
-      request('POST', '/api/chat', {
-        conversationId: conversation.id,
-        message: 'Hello',
-      }),
-      {} as never,
-    );
-
-    expect(response).toEqual({
-      status: 409,
-      jsonBody: { error: 'Selected model is no longer available' },
-    });
-    await expect(
-      conversationService.listMessages(conversation.id, 'dev-user'),
-    ).resolves.toEqual([]);
-    const detail = await conversationHandler(
-      request('GET', `/api/conversations/${conversation.id}`),
-      {} as never,
-    );
-    expect(detail.status).toBe(200);
-    expect(detail.jsonBody).toEqual(
-      expect.objectContaining({ conversation: expect.objectContaining({ model: 'retired-model' }) }),
-    );
+      await expect(conversationService.listMessages(id, 'dev-user')).resolves.toEqual([
+        expect.objectContaining({ role: 'user', content: '旧形式の質問' }),
+      ]);
+    } finally {
+      getSpy.mockRestore();
+    }
   });
 
   it('converts application errors to the existing JSON format', () => {

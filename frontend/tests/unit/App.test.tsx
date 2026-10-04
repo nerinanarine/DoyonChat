@@ -19,10 +19,10 @@ vi.mock('../../src/hooks/useConversations', () => ({
 vi.mock('../../src/hooks/useSettings', () => ({ useSettings: vi.fn() }));
 vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn() }));
 
-const defaultModel: ModelInfo = {
+const testModel: ModelInfo = {
   id: 'kimi-k2.6',
   name: 'Kimi K2.6',
-  description: 'Default model',
+  description: 'Test model',
   quality: 4,
   speed: 'fast',
   cost: 'low',
@@ -34,7 +34,7 @@ const defaultModel: ModelInfo = {
 const createdConversation: Conversation = {
   id: 'created-conversation',
   title: 'New Chat',
-  model: defaultModel.id,
+  model: testModel.id,
   createdAt: '2026-08-23T00:00:00.000Z',
   updatedAt: '2026-08-23T00:00:00.000Z',
 };
@@ -49,7 +49,7 @@ const clearChat = vi.fn();
 
 function mockHooks(
   conversations: Conversation[] = [],
-  settings: ModelInfo['id'] | undefined = undefined,
+  chatOverrides: Partial<ReturnType<typeof useChat>> = {},
 ) {
   vi.mocked(useConversations).mockReturnValue({
     conversations,
@@ -58,8 +58,6 @@ function mockHooks(
     load: vi.fn(),
     create,
     remove: vi.fn(),
-    updateModel: vi.fn(),
-    updateAgentMode: vi.fn(),
     updateTitle: vi.fn(),
     autoTitle,
     isRenamed,
@@ -72,19 +70,23 @@ function mockHooks(
     approvalRequest: null,
     approvalBusy: false,
     isStreaming: false,
+    agentStarting: false,
     error: null,
     messagesLoading: false,
     loadError: null,
     loadMessages,
     sendMessage,
     retrySend: vi.fn(),
+    retry: vi.fn(),
     stop: vi.fn(),
     dismissError: vi.fn(),
     respondApproval: vi.fn(),
     clearChat,
+    ...chatOverrides,
   });
   vi.mocked(useSettings).mockReturnValue({
-    settings: settings === undefined ? {} : { defaultModel: settings },
+    userId: 'test-user',
+    settings: {},
     status: 'loaded',
     error: null,
     updateSettings,
@@ -92,14 +94,22 @@ function mockHooks(
   });
 }
 
-describe('App model state', () => {
+describe('App chat bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     create.mockResolvedValue(createdConversation);
     autoTitle.mockResolvedValue(undefined);
     isRenamed.mockReturnValue(false);
     mockHooks();
-    vi.mocked(api.fetchModels).mockResolvedValue([defaultModel]);
+    vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+  });
+
+  it('does not render a header model selection dropdown (FR-002)', async () => {
+    render(<App />);
+    await screen.findByRole('button', { name: '新規チャット' });
+
+    expect(screen.queryByRole('button', { name: /Kimi K2\.6/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
   });
 
   it('clears the chat view when starting a new chat from an existing conversation', async () => {
@@ -128,82 +138,7 @@ describe('App model state', () => {
     expect(screen.queryAllByRole('listitem').length).toBe(0);
   });
 
-  it('uses the saved defaultModel as the initial draft model', async () => {
-    mockHooks([], 'glm-5.1');
-    render(<App />);
-
-    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
-
-    // モデルメニューに draftModel のID（利用不可扱い）が出る
-    expect(await screen.findByRole('button', { name: /glm-5\.1/i })).toBeInTheDocument();
-    expect(create).not.toHaveBeenCalled();
-  });
-
-  it('shows a neutral header label when no conversation and no draft model are set', async () => {
-    render(<App />);
-
-    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
-
-    // settings が空（defaultModel なし）でも「undefined（利用不可）」ではなく中立ラベルを出す
-    expect(await screen.findByRole('button', { name: 'モデル未選択' })).toBeInTheDocument();
-    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
-  });
-
-  it('updates draft model without calling the backend when no conversation is selected', async () => {
-    const updateModel = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(useConversations).mockReturnValue({
-      conversations: [],
-      loading: false,
-      error: null,
-      load: vi.fn(),
-      create,
-      remove: vi.fn(),
-      updateModel,
-      updateTitle: vi.fn(),
-      updateAgentMode: vi.fn(),
-      autoTitle,
-      isRenamed,
-    });
-    vi.mocked(useSettings).mockReturnValue({
-      settings: { defaultModel: 'kimi-k2.6' },
-      status: 'loaded',
-      error: null,
-      updateSettings,
-      reload: vi.fn(),
-    });
-    vi.mocked(api.fetchModels).mockResolvedValue([
-      defaultModel,
-      { ...defaultModel, id: 'glm-5.1', name: 'GLM-5.1', description: 'GLM model' },
-    ]);
-    render(<App />);
-
-    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
-    fireEvent.click(await screen.findByRole('button', { name: /Kimi K2.6/ }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /GLM-5.1/ }));
-
-    await waitFor(() => expect(updateModel).not.toHaveBeenCalled());
-    // draft model が反映され、初回送信に使われる
-    const input = await screen.findByPlaceholderText('メッセージを入力...');
-    fireEvent.change(input, { target: { value: 'draft message' } });
-    fireEvent.click(screen.getByRole('button', { name: '送信' }));
-
-    await waitFor(() => expect(create).toHaveBeenCalledWith('draft message', 'glm-5.1'));
-  });
-
-  it('uses the saved defaultModel when the first message creates a conversation', async () => {
-    mockHooks([], 'glm-5.1');
-    render(<App />);
-
-    fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
-    const input = await screen.findByPlaceholderText('メッセージを入力...');
-    fireEvent.change(input, { target: { value: '最初のメッセージ' } });
-
-    fireEvent.click(screen.getByRole('button', { name: '送信' }));
-
-    await waitFor(() => expect(create).toHaveBeenCalledWith('最初のメッセージ', 'glm-5.1'));
-  });
-
-  it('omits model when the first message creates a conversation', async () => {
+  it('creates the conversation from the first message text only', async () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: '新規チャット' }));
@@ -228,11 +163,7 @@ describe('App model state', () => {
     fireEvent.click(screen.getByRole('button', { name: '送信' }));
 
     await waitFor(() =>
-      expect(sendMessage).toHaveBeenCalledWith(
-        '最初のメッセージ',
-        undefined,
-        'created-conversation',
-      ),
+      expect(sendMessage).toHaveBeenCalledWith('最初のメッセージ', 'created-conversation'),
     );
   });
 
@@ -251,28 +182,6 @@ describe('App model state', () => {
       ),
     );
     expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
-  });
-
-  it('marks a saved model unavailable only after the catalog has loaded', async () => {
-    const unavailableConversation = {
-      ...createdConversation,
-      id: 'unavailable-conversation',
-      title: '利用不可モデルの会話',
-      model: 'retired-model',
-    };
-    mockHooks([unavailableConversation]);
-    render(<App />);
-
-    const titleButton = await screen.findByRole('button', { name: unavailableConversation.title });
-    fireEvent.click(titleButton.parentElement as HTMLElement);
-
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(
-        '保存済みモデル「retired-model」は利用不可です。利用可能なモデルを再選択してください。',
-      ),
-    );
-    expect(screen.getByRole('button', { name: /retired-model（利用不可）/ })).toBeEnabled();
-    expect(screen.getByPlaceholderText('メッセージを入力...')).toBeDisabled();
   });
 
   it('triggers auto title with the created conversation id after the first message', async () => {
@@ -347,28 +256,13 @@ describe('App agent mode', () => {
     autoTitle.mockResolvedValue(undefined);
     isRenamed.mockReturnValue(false);
     mockHooks();
-    vi.mocked(api.fetchModels).mockResolvedValue([defaultModel]);
+    vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
   });
 
-  it('disables image attach for agent mode conversations (no toggle)', async () => {
+  it('does not render the agent mode toggle or an image attach control', async () => {
     mockHooks([
       { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
     ]);
-    vi.mocked(useConversations).mockReturnValue({
-      conversations: [
-        { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
-      ],
-      loading: false,
-      error: null,
-      load: vi.fn(),
-      create,
-      remove: vi.fn(),
-      updateModel: vi.fn(),
-      updateAgentMode: vi.fn(),
-      updateTitle: vi.fn(),
-      autoTitle,
-      isRenamed,
-    });
     render(<App />);
     fireEvent.click(
       (await screen.findByRole('button', { name: 'エージェント会話' })).parentElement as HTMLElement,
@@ -376,37 +270,7 @@ describe('App agent mode', () => {
 
     await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('agent-conv'));
     expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '画像をアップロード' })).toBeDisabled();
-    expect(screen.getByRole('alert')).toHaveTextContent(/エージェントモードはテキストのみ対応/);
-    expect(screen.getByLabelText('エージェントモード')).toBeInTheDocument();
-  });
-
-  it('does not render the agent mode toggle', async () => {
-    mockHooks([
-      { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
-    ]);
-    vi.mocked(useConversations).mockReturnValue({
-      conversations: [
-        { ...createdConversation, id: 'agent-conv', title: 'エージェント会話', agentMode: true },
-      ],
-      loading: false,
-      error: null,
-      load: vi.fn(),
-      create,
-      remove: vi.fn(),
-      updateModel: vi.fn(),
-      updateAgentMode: vi.fn(),
-      updateTitle: vi.fn(),
-      autoTitle,
-      isRenamed,
-    });
-    render(<App />);
-    fireEvent.click(
-      (await screen.findByRole('button', { name: 'エージェント会話' })).parentElement as HTMLElement,
-    );
-
-    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('agent-conv'));
-    expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '画像をアップロード' })).not.toBeInTheDocument();
   });
 
   it('keeps chat input enabled for agent conversations with an unavailable saved model (RG-2 F3)', async () => {
@@ -430,5 +294,24 @@ describe('App agent mode', () => {
     expect(
       screen.queryByText(/保存済みモデル「retired-model」は利用不可です/),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('App agent startup loading (P2-018)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    create.mockResolvedValue(createdConversation);
+    autoTitle.mockResolvedValue(undefined);
+    isRenamed.mockReturnValue(false);
+    vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+  });
+
+  it('shows the agent startup loading state while the gateway cold-starts', async () => {
+    mockHooks([createdConversation], { agentStarting: true });
+    render(<App />);
+
+    expect(
+      await screen.findByText('エージェントサービスを起動しています...'),
+    ).toBeInTheDocument();
   });
 });

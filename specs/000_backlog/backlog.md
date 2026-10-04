@@ -36,7 +36,8 @@
 | [P1-009](items/P1-009-admin-menu.md) | Adminメニュー | P1 | 🔴 未対応 | 管理機能 | P1-008 | DoyonHubのトップメニューに管理機能への入口を追加 |
 | [P1-010](items/P1-010-user-management.md) | ユーザー管理 | P1 | 🔴 未対応 | 管理機能 | P1-009 | 管理対象・操作範囲は後で決定 |
 | [P1-011](items/P1-011-long-reasoning-error.md) | 長文推論時のエラー修正 | P1 | 🟢 対応済み | 品質・安定性 | [仕様](../P1-011/spec.md) | 本番デプロイ完了、[Issue #20](https://github.com/nerinanarine/DoyonChat/issues/20) 対応 |
-| [P1-012](items/P1-012-always-agent.md) | 常時Agentモード・旧一問一答の廃止 | P1 | 🔴 未対応 | 機能追加 | P3-010 | Agentモードに一本化、通常チャットのUI・API導線を削除 |
+| [P1-012](items/P1-012-always-agent.md) | 常時Agentモード・旧一問一答の廃止 | P1 | 🟡 進行中 | 機能追加 | P3-010 | Agentモードに一本化、通常チャットのUI・API導線を削除 |
+| [P1-013](items/P1-013-agent-model-selector.md) | Agent実行モデル選択ドロップダウン（Pi model連動） | P1 | 🟡 進行中 | 機能追加 | P1-012 | spec/plan起草済み、30モデル・agentModel連動＋会話override |
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
 | [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-003/spec.md) | 実装・自動テスト完了、SafeErrorCode/再試行/401遷移。本番デプロイまで管理済み |
@@ -52,10 +53,11 @@
 | [P2-013](items/P2-013-loading-state.md) | データ取得中のローディング画面 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-013/spec.md) | 実装・自動テスト完了、bootstrap/メッセージloading。本番デプロイまで管理済み、[Issue #34](https://github.com/nerinanarine/DoyonChat/issues/34) |
 | [P2-014](items/P2-014-display-names.md) | チャット画面の発言者名をカスタマイズ | P2 | 🟢 対応済み | UX改善 | — | AI側はモデル名、ユーザー側は設定した名前を表示。P2-008・P2-010と連携、本番デプロイまで管理済み |
 | [P2-015](items/P2-015-opencode-session-header.md) | x-opencode-session・遅延作成・モデル1件追加 | P2 | 🟢 対応済み | 品質・安定性 | [仕様](../P2-015/spec.md) | 本番デプロイ完了（live test 26/27、grokはP2-016へ分離） |
-| [P2-016](items/P2-016-grok-4-6-capacity.md) | grok-4.6 上流キャパシティ不足の追従 | P2 | 🔴 未対応 | 品質・安定性 | — | P2-015 live test 26/27の残件。上流回復後に27/27再確認 |
+| [P2-016](items/P2-016-grok-4-6-capacity.md) | grok-4.6 上流キャパシティ不足の追従 | P2 | 🟢 対応済み | 品質・安定性 | — | P2-019 live test 30/30で解消 |
 | [P2-017](items/P2-017-draft-send-failure.md) | 新規作成失敗時の入力保持・エラー表示 | P2 | 🔴 未対応 | UX改善 | — | P2-015残存リスク。作成失敗で入力が消える問題 |
-| [P2-018](items/P2-018-containerapp-scale-zero.md) | Agent gateway ContainerAppのスケールゼロ化＋起動中ローディング | P2 | 🔴 未対応 | コスト・スケーリング | — | `minReplicas: 0`、起動中ローディング表示 |
-| [P2-019](items/P2-019-opencode-latest-models.md) | OpenCode Go最新モデルカタログ追従 | P2 | 🔴 未対応 | 機能追加・品質 | P2-011 | P2-011の後継、公式Endpoints表の差分追従＋全モデル疎通 |
+| [P2-018](items/P2-018-containerapp-scale-zero.md) | Agent gateway ContainerAppのスケールゼロ化＋起動中ローディング | P2 | 🟡 進行中 | コスト・スケーリング | — | `minReplicas: 0`、起動中ローディング表示 |
+| [P2-019](items/P2-019-opencode-latest-models.md) | OpenCode Go最新モデルカタログ追従 | P2 | 🟡 進行中 | 機能追加・品質 | P2-011 | 実装・live 30/30完了、本番デプロイ待ち |
+| [P2-020](items/P2-020-user-agents-md.md) | ユーザー別AGENTS.md編集UI | P2 | 🟡 進行中 | 機能追加 | P3-016 | spec/plan起草済み、保存先既定案C＋Aは要確認 |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |
 | [P3-002](items/P3-002-search.md) | 会話の検索 | P3 | 🔴 未対応 | 利便性 | — | クライアントサイド検索 |
 | [P3-003](items/P3-003-export.md) | 会話のエクスポート | P3 | 🔴 未対応 | 利便性 | — | Markdown / JSON |
@@ -71,7 +73,7 @@
 | [P3-013](items/P3-013-ci-agent-image.md) | エージェントgatewayイメージのCI組み込み | P3 | 🔴 未対応 | 運用改善 | — | az acr build 手動運用の解消、prodはSHAタグ固定 |
 | [P3-014](items/P3-014-agent-web-access.md) | エージェントへの pi-web-access 導入 | P3 | 🔴 未対応 | 機能追加 | — | dev先行・キー不要・読み取りは承認なし |
 | [P3-015](items/P3-015-agent-files.md) | エージェントのファイル作成・読み取り | P3 | 🔴 未対応 | 機能追加 | — | pi-subagents前提・docx/xlsx/pptx/pdf/テキスト/画像・DL導線 |
-| [P3-016](items/P3-016-user-azure-files.md) | ユーザー専用Azure Filesマウント・アーティファクト保存 | P3 | 🔴 未対応 | 機能追加 | P3-015 | ユーザーごとに専用Filesをマウント、再起動後も永続化 |
+| [P3-016](items/P3-016-user-azure-files.md) | ユーザー専用Azure Filesマウント・アーティファクト保存 | P3 | 🟡 進行中 | 機能追加 | P3-015 | ユーザーごとに専用Filesをマウント、再起動後も永続化 |
 | [P4-002](items/P4-002-templates.md) | プロンプトテンプレート | P4 | 🔴 未対応 | 機能追加 | — | localStorage 保存 |
 | [P4-003](items/P4-003-code-exec.md) | コードブロックの実行機能 | P4 | 🔴 未対応 | 機能追加 | — | Sandpack 検討 |
 | [P4-004](items/P4-004-voice.md) | 音声入力（Web Speech API） | P4 | 🔴 未対応 | 機能追加 | — | ブラウザ対応状況依存 |

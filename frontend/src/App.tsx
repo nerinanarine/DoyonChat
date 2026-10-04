@@ -6,6 +6,7 @@ import { useSettings } from './hooks/useSettings';
 import AppLayout from './components/Layout/AppLayout';
 import ChatMessageList from './components/Chat/ChatMessageList';
 import ChatInput from './components/Chat/ChatInput';
+import ArtifactDownload from './components/Chat/ArtifactDownload';
 import LoginPage from './components/Auth/LoginPage';
 import LoadingState from './components/Common/LoadingState';
 import ErrorMessage from './components/Common/ErrorMessage';
@@ -27,13 +28,11 @@ function App() {
     load: reloadConversations,
     create,
     remove,
-    updateModel,
     updateTitle,
     autoTitle,
     isRenamed,
   } = useConversations(dataEnabled);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [draftModel, setDraftModel] = useState<string | undefined>(undefined);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
 
@@ -45,19 +44,20 @@ function App() {
     approvalRequest,
     approvalBusy,
     isStreaming,
+    agentStarting,
     error: chatError,
     messagesLoading,
     loadError,
     loadMessages,
     sendMessage,
-    retrySend,
+    retry,
     stop,
     dismissError,
     respondApproval,
     clearChat,
   } = useChat(activeConversationId);
 
-  const { settings, status: settingsStatus, error: settingsError, updateSettings, reload: reloadSettings } =
+  const { userId, settings, status: settingsStatus, updateSettings, reload: reloadSettings } =
     useSettings(dataEnabled);
 
   const loadModels = useCallback(() => {
@@ -72,14 +72,7 @@ function App() {
       .catch(() => setModelsStatus('error'));
   }, [dataEnabled]);
 
-  // P2-015: 未作成ドラフトのモデルは設定のデフォルトで初期化する。リロードで破棄可。
-  useEffect(() => {
-    if (settingsStatus === 'loaded') {
-      setDraftModel(settings.defaultModel ?? undefined);
-    }
-  }, [settings.defaultModel, settingsStatus]);
-
-  // Load models once authenticated
+  // Load models once authenticated（メッセージのモデル名表示解決に使用。P2-019）
   useEffect(() => {
     loadModels();
   }, [loadModels]);
@@ -100,9 +93,8 @@ function App() {
   }, [modelsStatus, convError, settingsStatus, loadModels, reloadConversations, reloadSettings]);
 
   const handleNewChat = useCallback(() => {
-    setDraftModel(settings.defaultModel ?? undefined);
     setActiveConversationId(null);
-  }, [settings.defaultModel]);
+  }, []);
 
   const handleSelect = useCallback((id: string) => {
     setActiveConversationId(id);
@@ -118,35 +110,22 @@ function App() {
     [remove, activeConversationId],
   );
 
-  const handleChangeModel = useCallback(
-    async (modelId: string) => {
-      if (!activeConversationId) {
-        setDraftModel(modelId);
-        return;
-      }
-      await updateModel(activeConversationId, modelId);
-    },
-    [activeConversationId, updateModel],
-  );
-
   const handleSend = useCallback(
-    async (text: string, imageBase64?: string) => {
+    async (text: string) => {
       if (!activeConversationId) {
         // Create new conversation if none selected
-        const conv = draftModel
-          ? await create(text.slice(0, 30), draftModel)
-          : await create(text.slice(0, 30));
+        const conv = await create(text.slice(0, 30));
         setActiveConversationId(conv.id);
         // Wait a tick for state to update, then send
         setTimeout(() => {
-          sendMessage(text, imageBase64, conv.id);
+          sendMessage(text, conv.id);
         }, 50);
         if (text.trim()) {
           autoTitle(conv.id, text);
         }
         return;
       }
-      sendMessage(text, imageBase64);
+      sendMessage(text);
       if (
         text.trim() &&
         conversations.find((c) => c.id === activeConversationId)?.title === NEW_CHAT_TITLE &&
@@ -155,14 +134,7 @@ function App() {
         autoTitle(activeConversationId, text);
       }
     },
-    [activeConversationId, conversations, create, sendMessage, draftModel, autoTitle, isRenamed],
-  );
-
-  const handleChangeDefaultModel = useCallback(
-    async (modelId: string | null) => {
-      await updateSettings({ defaultModel: modelId ?? null });
-    },
-    [updateSettings],
+    [activeConversationId, conversations, create, sendMessage, autoTitle, isRenamed],
   );
 
   const handleChangeDisplayName = useCallback(
@@ -196,22 +168,6 @@ function App() {
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
-  const modelUnavailable =
-    modelsStatus === 'loaded' &&
-    activeConversation !== undefined &&
-    !models.some((model) => model.id === activeConversation.model);
-  const modelDisabledReason =
-    modelsStatus === 'loading'
-      ? 'モデル一覧を読み込み中です。'
-      : modelsStatus === 'error'
-        ? 'モデル一覧を取得できませんでした。'
-        : modelUnavailable
-          ? `保存済みモデル「${activeConversation.model}」は利用不可です。利用可能なモデルを再選択してください。`
-          : undefined;
-  // エージェントモード会話は保存済みモデルを使わないため、モデル不在・一覧異常による送信停止を適用しない（RG-2 F3）
-  const effectiveModelDisabledReason = activeConversation?.agentMode
-    ? undefined
-    : modelDisabledReason;
 
   if (authEnabled && !isAuthenticated) {
     return <LoginPage />;
@@ -245,12 +201,8 @@ function App() {
     <AppLayout
       conversations={conversations}
       activeConversationId={activeConversationId}
-      models={models}
-      modelsStatus={modelsStatus}
       settings={settings}
       settingsStatus={settingsStatus}
-      settingsError={settingsError}
-      onChangeDefaultModel={handleChangeDefaultModel}
       onChangeDisplayName={handleChangeDisplayName}
       onChangeAgentApprovalLevel={handleChangeAgentApprovalLevel}
       onChangeAgentModel={handleChangeAgentModel}
@@ -259,13 +211,14 @@ function App() {
       onDeleteConversation={handleDelete}
       onRenameConversation={updateTitle}
       onNewChat={handleNewChat}
-      onChangeModel={handleChangeModel}
-      draftModel={draftModel}
     >
-      {chatError && (
+      {agentStarting && (
+        <LoadingState label="エージェントサービスを起動しています..." />
+      )}
+      {!agentStarting && chatError && (
         <ErrorMessage
           message={chatError}
-          onRetry={retrySend}
+          onRetry={retry}
           onDismiss={dismissError}
         />
       )}
@@ -293,14 +246,9 @@ function App() {
         onSend={handleSend}
         onStop={stop}
         isStreaming={isStreaming}
-        disabled={convLoading || messagesLoading || Boolean(effectiveModelDisabledReason)}
-        disabledReason={effectiveModelDisabledReason}
-        imageDisabledReason={
-          activeConversation?.agentMode
-            ? 'エージェントモードはテキストのみ対応のため、画像は添付できません。'
-            : undefined
-        }
+        disabled={convLoading || messagesLoading}
       />
+      <ArtifactDownload userId={userId} />
     </AppLayout>
   );
 }

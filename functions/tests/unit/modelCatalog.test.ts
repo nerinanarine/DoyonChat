@@ -9,41 +9,36 @@ import {
 import { ModelInfo } from '../../src/types';
 
 const EXPECTED_MODELS = [
-  ['grok-4.5', 'responses'],
+  ['grok-4.7', 'responses'],
   ['grok-4.6', 'responses'],
+  ['gpt-6-luna', 'responses'],
   ['gpt-5.6-luna', 'responses'],
-  ['glm-5', 'chat-completions'],
   ['glm-5.3-flash', 'chat-completions'],
   ['glm-5.3', 'chat-completions'],
   ['glm-5.2', 'chat-completions'],
-  ['glm-5.1', 'chat-completions'],
   ['kimi-k3', 'chat-completions'],
   ['kimi-k2.7-code', 'chat-completions'],
   ['kimi-k2.6', 'chat-completions'],
-  ['kimi-k2.5', 'chat-completions'],
+  ['longcat-2.5-preview-free', 'chat-completions'],
   ['longcat-2.0', 'chat-completions'],
+  ['deepseek-v4.1-flash', 'chat-completions'],
   ['deepseek-v4-pro', 'chat-completions'],
   ['deepseek-v4-flash', 'chat-completions'],
   ['deepseek-v4-flash-vision-exp', 'chat-completions'],
-  ['mimo-v2-pro', 'chat-completions'],
-  ['mimo-v2-omni', 'chat-completions'],
+  ['mimo-v2.6-flash', 'chat-completions'],
+  ['mimo-v2.6-pro', 'chat-completions'],
   ['mimo-v2.5', 'chat-completions'],
   ['mimo-v2.5-pro', 'chat-completions'],
   ['minimax-m3', 'messages'],
   ['minimax-m2.7', 'messages'],
-  ['minimax-m2.5', 'messages'],
   ['muse-spark-1.3-contributor', 'responses'],
   ['muse-spark-1.2-contributor', 'responses'],
   ['qwen3.8-max', 'messages'],
   ['qwen3.8-flash', 'messages'],
-  ['qwen3.7-max', 'messages'],
   ['qwen3.7-plus', 'messages'],
-  ['qwen3.6-plus', 'messages'],
-  ['qwen3.5-plus', 'messages'],
   ['hy4-preview', 'chat-completions'],
-  ['hy3-preview', 'chat-completions'],
   ['hy3', 'chat-completions'],
-  ['omen-alpha', 'chat-completions'],
+  ['space-bunny-free', 'chat-completions'],
 ] as const;
 
 const EXISTING_METADATA: Record<string, Omit<ModelInfo, 'id'>> = {
@@ -51,14 +46,11 @@ const EXISTING_METADATA: Record<string, Omit<ModelInfo, 'id'>> = {
   'kimi-k2.7-code': { name: 'Kimi K2.7 Code', description: 'Advanced coding assistant', quality: 5, speed: 'Fast', cost: '★★☆', supportsMultimodal: false, contextLength: '256K', bestFor: 'Advanced coding' },
   'kimi-k3': { name: 'Kimi K3', description: 'High-end reasoning and coding', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '256K', bestFor: 'Advanced coding, reasoning' },
   'glm-5.2': { name: 'GLM-5.2', description: 'Latest GLM with image analysis', quality: 5, speed: 'Medium', cost: '★★☆', supportsMultimodal: true, contextLength: '~128K', bestFor: 'Quality, vision' },
-  'glm-5.1': { name: 'GLM-5.1', description: 'High-quality reasoning and image analysis', quality: 5, speed: 'Medium', cost: '★★☆', supportsMultimodal: true, contextLength: '~128K', bestFor: 'Quality, vision' },
   'gpt-5.6-luna': { name: 'GPT-5.6 Luna', description: 'General reasoning and coding', quality: 5, speed: 'Fast', cost: '★★★★☆', supportsMultimodal: false, contextLength: '272K', bestFor: 'General reasoning, coding' },
   'deepseek-v4-pro': { name: 'DeepSeek V4 Pro', description: 'Coding and agent workflows', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Agents, coding' },
   'deepseek-v4-flash': { name: 'DeepSeek V4 Flash', description: 'Fast coding and background tasks', quality: 4, speed: 'Fast', cost: '★★★★★', supportsMultimodal: false, contextLength: '1M', bestFor: 'Fast tasks, high volume' },
   'qwen3.8-max': { name: 'Qwen 3.8 Max', description: 'High-quality general model', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'General quality' },
-  'qwen3.7-max': { name: 'Qwen 3.7 Max', description: 'High-quality Qwen model', quality: 4, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'General quality' },
   'qwen3.7-plus': { name: 'Qwen 3.7 Plus', description: 'Enhanced general coding', quality: 4, speed: 'Fast', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'General coding' },
-  'qwen3.6-plus': { name: 'Qwen 3.6 Plus', description: 'General coding', quality: 3, speed: 'Fast', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'General tasks' },
   'minimax-m3': { name: 'MiniMax M3', description: 'General tasks with long context', quality: 4, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Long context, general tasks' },
   'minimax-m2.7': { name: 'MiniMax M2.7', description: 'Balanced quality and cost', quality: 3, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'Balanced tasks' },
   'mimo-v2.5-pro': { name: 'MiMo-V2.5 Pro', description: 'High-quality general model', quality: 4, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'General quality' },
@@ -67,22 +59,22 @@ const EXISTING_METADATA: Record<string, Omit<ModelInfo, 'id'>> = {
 };
 
 describe('OpenCode Go model catalog contract', () => {
-  it('contains the canonical 35 models in fixed protocol order', () => {
+  it('contains the canonical 30 models in fixed protocol order', () => {
     expect(MODEL_CATALOG.map(({ info, protocol }) => [info.id, protocol])).toEqual(EXPECTED_MODELS);
-    expect(new Set(MODEL_CATALOG.map(({ info }) => info.id)).size).toBe(35);
+    expect(new Set(MODEL_CATALOG.map(({ info }) => info.id)).size).toBe(30);
   });
 
-  it('contains 5 Responses, 21 Chat Completions, and 9 Messages models', () => {
+  it('contains 6 Responses, 19 Chat Completions, and 5 Messages models', () => {
     const counts = MODEL_CATALOG.reduce<Record<string, number>>((result, model) => {
       result[model.protocol] = (result[model.protocol] ?? 0) + 1;
       return result;
     }, {});
 
-    expect(counts).toEqual({ responses: 5, 'chat-completions': 21, messages: 9 });
+    expect(counts).toEqual({ responses: 6, 'chat-completions': 19, messages: 5 });
   });
 
-  it('keeps the public metadata of the existing 17 models', () => {
-    expect(Object.keys(EXISTING_METADATA)).toHaveLength(17);
+  it('keeps the public metadata of the existing 14 models', () => {
+    expect(Object.keys(EXISTING_METADATA)).toHaveLength(14);
     for (const [id, metadata] of Object.entries(EXISTING_METADATA)) {
       expect(getModelConfig(id)?.info).toEqual({ id, ...metadata });
     }
@@ -107,12 +99,10 @@ describe('OpenCode Go model catalog contract', () => {
       getModelConfig('muse-spark-1.2-contributor')?.info,
       getModelConfig('glm-5.3')?.info,
       getModelConfig('deepseek-v4-flash-vision-exp')?.info,
-      getModelConfig('minimax-m2.5')?.info,
     ]).toEqual([
       { id: 'muse-spark-1.2-contributor', name: 'Muse Spark 1.2 Contributor', description: 'OpenCode Go model. Regional restrictions apply; prompts and outputs may be used for training.', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
       { id: 'glm-5.3', name: 'GLM-5.3', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
       { id: 'deepseek-v4-flash-vision-exp', name: 'DeepSeek V4 Flash Vision Exp', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: true, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'minimax-m2.5', name: 'MiniMax M2.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     ]);
   });
 
@@ -132,26 +122,26 @@ describe('OpenCode Go model catalog contract', () => {
     ]);
   });
 
-  it('uses neutral metadata for the eight models added in the latest refresh', () => {
+  it('uses neutral metadata for the seven models added in the latest refresh', () => {
     expect([
-      getModelConfig('grok-4.5')?.info,
-      getModelConfig('glm-5')?.info,
-      getModelConfig('kimi-k2.5')?.info,
-      getModelConfig('qwen3.5-plus')?.info,
-      getModelConfig('mimo-v2-pro')?.info,
-      getModelConfig('mimo-v2-omni')?.info,
-      getModelConfig('hy3-preview')?.info,
-      getModelConfig('omen-alpha')?.info,
+      getModelConfig('grok-4.7')?.info,
+      getModelConfig('gpt-6-luna')?.info,
+      getModelConfig('longcat-2.5-preview-free')?.info,
+      getModelConfig('deepseek-v4.1-flash')?.info,
+      getModelConfig('mimo-v2.6-flash')?.info,
+      getModelConfig('mimo-v2.6-pro')?.info,
+      getModelConfig('space-bunny-free')?.info,
     ]).toEqual([
-      { id: 'grok-4.5', name: 'Grok 4.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'glm-5', name: 'GLM-5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'kimi-k2.5', name: 'Kimi K2.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'qwen3.5-plus', name: 'Qwen 3.5 Plus', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'mimo-v2-pro', name: 'MiMo-V2 Pro', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'mimo-v2-omni', name: 'MiMo-V2 Omni', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'hy3-preview', name: 'Hy3 Preview', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-      { id: 'omen-alpha', name: 'Omen Alpha', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'grok-4.7', name: 'Grok 4.7', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'gpt-6-luna', name: 'GPT-6 Luna', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'longcat-2.5-preview-free', name: 'LongCat-2.5-Preview-Free', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'deepseek-v4.1-flash', name: 'DeepSeek V4.1 Flash', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'mimo-v2.6-flash', name: 'MiMo-V2.6 Flash', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'mimo-v2.6-pro', name: 'MiMo-V2.6 Pro', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+      { id: 'space-bunny-free', name: 'Space Bunny Free', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     ]);
+
+    expect(getModelConfig('deepseek-v4.1-flash')?.maxTokens).toBe(16384);
   });
 
   it('exposes public models without internal protocol metadata', () => {

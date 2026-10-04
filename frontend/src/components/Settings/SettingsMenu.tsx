@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, LogOut } from 'lucide-react';
-import { AgentApprovalLevel, ModelInfo, UserSettings, ModelsStatus, SettingsStatus } from '../../types';
+import { AgentApprovalLevel, UserSettings, SettingsStatus } from '../../types';
 
 const APPROVAL_LEVEL_LABELS: Record<AgentApprovalLevel, string> = {
   auto: '自動（確認なし）',
@@ -16,12 +16,8 @@ const APPROVAL_LEVEL_OPTIONS: Array<{ value: AgentApprovalLevel | ''; label: str
 ];
 
 interface SettingsMenuProps {
-  models: ModelInfo[];
-  modelsStatus: ModelsStatus;
   settings: UserSettings;
   settingsStatus: SettingsStatus;
-  settingsError: string | null;
-  onChangeDefaultModel: (modelId: string | null) => Promise<void>;
   onChangeDisplayName: (name: string | null) => Promise<void>;
   onChangeAgentApprovalLevel?: (level: AgentApprovalLevel | null) => Promise<void>;
   onChangeAgentModel?: (modelId: string | null) => Promise<void>;
@@ -30,12 +26,8 @@ interface SettingsMenuProps {
 }
 
 const SettingsMenu: React.FC<SettingsMenuProps> = ({
-  models,
-  modelsStatus,
   settings,
   settingsStatus,
-  settingsError,
-  onChangeDefaultModel,
   onChangeDisplayName,
   onChangeAgentApprovalLevel,
   onChangeAgentModel,
@@ -62,19 +54,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     setAgentSubagentModelDraft(settings.agentSubagentModel ?? '');
   }, [settings.agentSubagentModel]);
 
-  const defaultModelId = settings.defaultModel;
-  const defaultModelUnavailable =
-    modelsStatus === 'loaded' && defaultModelId !== undefined && !models.some((m) => m.id === defaultModelId);
   const settingsUnavailable = settingsStatus === 'loading' || settingsStatus === 'error';
-
-  const handleModelChange = async (value: string) => {
-    setSaving(true);
-    try {
-      await onChangeDefaultModel(value === '' ? null : value);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDisplayNameSave = async () => {
     const trimmed = displayNameDraft.trim();
@@ -159,44 +139,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 aria-label="表示名"
               />
             </div>
-
-            <div className="mb-1 text-sm text-gray-700">デフォルトモデル</div>
-            <div className="mb-1 text-xs text-gray-500">新規会話で使用するモデルです。</div>
-            <select
-              value={defaultModelId ?? ''}
-              onChange={(event) => handleModelChange(event.target.value)}
-              disabled={
-                settingsUnavailable || modelsStatus !== 'loaded' || saving
-              }
-              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-400"
-              aria-label="デフォルトのモデル"
-            >
-              <option value="">デフォルトなし</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-            {modelsStatus === 'loading' && (
-              <p className="mt-1 text-xs text-gray-500">モデル一覧を読み込み中です。</p>
-            )}
-            {modelsStatus === 'error' && (
-              <p className="mt-1 text-xs text-gray-500">モデル一覧を取得できませんでした。</p>
-            )}
-            {settingsStatus === 'loading' && (
-              <p className="mt-1 text-xs text-gray-500">設定を読み込み中です。</p>
-            )}
-            {settingsStatus === 'error' && (
-              <p className="mt-1 text-xs text-red-600">
-                設定を取得できませんでした。{settingsError ? `（${settingsError}）` : ''}
-              </p>
-            )}
-            {defaultModelUnavailable && (
-              <p className="mt-1 text-xs text-amber-600">
-                保存済みモデル「{defaultModelId}」は利用不可です。再選択してください。
-              </p>
-            )}
 
             <div className="mt-4 pt-3 border-t border-gray-100" />
 

@@ -10,6 +10,7 @@ import * as service from '../services/conversationService';
 import {
   assertAgentEnabled,
   forwardApprove,
+  forwardGetModels,
   forwardGetRun,
   GatewayResult,
   loadAgentGatewayConfig,
@@ -97,6 +98,26 @@ export async function agentRunHandler(
   }
 }
 
+/**
+ * gateway 稼働検出（コールドスタートのポーリング用）。
+ * 認証・kill switch を済ませ、`/models` へ中継する（run と異なり所有者照合は不要）。
+ */
+export async function agentModelsHandler(
+  request: HttpRequest,
+  _context: InvocationContext,
+): Promise<HttpResponseInit> {
+  try {
+    await authenticateRequest(request);
+    const config = loadAgentGatewayConfig();
+    assertAgentEnabled(config);
+
+    const result = await forwardGetModels(config);
+    return { status: result.status, jsonBody: result.body };
+  } catch (error) {
+    return toHttpResponse(error);
+  }
+}
+
 app.http('agent-approve', {
   methods: ['POST'],
   authLevel: 'anonymous',
@@ -109,4 +130,11 @@ app.http('agent-run', {
   authLevel: 'anonymous',
   route: 'agent/runs/{runId}',
   handler: agentRunHandler,
+});
+
+app.http('agent-models', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'agent/models',
+  handler: agentModelsHandler,
 });

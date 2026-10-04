@@ -1,7 +1,6 @@
 import { MODEL_CATALOG, OpenCodeGoProtocol } from '../../src/config/modelCatalog';
 import { OpenCodeGoMessage } from '../../src/types';
 import {
-  formatMessagesForApi,
   generateTitle,
   healthCheck,
   OpenCodeGoOptions,
@@ -372,21 +371,6 @@ describe('Functions OpenCode Go API Service', () => {
     );
     expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('x-opencode-session');
     expect(cancel).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not include saved reasoning in API history', () => {
-    expect(
-      formatMessagesForApi([
-        {
-          id: 'message-1',
-          conversationId: 'conversation-1',
-          role: 'assistant',
-          content: '回答',
-          reasoning: '考察',
-          createdAt: '2026-08-13T00:00:00.000Z',
-        },
-      ]),
-    ).toEqual([{ role: 'assistant', content: '回答' }]);
   });
 
   it('uses model-specific max_tokens for DeepSeek V4 Flash', async () => {

@@ -36,7 +36,6 @@ describe('Functions conversation service', () => {
 
     expect((await service.listConversations('alice')).map((item) => item.id)).toEqual([alice.id]);
     await expect(service.getConversation(bob.id, 'alice')).resolves.toBeNull();
-    await expect(service.updateConversationModel(bob.id, 'glm-5.1', 'alice')).resolves.toBeNull();
     await expect(service.updateConversationTitle(bob.id, 'Renamed', 'alice')).resolves.toBeNull();
     await expect(service.deleteConversation(bob.id, 'alice')).resolves.toBe(false);
   });
@@ -52,50 +51,6 @@ describe('Functions conversation service', () => {
 
     expect(updated).toEqual({ ...conversation, title: 'Renamed' });
     await expect(service.getConversation(conversation.id, 'alice')).resolves.toEqual(updated);
-  });
-
-  it('updates agent mode in the in-memory store without touching other fields', async () => {
-    const conversation = await service.createConversation('Agent chat', 'kimi-k2.6', 'alice');
-
-    const enabled = await service.updateConversationAgentMode(conversation.id, true, 'alice');
-    expect(enabled).toEqual({ ...conversation, agentMode: true });
-    expect(enabled!.agentMode).toBe(true);
-
-    const disabled = await service.updateConversationAgentMode(conversation.id, false, 'alice');
-    expect(disabled).toEqual({ ...enabled, agentMode: false });
-
-    // 他人の会話は所有者チェックで変更できない
-    await expect(service.updateConversationAgentMode(conversation.id, true, 'bob')).resolves.toBeNull();
-  });
-
-  it('replaces a Cosmos DB conversation preserving agent mode on update', async () => {
-    jest.resetModules();
-    const conversation = {
-      id: 'conversation-id',
-      userId: 'alice',
-      title: 'Original',
-      model: 'kimi-k2.6',
-      createdAt: '2026-08-22T00:00:00.000Z',
-      updatedAt: '2026-08-22T01:00:00.000Z',
-    };
-    const read = jest.fn().mockResolvedValue({ resource: conversation });
-    const replace = jest.fn().mockImplementation(async (updated) => ({ resource: updated }));
-    const item = jest.fn(() => ({ read, replace }));
-    const container = { read: jest.fn().mockResolvedValue({}), item };
-    jest.doMock('../../src/db', () => ({
-      getConversationsContainer: jest.fn(() => container),
-      getMessagesContainer: jest.fn(() => container),
-    }));
-    const cosmosService = require('../../src/services/conversationService') as typeof service;
-
-    const updated = await cosmosService.updateConversationAgentMode(
-      conversation.id,
-      true,
-      'alice',
-    );
-
-    expect(updated).toEqual({ ...conversation, agentMode: true });
-    expect(replace).toHaveBeenCalledWith({ ...conversation, agentMode: true });
   });
 
   it('replaces a Cosmos DB conversation without changing fields other than title', async () => {
