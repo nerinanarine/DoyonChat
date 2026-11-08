@@ -1,6 +1,6 @@
 // Agent gateway 基盤 (P3-010 Phase 3)
 // - ACR（admin 無効・UAMI AcrPull 引き）
-// - ACA 環境（Consumption・min=max=1・方式A固定）
+// - ACA 環境（Consumption・min=0・max=1・方式A固定）
 // - Container App（ingress external・8787・Key Vault secret 参照）
 // - Key Vault secret（opencode-api-key）の取得権限（UAMI secrets:get）
 // - gateway 向け env 注入（GATEWAY_AUTH_* は設定時のみ JWT 検証が有効になる）
