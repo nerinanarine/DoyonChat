@@ -26,3 +26,9 @@ UI改修に着手する前段として、ローカル環境でアプリのUIを�
 - [ ] Azurite がローカルで起動し、対象サービスから接続できる。`http://127.0.0.1:10000` 等へ curl/SDK で接続確認する。
 - [ ] frontend から必要なローカルサービスへの疎通を確認できる。
 - [ ] ブラウザでローカルUIを開き、ページが表示されることを確認できる。
+- [ ] ローカルデバッグ時に API キーを正しく受け渡す。
+  - gateway 起動時に `OPENCODE_API_KEY`（pi 用キー env）を渡すこと。本番は `infra/agent-deploy.md:22,73` で注入済み。ローカルで未設定だと pi が `No API key` で拒否する（pi側の挙動。リポジトリ内に該当文言なし）。
+    例: `cd agent` で `OPENCODE_API_KEY=<pi用キー> npm start`（PowerShell は `$env:OPENCODE_API_KEY="<pi用キー>"; npm start`）。
+  - functions 側の `OPENCODE_GO_API_KEY` は有効な値にすること。未設定・無効キーの場合タイトル生成が失敗し 503 になる（`functions/src/functions/conversations.ts:127`）。値は `functions/local.settings.json` の `Values` に設定する（`README.md:251`、`functions/local.settings.json.example:11`）。
+  - キー未設定時の扱い: `functions/src/services/opencodeGo.ts:133-135`（未設定なら throw）。
+  - 参考（エラー応答の見え方）: `functions/src/functions/chat.ts:196-204`、`functions/src/services/agentGateway.ts:77-80,110`、`agent/src/server.ts:491-498`
