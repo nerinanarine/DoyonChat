@@ -55,7 +55,7 @@
 | [P2-015](items/P2-015-opencode-session-header.md) | x-opencode-session・遅延作成・モデル1件追加 | P2 | 🟢 対応済み | 品質・安定性 | [仕様](../P2-015/spec.md) | 本番デプロイ完了（live test 26/27、grokはP2-016へ分離） |
 | [P2-016](items/P2-016-grok-4-6-capacity.md) | grok-4.6 上流キャパシティ不足の追従 | P2 | 🟢 対応済み | 品質・安定性 | — | P2-019 live test 30/30で解消 |
 | [P2-017](items/P2-017-draft-send-failure.md) | 新規作成失敗時の入力保持・エラー表示 | P2 | 🔴 未対応 | UX改善 | — | P2-015残存リスク。作成失敗で入力が消える問題 |
-| [P2-018](items/P2-018-containerapp-scale-zero.md) | Agent gateway ContainerAppのスケールゼロ化＋起動中ローディング | P2 | 🟡 進行中 | コスト・スケーリング | — | `minReplicas: 0`、起動中ローディング表示 |
+| [P2-018](items/P2-018-containerapp-scale-zero.md) | Agent gateway ContainerAppのスケールゼロ化＋起動中ローディング | P2 | 🟢 対応済み | コスト・スケーリング | — | `minReplicas: 0`、起動中ローディング表示 |
 | [P2-019](items/P2-019-opencode-latest-models.md) | OpenCode Go最新モデルカタログ追従 | P2 | 🟡 進行中 | 機能追加・品質 | P2-011 | 実装・live 30/30完了、本番デプロイ待ち |
 | [P2-020](items/P2-020-user-agents-md.md) | ユーザー別AGENTS.md編集UI | P2 | 🟡 進行中 | 機能追加 | P3-016 | spec/plan起草済み、保存先既定案C＋Aは要確認 |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |

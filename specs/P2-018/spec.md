@@ -2,7 +2,7 @@
 
 **Feature Branch**: `feat/p1-012-p2-018-p2-019-p3-016` | **Spec Folder**: `specs/P2-018` | **Created**: 2026-10-03
 
-**Status**: Draft
+**Status**: Done
 
 **Input**: [P2-018 backlog item](../000_backlog/items/P2-018-containerapp-scale-zero.md)
 
