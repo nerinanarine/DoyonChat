@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
 import { useChat } from '../../src/hooks/useChat';
@@ -17,7 +17,7 @@ vi.mock('../../src/hooks/useConversations', () => ({
   NEW_CHAT_TITLE: 'New Chat',
 }));
 vi.mock('../../src/hooks/useSettings', () => ({ useSettings: vi.fn() }));
-vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn() }));
+vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn(), fetchAgentModels: vi.fn() }));
 
 const testModel: ModelInfo = {
   id: 'kimi-k2.6',
@@ -102,6 +102,7 @@ describe('App chat bootstrap', () => {
     isRenamed.mockReturnValue(false);
     mockHooks();
     vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+    vi.mocked(api.fetchAgentModels).mockResolvedValue({ models: [] });
   });
 
   it('does not render a header model selection dropdown (FR-002)', async () => {
@@ -257,6 +258,7 @@ describe('App agent mode', () => {
     isRenamed.mockReturnValue(false);
     mockHooks();
     vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+    vi.mocked(api.fetchAgentModels).mockResolvedValue({ models: [] });
   });
 
   it('does not render the agent mode toggle or an image attach control', async () => {
@@ -304,6 +306,7 @@ describe('App agent startup loading (P2-018)', () => {
     autoTitle.mockResolvedValue(undefined);
     isRenamed.mockReturnValue(false);
     vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+    vi.mocked(api.fetchAgentModels).mockResolvedValue({ models: [] });
   });
 
   it('shows the agent startup loading state while the gateway cold-starts', async () => {
@@ -313,5 +316,124 @@ describe('App agent startup loading (P2-018)', () => {
     expect(
       await screen.findByText('エージェントサービスを起動しています...'),
     ).toBeInTheDocument();
+  });
+
+  it('blocks sending while the agent is starting', async () => {
+    mockHooks([createdConversation], { agentStarting: true });
+    render(<App />);
+
+    await screen.findByText('エージェントサービスを起動しています...');
+    const input = screen.getByPlaceholderText('メッセージを入力...');
+    expect(input).toBeDisabled();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('warms up the agent gateway on mount without sending a message', async () => {
+    vi.mocked(api.fetchAgentModels).mockReturnValue(new Promise(() => {}));
+    render(<App />);
+
+    expect(
+      await screen.findByText('エージェントサービスを起動しています...'),
+    ).toBeInTheDocument();
+    expect(api.fetchAgentModels).toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('keeps the startup loading state and retries until the gateway is ready', async () => {
+    mockHooks();
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    try {
+      vi.mocked(api.fetchAgentModels)
+        .mockRejectedValueOnce(new Error('Agent service unavailable'))
+        .mockResolvedValueOnce({ models: [] });
+      render(<App />);
+
+      // 初回が 503 でも起動中表示を維持する
+      expect(
+        await screen.findByText('エージェントサービスを起動しています...'),
+      ).toBeInTheDocument();
+      expect(api.fetchAgentModels).toHaveBeenCalledTimes(1);
+
+      // 5秒後に予約された再試行を実行し、成功で表示が消える
+      await waitFor(() =>
+        expect(
+          timeoutSpy.mock.calls.some(([, delay]) => delay === 5_000),
+        ).toBe(true),
+      );
+      const retry = timeoutSpy.mock.calls.find(([, delay]) => delay === 5_000)?.[0];
+      await act(async () => {
+        await retry?.();
+      });
+
+      expect(api.fetchAgentModels).toHaveBeenCalledTimes(2);
+      await waitFor(() =>
+        expect(
+          screen.queryByText('エージェントサービスを起動しています...'),
+        ).not.toBeInTheDocument(),
+      );
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  it('shows the P2-003 error UI with retry when warm-up times out', async () => {
+    mockHooks();
+    vi.mocked(api.fetchAgentModels).mockReturnValue(new Promise(() => {}));
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    try {
+      render(<App />);
+      await screen.findByText('エージェントサービスを起動しています...');
+
+      // 300秒の打ち切りタイマーを発火させる
+      await waitFor(() =>
+        expect(
+          timeoutSpy.mock.calls.some(([, delay]) => delay === 300_000),
+        ).toBe(true),
+      );
+      const onTimeout = timeoutSpy.mock.calls.find(([, delay]) => delay === 300_000)?.[0];
+      await act(async () => {
+        onTimeout?.();
+      });
+
+      expect(
+        await screen.findByText(
+          'エージェントサービスの起動に時間がかかっています。再試行してください。',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
+      expect(
+        screen.queryByText('エージェントサービスを起動しています...'),
+      ).not.toBeInTheDocument();
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  it('ignores the warm-up completion after unmount (StrictMode cleanup)', async () => {
+    mockHooks();
+    let resolveWarmup: (value: unknown) => void = () => {};
+    vi.mocked(api.fetchAgentModels).mockReturnValue(
+      new Promise((resolve) => {
+        resolveWarmup = resolve;
+      }),
+    );
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const { unmount } = render(<App />);
+      await screen.findByText('エージェントサービスを起動しています...');
+
+      unmount();
+      resolveWarmup(undefined);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

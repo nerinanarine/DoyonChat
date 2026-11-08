@@ -12,11 +12,34 @@ import LoadingState from './components/Common/LoadingState';
 import ErrorMessage from './components/Common/ErrorMessage';
 import { ModelInfo, ModelsStatus, AgentApprovalLevel } from './types';
 import * as api from './services/chatApi';
+import { ApiError } from './services/api';
+import { isColdStartError } from './services/errorMessages';
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
 const BOOTSTRAP_ERROR_MESSAGE =
   '初期データの読み込みに失敗しました。接続を確認して再試行してください。';
+
+// P2-018: gateway 先行起動のポーリング。useChat のコールドスタート検出と同値。
+const AGENT_WARMUP_POLL_INTERVAL_MS = 5_000;
+const AGENT_WARMUP_TIMEOUT_MS = 300_000;
+// P2-018 FR-004: タイムアウト・設定エラーは P2-003 型のエラーUIへ遷移する。
+const AGENT_WARMUP_TIMEOUT_MESSAGE =
+  'エージェントサービスの起動に時間がかかっています。再試行してください。';
+const AGENT_WARMUP_ERROR_MESSAGE =
+  'エージェントサービスを起動できませんでした。再試行してください。';
+
+/**
+ * useChat.isTransientStartupError と同じ判別（P2-018 FR-004）。
+ * 5xx・タイムアウト・ネットワークは起動中として継続し、4xx と設定不備の 503 は即時エラーにする。
+ */
+function isTransientWarmupError(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    if (error.status === 503) return isColdStartError(error);
+    return error.status >= 500;
+  }
+  return true;
+}
 
 function App() {
   const isAuthenticated = useIsAuthenticated();
@@ -35,6 +58,9 @@ function App() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
+  const [agentWarming, setAgentWarming] = useState(false);
+  const [agentWarmupError, setAgentWarmupError] = useState<string | null>(null);
+  const [warmupAttempt, setWarmupAttempt] = useState(0);
 
   const {
     messages,
@@ -77,6 +103,57 @@ function App() {
     loadModels();
   }, [loadModels]);
 
+  // P2-018: 認証後マウント時に gateway を先行起動する。503 等の一時失敗は起動中として
+  // 5秒間隔で成功までポーリングし、合計 300 秒で打ち切る（useChat.beginAgentStartup と同型）。
+  // FR-004: タイムアウト・設定エラーは P2-003 型のエラーUIへ遷移する。
+  useEffect(() => {
+    if (!dataEnabled) return;
+    let active = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let hardTimer: ReturnType<typeof setTimeout> | null = null;
+    setAgentWarming(true);
+    setAgentWarmupError(null);
+
+    const stop = () => {
+      active = false;
+      if (pollTimer) clearTimeout(pollTimer);
+      if (hardTimer) clearTimeout(hardTimer);
+    };
+
+    const fail = (message: string) => {
+      stop();
+      setAgentWarming(false);
+      setAgentWarmupError(message);
+    };
+
+    const poll = async () => {
+      if (!active) return;
+      try {
+        await api.fetchAgentModels();
+        if (!active) return;
+        stop();
+        setAgentWarming(false);
+      } catch (err) {
+        if (!active) return;
+        if (isTransientWarmupError(err)) {
+          pollTimer = setTimeout(poll, AGENT_WARMUP_POLL_INTERVAL_MS);
+        } else {
+          fail(AGENT_WARMUP_ERROR_MESSAGE);
+        }
+      }
+    };
+
+    hardTimer = setTimeout(() => {
+      if (!active) return;
+      fail(AGENT_WARMUP_TIMEOUT_MESSAGE);
+    }, AGENT_WARMUP_TIMEOUT_MS);
+    void poll();
+
+    return () => {
+      stop();
+    };
+  }, [dataEnabled, warmupAttempt]);
+
   // Load messages when conversation changes; clear the previous chat when entering a draft
   useEffect(() => {
     if (activeConversationId) {
@@ -91,6 +168,10 @@ function App() {
     if (convError !== null) void reloadConversations();
     if (settingsStatus === 'error') void reloadSettings();
   }, [modelsStatus, convError, settingsStatus, loadModels, reloadConversations, reloadSettings]);
+
+  const retryAgentWarmup = useCallback(() => {
+    setWarmupAttempt((attempt) => attempt + 1);
+  }, []);
 
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null);
@@ -196,6 +277,14 @@ function App() {
       </div>
     );
   }
+  // P2-018 FR-004: ウォームアップのタイムアウト・設定エラーは P2-003 型のエラーUIへ遷移する。
+  if (agentWarmupError) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <ErrorMessage message={agentWarmupError} onRetry={retryAgentWarmup} />
+      </div>
+    );
+  }
 
   return (
     <AppLayout
@@ -212,8 +301,10 @@ function App() {
       onRenameConversation={updateTitle}
       onNewChat={handleNewChat}
     >
-      {agentStarting && (
-        <LoadingState label="エージェントサービスを起動しています..." />
+      {(agentStarting || agentWarming) && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-white/80">
+          <LoadingState label="エージェントサービスを起動しています..." />
+        </div>
       )}
       {!agentStarting && chatError && (
         <ErrorMessage
@@ -246,7 +337,7 @@ function App() {
         onSend={handleSend}
         onStop={stop}
         isStreaming={isStreaming}
-        disabled={convLoading || messagesLoading}
+        disabled={convLoading || messagesLoading || agentStarting || agentWarming}
       />
       <ArtifactDownload userId={userId} />
     </AppLayout>

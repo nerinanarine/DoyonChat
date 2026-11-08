@@ -7,8 +7,8 @@ resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
   location: location
   tags: tags
   sku: {
-    name: 'Standard'
-    tier: 'Standard'
+    name: 'Free'
+    tier: 'Free'
   }
   properties: {}
 }

@@ -277,6 +277,26 @@ describe('Functions /chat agent branch', () => {
     );
   });
 
+  it('treats a gateway HTTP 503 during scale-up as a cold start, not a server error (P2-018)', async () => {
+    // minReplicas 0 のスケール中はプラットフォームが早期 503 を返す。
+    // gateway 自身は HTTP 503 を返さない（未起動は fetch 失敗）ため、観測した 503 はコールドスタート。
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 503,
+      body: null,
+    } as unknown as Response);
+
+    const response = await chatHandler(
+      request('POST', '/api/chat', { conversationId: 'conv-1', message: 'hi' }),
+      {} as never,
+    );
+
+    const text = await streamText(response);
+    expect(text).toContain('"error":{"code":"agent-starting"}');
+    expect(text).not.toContain('"error":{"code":"server"}');
+    expect(serviceMock.addMessage).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps an explicit config error as a generic server error, not a cold start', async () => {
     delete process.env.AGENT_GATEWAY_URL;
 

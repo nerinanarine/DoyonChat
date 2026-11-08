@@ -296,14 +296,14 @@ describe('Functions agent proxy handlers', () => {
       expect((response.jsonBody as { error: string }).error).toBe('Agent service unavailable');
     });
 
-    it('maps a gateway 5xx to a safe 502 for the relay', async () => {
+    it('keeps a gateway 503 as the cold-start marker for the relay', async () => {
       process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
       mockFetch(503, {});
 
       const response = await agentModelsHandler(request('GET', '/api/agent/models'), {} as never);
 
-      expect(response.status).toBe(502);
-      expect((response.jsonBody as { error: string }).error).toBe('Agent service error');
+      expect(response.status).toBe(503);
+      expect((response.jsonBody as { error: string }).error).toBe('Agent service unavailable');
     });
 
     it('disables the relay when AGENT_ENABLED=false', async () => {
@@ -315,6 +315,63 @@ describe('Functions agent proxy handlers', () => {
 
       expect(response.status).toBe(404);
       expect((response.jsonBody as { error: string }).error).toBe('Agent feature is not available');
+    });
+  });
+
+  describe('gateway HTTP 503 during scale-up (P2-018 cold start)', () => {
+    // minReplicas 0 のスケール中はプラットフォームが早期 503 を返す。gateway 自身は
+    // HTTP 503 を返さない（未起動は fetch 失敗）ため、観測した 503 はコールドスタート信号。
+    it('maps a gateway HTTP 503 on the run relay to the cold-start marker', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      mockFetch(503, {});
+
+      const response = await agentRunHandler(
+        request('GET', '/api/agent/runs/run-1', undefined, { runId: 'run-1' }),
+        {} as never,
+      );
+
+      expect(response.status).toBe(503);
+      expect((response.jsonBody as { error: string }).error).toBe('Agent service unavailable');
+    });
+
+    it('maps a gateway HTTP 503 on the approve relay to the cold-start marker', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      mockApproveFlow(503, {});
+
+      const response = await agentApproveHandler(
+        request('POST', '/api/agent/approve', {
+          approvalId: 'appr-1',
+          runId: 'run-1',
+          approved: true,
+        }),
+        {} as never,
+      );
+
+      expect(response.status).toBe(503);
+      expect((response.jsonBody as { error: string }).error).toBe('Agent service unavailable');
+    });
+
+    it('keeps a genuine gateway 502/500 as a generic server error', async () => {
+      process.env.AGENT_GATEWAY_URL = 'http://gateway:8787';
+      mockFetch(502, {});
+      const badGateway = await agentRunHandler(
+        request('GET', '/api/agent/runs/run-1', undefined, { runId: 'run-1' }),
+        {} as never,
+      );
+      expect(badGateway.status).toBe(502);
+      expect((badGateway.jsonBody as { error: string }).error).toBe('Agent service error');
+
+      mockApproveFlow(500, {});
+      const serverError = await agentApproveHandler(
+        request('POST', '/api/agent/approve', {
+          approvalId: 'appr-1',
+          runId: 'run-1',
+          approved: true,
+        }),
+        {} as never,
+      );
+      expect(serverError.status).toBe(502);
+      expect((serverError.jsonBody as { error: string }).error).toBe('Agent service error');
     });
   });
 

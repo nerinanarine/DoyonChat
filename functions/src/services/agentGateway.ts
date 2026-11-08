@@ -67,6 +67,18 @@ function mapGatewayStatus(status: number): AppError {
   }
 }
 
+/**
+ * prompt / approve / run / models 中継のステータス変換。gateway 自身は HTTP 503 を返さない
+ * （未起動時は fetch 失敗＝コールドスタート信号）ため、観測した HTTP 503 は
+ * プラットフォームのスケール中応答とみなし、502 ではなく既存のコールドスタート
+ * マーカー（503 'Agent service unavailable'）へ寄せる（P2-018）。
+ * その他の 4xx/5xx は mapGatewayStatus のまま。
+ */
+function mapForwardStatus(status: number): AppError {
+  if (status === 503) return new AppError(503, 'Agent service unavailable');
+  return mapGatewayStatus(status);
+}
+
 export interface ApproveRequest {
   approvalId: string;
   runId: string;
@@ -102,7 +114,7 @@ export function forwardApprove(
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!response.ok) throw mapGatewayStatus(response.status);
+    if (!response.ok) throw mapForwardStatus(response.status);
     const body = await response.json().catch(() => undefined);
     return { status: response.status, body };
   });
@@ -144,7 +156,7 @@ export function forwardGetRun(
         signal: AbortSignal.timeout(timeoutMs),
       },
     );
-    if (!response.ok) throw mapGatewayStatus(response.status);
+    if (!response.ok) throw mapForwardStatus(response.status);
     const body = await response.json().catch(() => undefined);
     return { status: response.status, body };
   });
@@ -166,7 +178,7 @@ export function forwardGetModels(
       headers: await buildHeaders(config),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!response.ok) throw mapGatewayStatus(response.status);
+    if (!response.ok) throw mapForwardStatus(response.status);
     const body = await response.json().catch(() => undefined);
     return { status: response.status, body };
   });
@@ -224,7 +236,8 @@ function parseSseDataLine(line: string): GatewayStreamEvent | null {
 
 /**
  * gateway `POST /prompt` の SSE ストリームをパース済みイベントとして供給する。
- * - 非 200 応答は mapGatewayStatus の安全な AppError に変換（429 は rate_limit へ）
+ * - 非 200 応答は mapForwardStatus の安全な AppError に変換（429 は rate_limit へ、
+ *   HTTP 503 はコールドスタートマーカー 503 'Agent service unavailable' を維持）
  * - 完了マーカー（done）なしでストリームが終わった場合は server エラーにする（通常チャットと同流儀）
  * - 呼び出し側の signal（クライアント切断）で abort されると AbortError が伝播する
  */
@@ -248,7 +261,7 @@ export async function* forwardPromptStream(
     if (error instanceof AppError) throw error;
     throw new AppError(503, 'Agent service unavailable');
   }
-  if (!response.ok) throw mapGatewayStatus(response.status);
+  if (!response.ok) throw mapForwardStatus(response.status);
 
   const reader = response.body?.getReader();
   if (!reader) throw new AppError(503, 'Agent service unavailable');
