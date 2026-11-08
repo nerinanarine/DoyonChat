@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
 import { useChat } from '../../src/hooks/useChat';
@@ -327,6 +327,78 @@ describe('App agent startup loading (P2-018)', () => {
     ).toBeInTheDocument();
     expect(api.fetchAgentModels).toHaveBeenCalled();
     expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('keeps the startup loading state and retries until the gateway is ready', async () => {
+    mockHooks();
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    try {
+      vi.mocked(api.fetchAgentModels)
+        .mockRejectedValueOnce(new Error('Agent service unavailable'))
+        .mockResolvedValueOnce({ models: [] });
+      render(<App />);
+
+      // 初回が 503 でも起動中表示を維持する
+      expect(
+        await screen.findByText('エージェントサービスを起動しています...'),
+      ).toBeInTheDocument();
+      expect(api.fetchAgentModels).toHaveBeenCalledTimes(1);
+
+      // 5秒後に予約された再試行を実行し、成功で表示が消える
+      await waitFor(() =>
+        expect(
+          timeoutSpy.mock.calls.some(([, delay]) => delay === 5_000),
+        ).toBe(true),
+      );
+      const retry = timeoutSpy.mock.calls.find(([, delay]) => delay === 5_000)?.[0];
+      await act(async () => {
+        await retry?.();
+      });
+
+      expect(api.fetchAgentModels).toHaveBeenCalledTimes(2);
+      await waitFor(() =>
+        expect(
+          screen.queryByText('エージェントサービスを起動しています...'),
+        ).not.toBeInTheDocument(),
+      );
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  it('shows the P2-003 error UI with retry when warm-up times out', async () => {
+    mockHooks();
+    vi.mocked(api.fetchAgentModels).mockReturnValue(new Promise(() => {}));
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    try {
+      render(<App />);
+      await screen.findByText('エージェントサービスを起動しています...');
+
+      // 300秒の打ち切りタイマーを発火させる
+      await waitFor(() =>
+        expect(
+          timeoutSpy.mock.calls.some(([, delay]) => delay === 300_000),
+        ).toBe(true),
+      );
+      const onTimeout = timeoutSpy.mock.calls.find(([, delay]) => delay === 300_000)?.[0];
+      await act(async () => {
+        onTimeout?.();
+      });
+
+      expect(
+        await screen.findByText(
+          'エージェントサービスの起動に時間がかかっています。再試行してください。',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
+      expect(
+        screen.queryByText('エージェントサービスを起動しています...'),
+      ).not.toBeInTheDocument();
+    } finally {
+      timeoutSpy.mockRestore();
+    }
   });
 
   it('ignores the warm-up completion after unmount (StrictMode cleanup)', async () => {
