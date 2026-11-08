@@ -35,6 +35,7 @@ function App() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsStatus, setModelsStatus] = useState<ModelsStatus>('loading');
+  const [agentWarming, setAgentWarming] = useState(false);
 
   const {
     messages,
@@ -76,6 +77,22 @@ function App() {
   useEffect(() => {
     loadModels();
   }, [loadModels]);
+
+  // P2-018: 認証後マウント時に gateway を先行起動する（結果は state に反映しない fire-and-forget）
+  useEffect(() => {
+    if (!dataEnabled) return;
+    let active = true;
+    setAgentWarming(true);
+    api
+      .fetchAgentModels()
+      .catch(() => {})
+      .finally(() => {
+        if (active) setAgentWarming(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dataEnabled]);
 
   // Load messages when conversation changes; clear the previous chat when entering a draft
   useEffect(() => {
@@ -212,7 +229,7 @@ function App() {
       onRenameConversation={updateTitle}
       onNewChat={handleNewChat}
     >
-      {agentStarting && (
+      {(agentStarting || agentWarming) && (
         <LoadingState label="エージェントサービスを起動しています..." />
       )}
       {!agentStarting && chatError && (

@@ -17,7 +17,7 @@ vi.mock('../../src/hooks/useConversations', () => ({
   NEW_CHAT_TITLE: 'New Chat',
 }));
 vi.mock('../../src/hooks/useSettings', () => ({ useSettings: vi.fn() }));
-vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn() }));
+vi.mock('../../src/services/chatApi', () => ({ fetchModels: vi.fn(), fetchAgentModels: vi.fn() }));
 
 const testModel: ModelInfo = {
   id: 'kimi-k2.6',
@@ -102,6 +102,7 @@ describe('App chat bootstrap', () => {
     isRenamed.mockReturnValue(false);
     mockHooks();
     vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+    vi.mocked(api.fetchAgentModels).mockResolvedValue({ models: [] });
   });
 
   it('does not render a header model selection dropdown (FR-002)', async () => {
@@ -257,6 +258,7 @@ describe('App agent mode', () => {
     isRenamed.mockReturnValue(false);
     mockHooks();
     vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+    vi.mocked(api.fetchAgentModels).mockResolvedValue({ models: [] });
   });
 
   it('does not render the agent mode toggle or an image attach control', async () => {
@@ -304,6 +306,7 @@ describe('App agent startup loading (P2-018)', () => {
     autoTitle.mockResolvedValue(undefined);
     isRenamed.mockReturnValue(false);
     vi.mocked(api.fetchModels).mockResolvedValue([testModel]);
+    vi.mocked(api.fetchAgentModels).mockResolvedValue({ models: [] });
   });
 
   it('shows the agent startup loading state while the gateway cold-starts', async () => {
@@ -313,5 +316,40 @@ describe('App agent startup loading (P2-018)', () => {
     expect(
       await screen.findByText('エージェントサービスを起動しています...'),
     ).toBeInTheDocument();
+  });
+
+  it('warms up the agent gateway on mount without sending a message', async () => {
+    vi.mocked(api.fetchAgentModels).mockReturnValue(new Promise(() => {}));
+    render(<App />);
+
+    expect(
+      await screen.findByText('エージェントサービスを起動しています...'),
+    ).toBeInTheDocument();
+    expect(api.fetchAgentModels).toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('ignores the warm-up completion after unmount (StrictMode cleanup)', async () => {
+    mockHooks();
+    let resolveWarmup: (value: unknown) => void = () => {};
+    vi.mocked(api.fetchAgentModels).mockReturnValue(
+      new Promise((resolve) => {
+        resolveWarmup = resolve;
+      }),
+    );
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const { unmount } = render(<App />);
+      await screen.findByText('エージェントサービスを起動しています...');
+
+      unmount();
+      resolveWarmup(undefined);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });
