@@ -74,6 +74,7 @@
 | [P3-014](items/P3-014-agent-web-access.md) | エージェントへの pi-web-access 導入 | P3 | 🔴 未対応 | 機能追加 | — | dev先行・キー不要・読み取りは承認なし |
 | [P3-015](items/P3-015-agent-files.md) | エージェントのファイル作成・読み取り | P3 | 🔴 未対応 | 機能追加 | — | pi-subagents前提・docx/xlsx/pptx/pdf/テキスト/画像・DL導線 |
 | [P3-016](items/P3-016-user-azure-files.md) | ユーザー専用Azure Filesマウント・アーティファクト保存 | P3 | 🟡 進行中 | 機能追加 | P3-015 | ユーザーごとに専用Filesをマウント、再起動後も永続化 |
+| [P4-001](items/P4-001-ui-refactoring.md) | UIリファクタリング | P4 | 🔴 未対応 | 機能追加 | — | 対象範囲・方針は要ヒアリング |
 | [P4-002](items/P4-002-templates.md) | プロンプトテンプレート | P4 | 🔴 未対応 | 機能追加 | — | localStorage 保存 |
 | [P4-003](items/P4-003-code-exec.md) | コードブロックの実行機能 | P4 | 🔴 未対応 | 機能追加 | — | Sandpack 検討 |
 | [P4-004](items/P4-004-voice.md) | 音声入力（Web Speech API） | P4 | 🔴 未対応 | 機能追加 | — | ブラウザ対応状況依存 |

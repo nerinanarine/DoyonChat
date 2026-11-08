@@ -1,9 +1,9 @@
-# DoyonChat Agent Gateway (P3-010 Phase 0 PoC)
+# DoyonChat Agent Gateway
 
 Azure Functions から分離したエージェント実行基盤の入口。pi coding agent を
 `--mode rpc`（JSONL over stdin/stdout）で駆動する子プロセスを所有し、最小の中継を行う。
 
-Phase 0 のスコープ（[`specs/P3-010/plan.md`](../specs/P3-010/plan.md) Phase 0）:
+Phase 0 のスコープ（[`documents/specs/P3-010/plan.md`](../documents/specs/P3-010/plan.md) Phase 0）:
 
 - pi 子プロセス起動・`prompt`→`agent_settled` の最小中継
 - **LF のみで分割する独自 JSONL リーダー**（Node `readline` は U+2028/U+2029 でも分割するためプロトコル非準拠・不使用）
@@ -46,7 +46,7 @@ npm start   # build + node dist/index.js
 # POST /prompt 追加body: approvalLevel（auto/dangerous-only/always）/ dangerousTools（最大50件）/
 #   model（provider/id 形式）/ userId＋conversationId（組指定・ID検証あり）/ subagentModel
 # GET /models（スコープ済み一覧） / DELETE /sessions（会話削除時の破棄用）
-# tools.allowlist.json: {tools[], dangerous[]}。既定は空＝全無効。壊JSONは起動拒否。
+# tools.allowlist.json: {tools[], dangerous[]}。既定は空＝全無効。不正な JSON は起動拒否。
 #   有効化は tools 追加のみ（--tools 付加）。dangerous は dangerous-only の既定表（リクエスト上書き可）。
 # 認証: GATEWAY_AUTH_TENANT＋GATEWAY_AUTH_AUDIENCE 設定時のみ Bearer JWT 検証（/health 除外）。
 #   未設定時は認証なし（既定 loopback の開発用）。

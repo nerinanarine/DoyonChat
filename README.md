@@ -79,7 +79,7 @@
 │   ├── parameters/       # 環境別パラメーター
 │   └── scripts/          # デプロイスクリプト
 │
-├── specs/              # 仕様書・設計書
+├── documents/specs/    # 仕様書・設計書
 │   ├── 000_backlog/      # バックログと対応履歴
 │   ├── 001-chat-app/     # Phase 1（MVP）仕様
 │   ├── 005-entra-id-auth/           # Entra ID認証
@@ -145,7 +145,7 @@ npm run dev
 
 ## デプロイ
 
-詳細なFunctions移行・セットアップ手順は [specs/006-user-isolation-functions/setup-guide.md](specs/006-user-isolation-functions/setup-guide.md) を参照してください。MVPの初期手順は履歴資料のため、現行環境のセットアップには使用しないでください。
+詳細なFunctions移行・セットアップ手順は [documents/specs/006-user-isolation-functions/setup-guide.md](documents/specs/006-user-isolation-functions/setup-guide.md) を参照してください。MVPの初期手順は履歴資料のため、現行環境のセットアップには使用しないでください。
 
 ### 簡易デプロイ（Bash）
 
@@ -207,7 +207,7 @@ Function App名、API URL、Static Web App URLはBicepのdeployment outputsか�
 
 ### セットアップ手順
 
-詳細なセットアップ手順は [specs/003-setup-ci-cd-pipeline/setup-guide.md](specs/003-setup-ci-cd-pipeline/setup-guide.md) を参照してください。
+詳細なセットアップ手順は [documents/specs/003-setup-ci-cd-pipeline/setup-guide.md](documents/specs/003-setup-ci-cd-pipeline/setup-guide.md) を参照してください。
 
 ## 対応モデル
 
@@ -259,7 +259,7 @@ npm run test:live:models
 
 ## バックログ（未実装機能）
 
-未実装機能・改善項目は [specs/000_backlog/backlog.md](specs/000_backlog/backlog.md) で管理しています。
+未実装機能・改善項目は [documents/specs/000_backlog/backlog.md](documents/specs/000_backlog/backlog.md) で管理しています。
 
 主な未対応項目:
 

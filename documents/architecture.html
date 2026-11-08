@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoyonChat システムアーキテクチャ</title>
+<style>
+  :root {
+    --bg: #0b1018;
+    --panel: #121a27;
+    --panel2: #0e1622;
+    --line: #24344c;
+    --ink: #dbe6f4;
+    --dim: #8ea2bd;
+    --cyan: #4fd1e0;
+    --amber: #ffb454;
+    --green: #63e6a5;
+    --violet: #b7a4ff;
+    --red: #ff8095;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+    background:
+      radial-gradient(1100px 520px at 85% -10%, rgba(79, 209, 224, 0.08), transparent 60%),
+      radial-gradient(900px 600px at 5% 15%, rgba(255, 180, 84, 0.05), transparent 60%),
+      var(--bg);
+    line-height: 1.7;
+  }
+  header {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 28px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .kicker {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+  h1 { font-size: clamp(26px, 4vw, 40px); margin: 10px 0 8px; line-height: 1.3; }
+  h1 .accent { color: var(--amber); }
+  .sub { color: var(--dim); max-width: 780px; margin: 0; }
+  main { max-width: 1120px; margin: 0 auto; padding: 8px 28px 72px; }
+  section { margin-top: 48px; }
+  h2 {
+    font-size: 21px;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  h2 .no {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: var(--bg);
+    background: var(--amber);
+    border-radius: 4px;
+    padding: 1px 8px;
+  }
+  .lede { color: var(--dim); margin: 0 0 16px; max-width: 860px; }
+
+  /* diagram */
+  .diagram {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel2);
+    padding: 22px 20px;
+    overflow-x: auto;
+  }
+  .flow {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    min-width: 980px;
+  }
+  .node {
+    flex: 1 1 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .node .name { font-size: 14px; font-weight: 600; }
+  .node .meta {
+    font-family: Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--dim);
+    margin-top: 4px;
+    white-space: pre-line;
+  }
+  .node.cyan { border-color: rgba(79, 209, 224, 0.65); }
+  .node.cyan .name { color: var(--cyan); }
+  .node.amber { border-color: rgba(255, 180, 84, 0.65); }
+  .node.amber .name { color: var(--amber); }
+  .node.green { border-color: rgba(99, 230, 165, 0.65); }
+  .node.green .name { color: var(--green); }
+  .node.violet { border-color: rgba(183, 164, 255, 0.65); }
+  .node.violet .name { color: var(--violet); }
+  .arrow {
+    align-self: center;
+    color: var(--dim);
+    font-family: Consolas, monospace;
+    font-size: 18px;
+    flex: 0 0 auto;
+  }
+  .arrow .arrow-label {
+    font-size: 11px;
+    margin-left: 6px;
+    letter-spacing: 0;
+  }
+  .stack { display: flex; flex-direction: column; gap: 10px; flex: 1.15 1 0; min-width: 0; }
+  .stack .node { flex: 0 0 auto; }
+  .side {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+    min-width: 980px;
+  }
+  .side .node { flex: 1 1 0; }
+  .side .node .meta { white-space: normal; }
+  .legend {
+    font-family: Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--dim);
+    margin-top: 14px;
+  }
+
+  /* tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 8px 11px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #16202f; color: var(--cyan); white-space: nowrap; font-weight: 600; }
+  td code, p code, li code {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: var(--amber);
+    background: rgba(255, 180, 84, 0.08);
+    padding: 1px 5px;
+    border-radius: 4px;
+    word-break: break-all;
+  }
+  td .file {
+    font-family: Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--dim);
+    display: block;
+  }
+  .note {
+    border-left: 3px solid var(--amber);
+    background: rgba(255, 180, 84, 0.06);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    color: var(--dim);
+    font-size: 13px;
+    margin-top: 14px;
+  }
+  .note strong { color: var(--ink); }
+  footer {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 20px 28px 56px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-family: Consolas, monospace;
+    font-size: 11.5px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">DoyonChat &middot; documents/architecture.html</div>
+  <h1>システムアーキテクチャ <span class="accent">— 全体像と接続点</span></h1>
+  <p class="sub">Browser/PWA → Static Web Apps（frontend）→ Azure Functions（Flex）→ CosmosDB / OpenCode Go / agent gateway（Container Apps）→ pi + Azure Files。設定キーと主要ファイルの行番号を注記した簡潔な技術資料。</p>
+</header>
+
+<main>
+
+<!-- 01 -->
+<section id="s1">
+  <h2><span class="no">01</span>全体構成</h2>
+  <p class="lede">通常チャットは Functions から OpenCode Go へ直結。エージェント実行だけが Functions を経由して別基盤の gateway に分岐し、gateway が pi 子プロセスと Azure Files を所有する。認証・監視・シークレットは横断レイヤー。</p>
+
+  <div class="diagram">
+    <div class="flow">
+      <div class="node cyan">
+        <div class="name">Browser / PWA</div>
+        <div class="meta">React 18 + Vite 5
+MSAL (Entra ID)
+Service Worker</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node cyan">
+        <div class="name">frontend (SWA)</div>
+        <div class="meta">Azure Static Web Apps
+dev :5173
+VITE_API_URL → Functions</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node amber">
+        <div class="name">functions (Flex)</div>
+        <div class="meta">Node 20 / Functions v4
+HTTP Streams
+dev :7071
+認証・中継・永続化</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stack">
+        <div class="node violet">
+          <div class="name">CosmosDB · chatdb</div>
+          <div class="meta">conversations / messages / userSettings（Serverless）</div>
+        </div>
+        <div class="node violet">
+          <div class="name">OpenCode Go</div>
+          <div class="meta">Responses / Chat Completions / Messages（SSE）</div>
+        </div>
+        <div class="node amber">
+          <div class="name">agent gateway (ACA)</div>
+          <div class="meta">:8787 · HTTP + SSE · Entra JWT · min=0 / max=1</div>
+        </div>
+        <div class="arrow">↓<span class="arrow-label">gateway → pi</span></div>
+        <div class="node green">
+          <div class="name">pi + Files</div>
+          <div class="meta">pi --mode rpc
+JSONL / stdin·stdout
+Azure Files: artifacts</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="node violet"><div class="name">Entra ID</div><div class="meta">SPA / API / gateway の 3 アプリ登録。JWT の issuer・audience。</div></div>
+      <div class="node violet"><div class="name">Key Vault</div><div class="meta"><code>opencode-api-key</code> / <code>artifacts-storage-key</code>。UAMI と Functions MI が <code>secrets:get</code>。</div></div>
+      <div class="node violet"><div class="name">App Insights</div><div class="meta">Functions と ACA に接続文字列を配布。Log Analytics 配下。</div></div>
+    </div>
+
+    <div class="legend">青＝通常系 / 橙＝Functions・エージェント系 / 紫＝データ・外部・横断 / 緑＝pi とファイル実体。</div>
+  </div>
+
+  <div class="note">
+    <strong>停止と部分保存:</strong> SSE 切断で pi を abort し、受信済み本文を <code>interrupted</code> として保存。承認待ちは実行タイマー外で、無応答は拒否（安全側）。
+  </div>
+</section>
+
+<!-- 02 -->
+<section id="s2">
+  <h2><span class="no">02</span>コンポーネントと責務</h2>
+  <table>
+    <tr><th>層</th><th>実体</th><th>責務</th><th>主な接続先</th></tr>
+    <tr>
+      <td>クライアント</td>
+      <td>React + Vite + PWA</td>
+      <td>会話 UI・ストリーミング表示・承認 UI・設定</td>
+      <td>Functions の <code>/api/*</code> のみ（gateway 直叩きなし）</td>
+    </tr>
+    <tr>
+      <td>配信</td>
+      <td>Azure Static Web Apps</td>
+      <td>SPA ホスティング（dev は Vite <code>:5173</code>）</td>
+      <td>ビルド時に <code>VITE_API_URL</code> を埋め込み</td>
+    </tr>
+    <tr>
+      <td>API</td>
+      <td>Azure Functions v4（Flex Consumption / Linux）</td>
+      <td>Entra JWT 検証、会話・メッセージ・設定 CRUD、OpenCode Go 中継、gateway 中継、artifacts 配信</td>
+      <td>CosmosDB / OpenCode Go / gateway / Azure Files</td>
+    </tr>
+    <tr>
+      <td>永続化</td>
+      <td>CosmosDB（Serverless）</td>
+      <td>DB <code>chatdb</code> に 3 コンテナ</td>
+      <td>Functions のみが読み書き</td>
+    </tr>
+    <tr>
+      <td>LLM</td>
+      <td>OpenCode Go（外部）</td>
+      <td>3 プロトコルの SSE 応答とモデル一覧</td>
+      <td>Functions 直結 / pi の provider</td>
+    </tr>
+    <tr>
+      <td>エージェント</td>
+      <td>Container Apps 上の gateway</td>
+      <td>pi プロセス所有、JSONL 中継、承認、実行レジストリ、同時実行上限</td>
+      <td>Functions（MI token） / pi / Azure Files</td>
+    </tr>
+    <tr>
+      <td>実行</td>
+      <td>pi coding agent（子プロセス）</td>
+      <td><code>--mode rpc --no-session --no-tools</code> ＋ 承認ゲート拡張</td>
+      <td>OpenCode Go / allowlist 済みツール / artifacts</td>
+    </tr>
+  </table>
+
+  <h3 style="font-size:16px;margin:22px 0 0;color:var(--ink)">CosmosDB <code>chatdb</code> の 3 コンテナ</h3>
+  <table>
+    <tr><th>コンテナ</th><th>パーティションキー</th><th>内容</th><th>定義</th></tr>
+    <tr><td><code>conversations</code></td><td><code>/id</code></td><td>会話メタデータ・タイトル・所有者</td><td><span class="file">infra/modules/cosmosdb.bicep:37-46</span></td></tr>
+    <tr><td><code>messages</code></td><td><code>/conversationId</code></td><td>メッセージ本文・reasoning・状態</td><td><span class="file">infra/modules/cosmosdb.bicep:48-57</span></td></tr>
+    <tr><td><code>userSettings</code></td><td><code>/userId</code></td><td>表示名・モデル・承認レベル</td><td><span class="file">infra/modules/cosmosdb.bicep:59-68</span></td></tr>
+  </table>
+  <p class="lede" style="margin-top:10px">アクセサは <span class="file">functions/src/db/index.ts:19-29</span>、DB 名の既定値は同 <code>:16</code>。</p>
+</section>
+
+<!-- 03 -->
+<section id="s3">
+  <h2><span class="no">03</span>設定キー（名前と参照位置）</h2>
+  <p class="lede">秘密値は Key Vault 参照で注入し、平文をコード・ログ・env 例に置かない。以下はキー名とコード上の読み取り位置。</p>
+  <table>
+    <tr><th>キー</th><th>用途</th><th>参照位置</th></tr>
+    <tr>
+      <td><code>VITE_API_URL</code></td>
+      <td>フロントが叩く Functions のベース URL（本番は <code>https://&lt;function-host&gt;/api</code>（deploy.yml:185 で絶対URL注入）、dev 例は <code>http://localhost:7071/api</code>）</td>
+      <td><span class="file">frontend/src/services/api.ts:4</span><span class="file">frontend/src/services/chatApi.ts:34, 212</span><span class="file">frontend/.env.example:2</span><span class="file">.github/workflows/deploy.yml:185</span></td>
+    </tr>
+    <tr>
+      <td><code>AGENT_GATEWAY_URL</code></td>
+      <td>Functions → gateway のベース URL。未設定は 503</td>
+      <td><span class="file">functions/src/services/agentGateway.ts:28</span><span class="file">infra/modules/functions.bicep:167</span></td>
+    </tr>
+    <tr>
+      <td><code>AGENT_GATEWAY_AUDIENCE</code></td>
+      <td>Functions が MI トークンを取得する audience</td>
+      <td><span class="file">functions/src/services/agentGateway.ts:26</span><span class="file">functions/src/services/gatewayToken.ts:23</span></td>
+    </tr>
+    <tr>
+      <td><code>AGENT_ENABLED</code></td>
+      <td>エージェント機能の kill switch（<code>false</code> で 404）</td>
+      <td><span class="file">functions/src/services/agentGateway.ts:30</span><span class="file">infra/main.bicep:49</span></td>
+    </tr>
+    <tr>
+      <td><code>COSMOSDB_ENDPOINT</code><br><code>COSMOSDB_KEY</code><br><code>COSMOSDB_DATABASE</code><br><code>COSMOSDB_REQUIRED</code></td>
+      <td>CosmosDB 接続・DB 名（既定 <code>chatdb</code>）・必須可否</td>
+      <td><span class="file">functions/src/db/index.ts:8-16</span><span class="file">functions/src/services/conversationService.ts:15</span><span class="file">infra/modules/functions.bicep:155-158</span></td>
+    </tr>
+    <tr>
+      <td><code>ARTIFACTS_STORAGE_ACCOUNT</code><br><code>ARTIFACTS_SHARE_NAME</code><br><code>ARTIFACTS_STORAGE_KEY</code><br><code>ARTIFACTS_STORAGE_ENDPOINT_SUFFIX</code></td>
+      <td>Azure Files 共有の読み取り設定（キーは Key Vault 参照）</td>
+      <td><span class="file">functions/src/services/artifactStore.ts:54-61</span><span class="file">infra/modules/functions.bicep:170-173</span></td>
+    </tr>
+    <tr>
+      <td><code>OPENCODE_GO_API_KEY</code><br><code>OPENCODE_GO_MODEL</code><br><code>OPENCODE_GO_TITLE_MODEL</code></td>
+      <td>OpenCode Go 認証・既定モデル・タイトル生成モデル</td>
+      <td><span class="file">functions/src/services/opencodeGo.ts:133, 297, 317, 400</span><span class="file">infra/modules/functions.bicep:159-161</span></td>
+    </tr>
+    <tr>
+      <td><code>AUTH_ENABLED</code><br><code>ENTRA_TENANT_ID</code><br><code>ENTRA_API_CLIENT_ID</code></td>
+      <td>Functions 側の JWT 検証（issuer / audience）</td>
+      <td><span class="file">functions/src/middleware/auth.ts:10, 14, 18</span><span class="file">functions/src/services/conversationService.ts:11</span></td>
+    </tr>
+    <tr>
+      <td><code>GATEWAY_AUTH_TENANT</code><br><code>GATEWAY_AUTH_AUDIENCE</code></td>
+      <td>gateway 側の Bearer JWT 検証（未設定は認証なし＝開発 loopback 用）</td>
+      <td><span class="file">agent/src/auth.ts:16</span><span class="file">agent/src/server.ts:80</span><span class="file">infra/modules/agentPool.bicep:149-150</span></td>
+    </tr>
+    <tr>
+      <td><code>GATEWAY_HOST</code><br><code>GATEWAY_PORT</code></td>
+      <td>gateway の待受（既定 <code>127.0.0.1</code> / <code>8787</code>）</td>
+      <td><span class="file">agent/src/config.ts:279-280</span><span class="file">infra/modules/agentPool.bicep:133-134, 175</span></td>
+    </tr>
+    <tr>
+      <td><code>AGENT_DATA_DIR</code></td>
+      <td>pi のセッション・設定・artifacts の基底（ACA は <code>/app/data</code>）</td>
+      <td><span class="file">agent/src/config.ts:297</span><span class="file">infra/modules/agentPool.bicep:36, 136</span></td>
+    </tr>
+  </table>
+</section>
+
+<!-- 04 -->
+<section id="s4">
+  <h2><span class="no">04</span>主要ファイル（入口と行番号）</h2>
+  <table>
+    <tr><th>領域</th><th>ファイル:行</th><th>内容</th></tr>
+    <tr><td>フロント入口</td><td><span class="file">frontend/src/main.tsx</span></td><td>React マウント・PWA 登録</td></tr>
+    <tr><td>チャット送信</td><td><span class="file">frontend/src/services/chatApi.ts:230</span></td><td><code>POST /chat</code> の SSE 受信</td></tr>
+    <tr><td>状態管理</td><td><span class="file">frontend/src/hooks/useChat.ts</span></td><td>送信・停止・部分保存・エラー</td></tr>
+    <tr><td>認証</td><td><span class="file">frontend/src/auth/msalConfig.ts</span></td><td>MSAL 設定・トークン取得</td></tr>
+    <tr><td>Functions 入口</td><td><span class="file">functions/src/index.ts:1-11</span></td><td>全 HTTP トリガー登録・HTTP Streams 有効化</td></tr>
+    <tr><td>チャット API</td><td><span class="file">functions/src/functions/chat.ts:270</span></td><td><code>route: 'chat'</code></td></tr>
+    <tr><td>会話 API</td><td><span class="file">functions/src/functions/conversations.ts:144-165</span></td><td>一覧・取得・削除・リネーム・自動タイトル</td></tr>
+    <tr><td>メッセージ API</td><td><span class="file">functions/src/functions/messages.ts:35</span></td><td><code>conversations/{id}/messages</code></td></tr>
+    <tr><td>設定 API</td><td><span class="file">functions/src/functions/users.ts:75</span></td><td><code>users/me/settings</code></td></tr>
+    <tr><td>モデル API</td><td><span class="file">functions/src/functions/models.ts:21</span></td><td><code>models</code>（カタログ）</td></tr>
+    <tr><td>エージェント API</td><td><span class="file">functions/src/functions/agent.ts:124-138</span></td><td>承認・実行取得・モデル中継</td></tr>
+    <tr><td>artifacts 配信</td><td><span class="file">functions/src/functions/artifacts.ts:59</span></td><td><code>agent/artifacts/{userId}/{fileName}</code></td></tr>
+    <tr><td>gateway 中継</td><td><span class="file">functions/src/services/agentGateway.ts:244-305</span></td><td>prompt SSE のパースと安全なエラー変換</td></tr>
+    <tr><td>gateway 本体</td><td><span class="file">agent/src/server.ts</span></td><td><code>/health</code>, <code>/prompt</code>, <code>/approve</code>, <code>GET /runs/{id}</code>, <code>/models</code>, <code>DELETE /sessions</code></td></tr>
+    <tr><td>pi 起動形</td><td><span class="file">agent/src/config.ts:99, 248-301</span></td><td>既定引数・allowlist・承認ゲート拡張</td></tr>
+    <tr><td>承認ゲート</td><td><span class="file">agent/src/extensions/approvalGate.ts</span></td><td><code>tool_call</code> 購読 → confirm</td></tr>
+    <tr><td>Files マウント</td><td><span class="file">infra/modules/agentPool.bicep:118-130, 210-214</span></td><td>Azure Files 共有 <code>artifacts</code> を <code>/app/data/artifacts</code> へ</td></tr>
+  </table>
+</section>
+
+<!-- 05 -->
+<section id="s5">
+  <h2><span class="no">05</span>CI/CD（4 ジョブ）</h2>
+  <p class="lede"><code>deploy.yml</code> は main push / 手動実行で、テスト → インフラ → Functions → フロントの順に直列実行する。</p>
+  <table>
+    <tr><th>#</th><th>ジョブ</th><th>内容</th><th>依存</th><th>定義</th></tr>
+    <tr><td>1</td><td><code>test-functions</code></td><td><code>npm ci</code> → build → test（<code>COSMOSDB_REQUIRED=false</code>）</td><td>—</td><td><span class="file">.github/workflows/deploy.yml:31-48</span></td></tr>
+    <tr><td>2</td><td><code>deploy-infra</code></td><td>OIDC ログイン → Bicep デプロイ → outputs 取得</td><td>1</td><td><span class="file">.github/workflows/deploy.yml:50-126</span></td></tr>
+    <tr><td>3</td><td><code>deploy-functions</code></td><td>ビルド・zip → Flex Consumption へデプロイ</td><td>2</td><td><span class="file">.github/workflows/deploy.yml:128-166</span></td></tr>
+    <tr><td>4</td><td><code>deploy-frontend</code></td><td><code>VITE_*</code> を注入してビルド → SWA へアップロード</td><td>2, 3</td><td><span class="file">.github/workflows/deploy.yml:168-211</span></td></tr>
+  </table>
+  <p class="lede" style="margin-top:12px">PR 用の <code>ci.yml</code> も 4 ジョブ: <code>changes</code>（paths-filter）→ <code>test-functions</code> / <code>test-agent</code> / <code>validate-infra</code>（Bicep build ＋ what-if）。</p>
+  <div class="note">
+    <strong>前提:</strong> gateway は ingress 公開のため、<code>AGENT_AUTH_TENANT</code> と <code>AGENT_AUTH_AUDIENCE</code> はデプロイ時に必須。<code>AGENT_ENABLED=true</code> のときは Functions 側も <code>AUTH_ENABLED=true</code> が必須。<br>
+    <code>AGENT_AUTH_*</code>（デプロイ入力）と <code>GATEWAY_AUTH_*</code>（gateway 実行時 env）は別物。
+  </div>
+</section>
+
+<!-- 06 -->
+<section id="s6">
+  <h2><span class="no">06</span>補足</h2>
+  <ul class="lede">
+    <li>開発時のポート: フロント <code>:5173</code> / Functions <code>:7071</code> / gateway <code>:8787</code>。</li>
+    <li>フロントは gateway を直接呼ばず、必ず Functions の <code>/api/agent/*</code> を経由する（トークンと kill switch の一元化）。</li>
+    <li>gateway は <code>minReplicas=0 / maxReplicas=1</code>。コールドスタートは <code>agent-starting</code> として UI に通知される。</li>
+    <li>pi のツールは既定で全無効（<code>--no-tools</code>）。有効化は <code>agent/tools.allowlist.json</code> への追記のみ。</li>
+    <li>仕様・計画資料は <code>documents/specs/</code> 配下へ移動済み。</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>documents/architecture.html — 設定キー・主要ファイルの行番号は 2026-11-08 時点のリポジトリに基づく。</footer>
+
+</body>
+</html>

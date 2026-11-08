@@ -13,7 +13,7 @@ Functions のマネージド ID が取得するトークンは、gateway が検�
    - サポートされるアカウントの種類: この組織ディレクトリのみ
    - リダイレクト URI: 不要
 2. 作成後、**アプリケーション (クライアント) ID** を控える → `AGENT_AUTH_AUDIENCE` に渡す
-3. （Functions の MI がトークンを取得できるようにするため、アプリ登録の公開設定や API 公開の構成が必要な場合あり。まず実行して、401 が返れば Manager が `functions/` 側でトークン取得コードを確認する）
+3. （Functions の MI がトークンを取得できるようにするため、アプリ登録の公開設定や API 公開の構成が必要な場合あり。まず実行して、401 が返れば 担当者が `functions/` 側でトークン取得コードを確認する）
 
 ### 2. 環境変数（シェル側で設定）
 
@@ -57,7 +57,7 @@ az acr build \
   agent
 ```
 
-ACP は admin 無効＋Container App の UAMI（AcrPull）引きのため、認証情報なしで pull できる。
+ACR は admin 無効＋Container App の UAMI（AcrPull）引きのため、認証情報なしで pull できる。
 
 ## 疎通確認
 
@@ -80,4 +80,4 @@ curl -s https://<agent-container-app-fqdn>/health
   （loopback 開発のみ想定）。CI（`.github/workflows/deploy.yml`）は受け渡し＋必須化済み
   （`AGENT_ENABLED=true` 時は AUTH 同時必須もガード）。
 - 運用系（App Insights メトリクス、kill switch E2E、初回 npm 展開 latency）は
-  `specs/P3-010/plan.md` Phase 3 の残課題。
+  `documents/specs/P3-010/plan.md` Phase 3 の残課題。
