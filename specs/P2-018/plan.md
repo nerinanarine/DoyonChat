@@ -4,7 +4,7 @@
 
 ## Design Decisions
 
-- **D1 — infra変更は1行**: `agentPool.bicep:181` の `minReplicas` のみ変更する。プローブ追加はしない
+- **D1 — infra変更は1行**: `agentPool.bicep:219` の `minReplicas` のみ変更する。プローブ追加はしない
 - **D2 — 検出経路**: Functions に gateway `/models` 中継（`forwardGetModels`）を追加し、`forwardGetRun` と同型（MI Bearer・30秒 timeout）にする。`/health` では pi 未起動のため `/models` を優先する
 - **D3 — UI再利用**: `LoadingState`＋P2-013 状態モデル（loading→loaded→error）＋P2-003 エラーUIを流用し、新規パターンを作らない
 - **D4 — 実測先行**: ポーリング間隔・タイムアウトは dev実測値から決める。机上値で固定しない
@@ -21,18 +21,18 @@
 - [ ] ~~dev 環境で 0→1 遷移中の挙動とコールドスタート時間を実測する~~ → 2026-10-03 オーナー判断で実測スキップ。ポーリング間隔・タイムアウトは実装時に机上値で仮置きし、dev検証で補正する
 - [ ] 実測時に復帰後マウント挙動を記録し、P3-016 の再マウント前提の根拠に供する
 - [ ] ポーリング間隔・タイムアウト値・再試行方針を実測値から決める
-- [ ] backlog P2-018 を 🟡 進行中に更新する
+- [x] backlog P2-018 を 🟡 進行中に更新する
 
 ### Phase 1 — Infra（dev）
-- [ ] `infra/modules/agentPool.bicep` の `minReplicas` を `0` に変更する（`main.json` の再生成要否を確認する）
+- [x] `infra/modules/agentPool.bicep` の `minReplicas` を `0` に変更する（`main.json` の再生成要否を確認する）
 - [ ] dev へデプロイし、アイドル時レプリカ 0 と初回起動を確認する
 - [ ] `reviewer` レビューを通過してから Phase 2 へ進む
 
 ### Phase 2 — 検出＋UI
-- [ ] `functions/src/services/agentGateway.ts` に gateway `/models` 中継（`forwardGetModels`）を追加する
-- [ ] 承認・run 照会経路のコールドスタート対応（起動中表示＋再試行）を追加する
-- [ ] Frontend に起動中ローディング表示・タイムアウト→エラーUI遷移・再試行導線を追加する（既存パターン流用）
-- [ ] テスト追加（タイムアウト・再試行・エラー遷移。gateway 実体は mock）
+- [x] `functions/src/services/agentGateway.ts` に gateway `/models` 中継（`forwardGetModels`）を追加する
+- [x] 承認・run 照会経路のコールドスタート対応（起動中表示＋再試行）を追加する
+- [x] Frontend に起動中ローディング表示・タイムアウト→エラーUI遷移・再試行導線を追加する（既存パターン流用）
+- [x] テスト追加（タイムアウト・再試行・エラー遷移。gateway 実体は mock）
 - [ ] ゼロ状態からの初回送信→起動中表示→応答の一連を dev で手動確認する
 - [ ] `reviewer` レビューを通過してから Phase 3 へ進む
 
