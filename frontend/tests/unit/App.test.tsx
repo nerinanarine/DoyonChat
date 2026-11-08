@@ -105,7 +105,7 @@ describe('App chat bootstrap', () => {
     vi.mocked(api.fetchAgentModels).mockResolvedValue({ models: [] });
   });
 
-  it('does not render a header model selection dropdown (FR-002)', async () => {
+  it('does not render a header model selection dropdown', async () => {
     render(<App />);
     await screen.findByRole('button', { name: '新規チャット' });
 
