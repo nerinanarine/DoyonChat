@@ -25,16 +25,16 @@
 
 ### Phase 1 — Infra（dev）
 - [x] `infra/modules/agentPool.bicep` の `minReplicas` を `0` に変更する（`main.json` の再生成要否を確認する）
-- [ ] dev へデプロイし、アイドル時レプリカ 0 と初回起動を確認する
-- [ ] `reviewer` レビューを通過してから Phase 2 へ進む
+- [x] dev へデプロイし、アイドル時レプリカ 0 と初回起動を確認する
+- [x] `reviewer` レビューを通過してから Phase 2 へ進む
 
 ### Phase 2 — 検出＋UI
 - [x] `functions/src/services/agentGateway.ts` に gateway `/models` 中継（`forwardGetModels`）を追加する
 - [x] 承認・run 照会経路のコールドスタート対応（起動中表示＋再試行）を追加する
 - [x] Frontend に起動中ローディング表示・タイムアウト→エラーUI遷移・再試行導線を追加する（既存パターン流用）
 - [x] テスト追加（タイムアウト・再試行・エラー遷移。gateway 実体は mock）
-- [ ] ゼロ状態からの初回送信→起動中表示→応答の一連を dev で手動確認する
-- [ ] `reviewer` レビューを通過してから Phase 3 へ進む
+- [x] ゼロ状態からの初回送信→起動中表示→応答の一連を dev で手動確認する
+- [x] `reviewer` レビューを通過してから Phase 3 へ進む
 
 ### Phase 3 — 仕上げ
 - [ ] prod への適用と切戻し手順を記録する
