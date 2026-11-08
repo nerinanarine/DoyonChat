@@ -152,7 +152,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         )}
       </div>
       <div className="p-3 border-t border-gray-800 text-xs text-gray-500 text-center">
-        OpenCode Chat
+        DoyonChat
       </div>
     </div>
   );

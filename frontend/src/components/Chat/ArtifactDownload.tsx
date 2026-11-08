@@ -49,39 +49,41 @@ const ArtifactDownload: React.FC<ArtifactDownloadProps> = ({ userId }) => {
 
   return (
     <div className="border-t border-gray-200 bg-white px-4 py-2">
-      {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
-      <form
-        className="flex items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void handleDownload();
-        }}
-      >
-        <input
-          type="text"
-          value={fileName}
-          onChange={(event) => setFileName(event.target.value)}
-          placeholder="ダウンロードするファイル名"
-          aria-label="成果物ファイル名"
-          disabled={!userId || busy}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-        />
-        <button
-          type="submit"
-          disabled={!userId || !fileName.trim() || busy}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
+      <div className="max-w-3xl mx-auto">
+        {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleDownload();
+          }}
         >
-          {busy ? (
-            <span
-              className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"
-              aria-hidden
-            />
-          ) : (
-            <Download size={16} />
-          )}
-          {busy ? '取得中...' : 'ダウンロード'}
-        </button>
-      </form>
+          <input
+            type="text"
+            value={fileName}
+            onChange={(event) => setFileName(event.target.value)}
+            placeholder="ダウンロードするファイル名"
+            aria-label="成果物ファイル名"
+            disabled={!userId || busy}
+            className="flex-1 min-h-[44px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+          />
+          <button
+            type="submit"
+            disabled={!userId || !fileName.trim() || busy}
+            className="flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
+          >
+            {busy ? (
+              <span
+                className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"
+                aria-hidden
+              />
+            ) : (
+              <Download size={16} />
+            )}
+            {busy ? '取得中...' : 'ダウンロード'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
