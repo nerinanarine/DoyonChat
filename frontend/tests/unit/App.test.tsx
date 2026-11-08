@@ -318,6 +318,18 @@ describe('App agent startup loading (P2-018)', () => {
     ).toBeInTheDocument();
   });
 
+  it('blocks sending while the agent is starting', async () => {
+    mockHooks([createdConversation], { agentStarting: true });
+    render(<App />);
+
+    await screen.findByText('エージェントサービスを起動しています...');
+    const input = screen.getByPlaceholderText('メッセージを入力...');
+    expect(input).toBeDisabled();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: '送信' }));
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
   it('warms up the agent gateway on mount without sending a message', async () => {
     vi.mocked(api.fetchAgentModels).mockReturnValue(new Promise(() => {}));
     render(<App />);

@@ -302,7 +302,9 @@ function App() {
       onNewChat={handleNewChat}
     >
       {(agentStarting || agentWarming) && (
-        <LoadingState label="エージェントサービスを起動しています..." />
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-white/80">
+          <LoadingState label="エージェントサービスを起動しています..." />
+        </div>
       )}
       {!agentStarting && chatError && (
         <ErrorMessage
@@ -335,7 +337,7 @@ function App() {
         onSend={handleSend}
         onStop={stop}
         isStreaming={isStreaming}
-        disabled={convLoading || messagesLoading}
+        disabled={convLoading || messagesLoading || agentStarting || agentWarming}
       />
       <ArtifactDownload userId={userId} />
     </AppLayout>
