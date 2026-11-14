@@ -20,11 +20,12 @@ test('会話名の変更が一覧に反映される', async ({ page, request }) 
   try {
     await page.goto('/');
 
-    const titleButton = page.getByRole('button', { name: baseTitle, exact: true });
-    await expect(titleButton).toBeVisible({ timeout: 30_000 });
+    const row = page.locator('div.group').filter({ hasText: baseTitle });
+    await expect(row).toBeVisible({ timeout: 30_000 });
 
-    // タイトルをクリックすると編集入力へ切り替わる（P2-005）。
-    await titleButton.click();
+    // 行メニューから名称変更を選ぶと編集入力へ切り替わる。
+    await row.getByRole('button', { name: '会話メニュー' }).click();
+    await page.getByRole('menuitem', { name: '名称変更' }).click();
     const editor = page.getByRole('textbox', { name: '会話タイトルを編集' });
     await expect(editor).toBeVisible();
     await editor.fill(renamedTitle);
@@ -32,14 +33,14 @@ test('会話名の変更が一覧に反映される', async ({ page, request }) 
 
     // 一覧に新しい名前が表示され、元の名前は消える。
     await expect(
-      page.getByRole('button', { name: renamedTitle, exact: true }),
+      page.locator('div.group').filter({ hasText: renamedTitle }),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: baseTitle, exact: true })).toHaveCount(0);
+    await expect(page.locator('div.group').filter({ hasText: baseTitle })).toHaveCount(0);
 
     // 再読み込みしても一覧に反映されている（永続化）。
     await page.reload();
     await expect(
-      page.getByRole('button', { name: renamedTitle, exact: true }),
+      page.locator('div.group').filter({ hasText: renamedTitle }),
     ).toBeVisible({ timeout: 30_000 });
   } finally {
     await request.delete(`${API_URL}/conversations/${conversationId}`);

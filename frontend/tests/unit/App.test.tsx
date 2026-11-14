@@ -117,7 +117,7 @@ describe('App chat bootstrap', () => {
     mockHooks([{ ...createdConversation, id: 'existing-conversation', title: '既存トーク' }]);
     render(<App />);
     fireEvent.click(
-      (await screen.findByRole('button', { name: '既存トーク' })).parentElement as HTMLElement,
+      await screen.findByText('既存トーク', { selector: 'span' }),
     );
     await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('existing-conversation'));
 
@@ -205,7 +205,7 @@ describe('App chat bootstrap', () => {
     mockHooks([{ ...createdConversation, id: 'existing-conversation', title: 'New Chat' }]);
     render(<App />);
     fireEvent.click(
-      (await screen.findByRole('button', { name: 'New Chat' })).parentElement as HTMLElement,
+      await screen.findByText('New Chat', { selector: 'span' }),
     );
 
     const input = await screen.findByPlaceholderText('メッセージを入力...');
@@ -223,7 +223,7 @@ describe('App chat bootstrap', () => {
     isRenamed.mockReturnValue(true);
     render(<App />);
     fireEvent.click(
-      (await screen.findByRole('button', { name: 'New Chat' })).parentElement as HTMLElement,
+      await screen.findByText('New Chat', { selector: 'span' }),
     );
 
     const input = await screen.findByPlaceholderText('メッセージを入力...');
@@ -238,7 +238,7 @@ describe('App chat bootstrap', () => {
     mockHooks([{ ...createdConversation, id: 'existing-conversation', title: '設定済みタイトル' }]);
     render(<App />);
     fireEvent.click(
-      (await screen.findByRole('button', { name: '設定済みタイトル' })).parentElement as HTMLElement,
+      await screen.findByText('設定済みタイトル', { selector: 'span' }),
     );
 
     const input = await screen.findByPlaceholderText('メッセージを入力...');
@@ -267,7 +267,7 @@ describe('App agent mode', () => {
     ]);
     render(<App />);
     fireEvent.click(
-      (await screen.findByRole('button', { name: 'エージェント会話' })).parentElement as HTMLElement,
+      await screen.findByText('エージェント会話', { selector: 'span' }),
     );
 
     await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('agent-conv'));
@@ -287,7 +287,7 @@ describe('App agent mode', () => {
     ]);
     render(<App />);
     fireEvent.click(
-      (await screen.findByRole('button', { name: 'エージェント会話（モデル不在）' })).parentElement as HTMLElement,
+      await screen.findByText('エージェント会話（モデル不在）', { selector: 'span' }),
     );
 
     const input = await screen.findByPlaceholderText('メッセージを入力...');

@@ -8,7 +8,6 @@ import {
   SettingsStatus,
 } from '../../types';
 import ConversationList from '../Sidebar/ConversationList';
-import SettingsMenu from '../Settings/SettingsMenu';
 
 interface AppLayoutProps {
   conversations: Conversation[];
@@ -43,7 +42,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   const { instance } = useMsal();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true';
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
@@ -78,6 +76,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             onNewChat();
             setSidebarOpen(false);
           }}
+          settings={settings}
+          settingsStatus={settingsStatus}
+          onChangeDisplayName={onChangeDisplayName}
+          onChangeAgentApprovalLevel={onChangeAgentApprovalLevel}
+          onChangeAgentModel={onChangeAgentModel}
+          onChangeAgentSubagentModel={onChangeAgentSubagentModel}
+          onLogout={handleLogout}
         />
       </div>
 
@@ -101,6 +106,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 onNewChat();
                 setSidebarOpen(false);
               }}
+              settings={settings}
+              settingsStatus={settingsStatus}
+              onChangeDisplayName={onChangeDisplayName}
+              onChangeAgentApprovalLevel={onChangeAgentApprovalLevel}
+              onChangeAgentModel={onChangeAgentModel}
+              onChangeAgentSubagentModel={onChangeAgentSubagentModel}
+              onLogout={handleLogout}
             />
           </div>
           <div className="flex-1 bg-black/50" onClick={() => setSidebarOpen(false)} />
@@ -121,20 +133,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             <h1 className="font-semibold text-gray-900 truncate">
               {activeConversation?.title || 'DoyonChat'}
             </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {authEnabled && (
-              <SettingsMenu
-                settings={settings}
-                settingsStatus={settingsStatus}
-                onChangeDisplayName={onChangeDisplayName}
-                onChangeAgentApprovalLevel={onChangeAgentApprovalLevel}
-                onChangeAgentModel={onChangeAgentModel}
-                onChangeAgentSubagentModel={onChangeAgentSubagentModel}
-                onLogout={handleLogout}
-              />
-            )}
           </div>
         </header>
 

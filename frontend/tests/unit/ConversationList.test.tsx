@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ConversationList from '../../src/components/Sidebar/ConversationList';
 import { Conversation } from '../../src/types';
@@ -38,8 +38,15 @@ function renderList(onRename = vi.fn().mockResolvedValue(undefined)) {
   return onRename;
 }
 
+function rowFor(title: string) {
+  const row = screen.getByText(title, { selector: 'span' }).closest('div.group');
+  if (!row) throw new Error(`row not found: ${title}`);
+  return within(row as HTMLElement);
+}
+
 function startEditing(title = '最初の会話') {
-  fireEvent.click(screen.getByRole('button', { name: title }));
+  fireEvent.click(rowFor(title).getByRole('button', { name: '会話メニュー' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: '名称変更' }));
   return screen.getByRole('textbox', { name: '会話タイトルを編集' });
 }
 
@@ -75,7 +82,10 @@ describe('ConversationList rename', () => {
 
   it.each([
     ['Escape', (input: HTMLElement) => fireEvent.keyDown(input, { key: 'Escape' })],
-    ['blur', (input: HTMLElement) => fireEvent.blur(input)],
+    [
+      'cancel button',
+      () => fireEvent.click(screen.getByRole('button', { name: 'キャンセル' })),
+    ],
     [
       'empty Enter',
       (input: HTMLElement) => {
@@ -92,7 +102,7 @@ describe('ConversationList rename', () => {
 
     expect(onRename).not.toHaveBeenCalled();
     expect(screen.queryByRole('textbox', { name: '会話タイトルを編集' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '最初の会話' })).toBeInTheDocument();
+    expect(screen.getByText('最初の会話')).toBeInTheDocument();
   });
 
   it('ignores Enter while an IME composition is active', () => {
@@ -180,9 +190,65 @@ describe('ConversationList rename', () => {
     renderList();
     startEditing();
 
-    fireEvent.click(screen.getByRole('button', { name: '次の会話' }));
+    fireEvent.click(rowFor('次の会話').getByRole('button', { name: '会話メニュー' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '名称変更' }));
 
     expect(screen.getAllByRole('textbox', { name: '会話タイトルを編集' })).toHaveLength(1);
     expect(screen.getByRole('textbox', { name: '会話タイトルを編集' })).toHaveValue('次の会話');
   });
+
+  it('saves the trimmed title with the explicit save button', async () => {
+    const onRename = renderList();
+    const input = startEditing();
+    fireEvent.change(input, { target: { value: '  保存ボタンの会話  ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() =>
+      expect(onRename).toHaveBeenCalledWith('conversation-1', '保存ボタンの会話'),
+    );
+  });
 });
+
+describe('ConversationList row menu', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('exposes rename and delete only from the row menu', () => {
+    renderList();
+
+    expect(screen.queryByTitle('削除')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '最初の会話' })).not.toBeInTheDocument();
+
+    fireEvent.click(rowFor('最初の会話').getByRole('button', { name: '会話メニュー' }));
+
+    expect(screen.getByRole('menu', { name: '会話メニュー' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '名称変更' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '削除' })).toBeInTheDocument();
+  });
+
+  it('deletes after confirmation', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderList();
+
+    fireEvent.click(rowFor('最初の会話').getByRole('button', { name: '会話メニュー' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '削除' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('この会話を削除しますか？');
+    expect(onDelete).toHaveBeenCalledWith('conversation-1');
+    confirmSpy.mockRestore();
+  });
+
+  it('does not delete when the confirmation is cancelled', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderList();
+
+    fireEvent.click(rowFor('最初の会話').getByRole('button', { name: '会話メニュー' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '削除' }));
+
+    expect(onDelete).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+});
+
