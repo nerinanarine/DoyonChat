@@ -11,6 +11,8 @@ interface ConversationListProps {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => Promise<void>;
   onNewChat: () => void;
+  /** デスクトップでのサイドバー幅（px）。未指定時は Tailwind の w-64。 */
+  width?: number;
   settings?: UserSettings;
   settingsStatus?: SettingsStatus;
   onChangeDisplayName?: (name: string | null) => Promise<void>;
@@ -27,6 +29,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   onDelete,
   onRename,
   onNewChat,
+  width,
   settings,
   settingsStatus,
   onChangeDisplayName,
@@ -88,7 +91,10 @@ const ConversationList: React.FC<ConversationListProps> = ({
 
   return (
     <>
-      <div className="w-64 bg-gray-900 text-gray-100 flex flex-col h-full flex-shrink-0">
+      <div
+        className="w-64 bg-gray-900 text-gray-100 flex flex-col h-full flex-shrink-0"
+        style={width === undefined ? undefined : { width }}
+      >
         <div className="p-3 border-b border-gray-800">
           <button
             onClick={onNewChat}

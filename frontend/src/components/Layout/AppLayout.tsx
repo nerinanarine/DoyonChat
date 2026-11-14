@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { Menu, X } from 'lucide-react';
 import {
@@ -8,6 +8,26 @@ import {
   SettingsStatus,
 } from '../../types';
 import ConversationList from '../Sidebar/ConversationList';
+
+const SIDEBAR_WIDTH_KEY = 'doyonchat.sidebarWidth';
+const SIDEBAR_DEFAULT_WIDTH = 256;
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 480;
+const SIDEBAR_KEYBOARD_STEP = 16;
+
+function clampSidebarWidth(width: number): number {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)));
+}
+
+function loadSidebarWidth(): number {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    const parsed = raw === null ? Number.NaN : Number(raw);
+    return Number.isFinite(parsed) ? clampSidebarWidth(parsed) : SIDEBAR_DEFAULT_WIDTH;
+  } catch {
+    return SIDEBAR_DEFAULT_WIDTH;
+  }
+}
 
 interface AppLayoutProps {
   conversations: Conversation[];
@@ -42,8 +62,48 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   const { instance } = useMsal();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
+  const [resizing, setResizing] = useState(false);
+  const dragStart = useRef<{ x: number; width: number } | null>(null);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
+
+  const updateSidebarWidth = (width: number) => {
+    const next = clampSidebarWidth(width);
+    setSidebarWidth(next);
+    try {
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(next));
+    } catch {
+      // 保存できない環境（プライベートブラウズ等）では幅の保持だけ諦める
+    }
+  };
+
+  const handleResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    dragStart.current = { x: event.clientX, width: sidebarWidth };
+    setResizing(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleResizePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = dragStart.current;
+    if (!start) return;
+    updateSidebarWidth(start.width + event.clientX - start.x);
+  };
+
+  const endResize = () => {
+    dragStart.current = null;
+    setResizing(false);
+  };
+
+  const handleResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      updateSidebarWidth(sidebarWidth - SIDEBAR_KEYBOARD_STEP);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      updateSidebarWidth(sidebarWidth + SIDEBAR_KEYBOARD_STEP);
+    }
+  };
 
   // P4-001: モバイルサイドバーは Escape キーでも閉じる
   useEffect(() => {
@@ -64,6 +124,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <ConversationList
+          width={sidebarWidth}
           conversations={conversations}
           activeId={activeConversationId}
           onSelect={(id) => {
@@ -83,6 +144,33 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           onChangeAgentModel={onChangeAgentModel}
           onChangeAgentSubagentModel={onChangeAgentSubagentModel}
           onLogout={handleLogout}
+        />
+      </div>
+
+      {/* Sidebar resize handle (desktop only) */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="サイドバー幅を調整"
+        aria-valuenow={sidebarWidth}
+        aria-valuemin={SIDEBAR_MIN_WIDTH}
+        aria-valuemax={SIDEBAR_MAX_WIDTH}
+        aria-valuetext={`${sidebarWidth}px`}
+        tabIndex={0}
+        onPointerDown={handleResizePointerDown}
+        onPointerMove={handleResizePointerMove}
+        onPointerUp={endResize}
+        onPointerCancel={endResize}
+        onKeyDown={handleResizeKeyDown}
+        className={`hidden md:flex relative w-3 flex-shrink-0 items-center justify-center touch-none select-none cursor-col-resize group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
+          resizing ? 'bg-blue-50' : ''
+        }`}
+      >
+        {/* 44px タッチ領域（レイアウト幅は 12px のまま） */}
+        <span className="absolute inset-y-0 -left-4 -right-4" aria-hidden="true" />
+        <span
+          className={`h-full ${resizing ? 'w-0.5 bg-blue-500' : 'w-px bg-gray-200 group-hover:bg-blue-400'}`}
+          aria-hidden="true"
         />
       </div>
 

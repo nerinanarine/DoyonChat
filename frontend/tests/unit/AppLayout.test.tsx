@@ -90,3 +90,68 @@ describe('AppLayout agent mode (toggle removed)', () => {
     expect(screen.queryByRole('switch', { name: /エージェント/ })).not.toBeInTheDocument();
   });
 });
+
+describe('AppLayout sidebar resize', () => {
+  const STORAGE_KEY = 'doyonchat.sidebarWidth';
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('renders a keyboard-operable separator with the default width', () => {
+    render(<AppLayout {...props} conversations={[conversation]} />);
+
+    const handle = screen.getByRole('separator', { name: 'サイドバー幅を調整' });
+    expect(handle).toHaveAttribute('aria-valuenow', '256');
+    expect(handle).toHaveAttribute('aria-valuemin', '200');
+    expect(handle).toHaveAttribute('aria-valuemax', '480');
+    expect(handle).toHaveAttribute('tabindex', '0');
+  });
+
+  it('resizes with the arrow keys and persists the width', () => {
+    render(<AppLayout {...props} conversations={[conversation]} />);
+    const handle = screen.getByRole('separator', { name: 'サイドバー幅を調整' });
+
+    fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    expect(handle).toHaveAttribute('aria-valuenow', '272');
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('272');
+
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    expect(handle).toHaveAttribute('aria-valuenow', '240');
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('240');
+  });
+
+  it('clamps the width between 200 and 480 and restores a saved value', () => {
+    localStorage.setItem(STORAGE_KEY, '9999');
+    const first = render(<AppLayout {...props} conversations={[conversation]} />);
+    expect(screen.getByRole('separator', { name: 'サイドバー幅を調整' })).toHaveAttribute(
+      'aria-valuenow',
+      '480',
+    );
+    first.unmount();
+
+    localStorage.setItem(STORAGE_KEY, '10');
+    render(<AppLayout {...props} conversations={[conversation]} />);
+    expect(screen.getByRole('separator', { name: 'サイドバー幅を調整' })).toHaveAttribute(
+      'aria-valuenow',
+      '200',
+    );
+  });
+
+  it('resizes by dragging the handle', () => {
+    render(<AppLayout {...props} conversations={[conversation]} />);
+    const handle = screen.getByRole('separator', { name: 'サイドバー幅を調整' });
+
+    // jsdom の PointerEvent は clientX を保持しないため MouseEvent を pointer 名で発火する
+    const firePointer = (type: string, clientX: number) => {
+      fireEvent(handle, new MouseEvent(type, { bubbles: true, cancelable: true, clientX }));
+    };
+    firePointer('pointerdown', 300);
+    firePointer('pointermove', 340);
+    firePointer('pointerup', 340);
+
+    expect(handle).toHaveAttribute('aria-valuenow', '296');
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('296');
+  });
+});
