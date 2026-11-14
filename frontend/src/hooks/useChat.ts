@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AgentApprovalRequest, AgentStreamEvent, Message } from '../types';
 import * as api from '../services/chatApi';
 import { ApiError } from '../services/api';
@@ -180,6 +180,8 @@ export function useChat(conversationId: string | null) {
           setStreamingReasoning(accumulatedRef.current.reasoning);
         },
         () => {
+          // 切替後に旧会話のストリームが完了しても、現行会話の表示を上書きしない。
+          if (conversationIdRef.current !== cid) return;
           streamingActiveRef.current = false;
           setIsStreaming(false);
           setStreamingText('');
@@ -272,13 +274,17 @@ export function useChat(conversationId: string | null) {
     else retrySend();
   }, [retrySend]);
 
-  const stop = useCallback(() => {
-    const wasStreaming = streamingActiveRef.current;
-    const stoppedConversationId = conversationId;
+  const abortActiveStream = useCallback(() => {
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
     }
+  }, []);
+
+  const stop = useCallback(() => {
+    const wasStreaming = streamingActiveRef.current;
+    const stoppedConversationId = conversationId;
+    abortActiveStream();
     if (wasStreaming) {
       streamingActiveRef.current = false;
       const partial = accumulatedRef.current;
@@ -312,7 +318,35 @@ export function useChat(conversationId: string | null) {
         }
       }, 500);
     }
-  }, [conversationId, loadMessages]);
+  }, [conversationId, loadMessages, abortActiveStream]);
+
+  // 画面離脱・アンマウント時は上流ストリームを中断する。部分保存はサーバー側に任せる。
+  useEffect(() => {
+    const abortForPageHide = () => {
+      abortActiveStream();
+      streamingActiveRef.current = false;
+      setIsStreaming(false);
+      setStreamingText('');
+      setStreamingReasoning('');
+      setApprovalRequest(null);
+      setApprovalBusy(false);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') abortForPageHide();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', abortForPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', abortForPageHide);
+      abortActiveStream();
+      startupRef.current?.cancel();
+      if (stopReloadTimerRef.current) {
+        clearTimeout(stopReloadTimerRef.current);
+        stopReloadTimerRef.current = null;
+      }
+    };
+  }, [abortActiveStream]);
 
   const dismissError = useCallback(() => setError(null), []);
 

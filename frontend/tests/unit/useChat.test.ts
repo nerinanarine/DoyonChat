@@ -225,6 +225,47 @@ describe('useChat stop and retry', () => {
       ]),
     );
   });
+
+  it('does not reload history when an old conversation stream completes after switching', async () => {
+    const { result, rerender } = renderHook(({ id }: { id: string }) => useChat(id), {
+      initialProps: { id: 'conversation-1' },
+    });
+    await act(async () => {
+      await result.current.sendMessage('hello');
+    });
+
+    rerender({ id: 'conversation-2' });
+    act(() => {
+      handlers?.onDone();
+    });
+
+    expect(api.fetchConversationWithMessages).not.toHaveBeenCalled();
+  });
+
+  it('aborts the in-flight stream on unmount', async () => {
+    const { result, unmount } = renderHook(() => useChat('conversation-1'));
+    await act(async () => {
+      await result.current.sendMessage('hello');
+    });
+
+    unmount();
+
+    expect(handlers?.controller.signal.aborted).toBe(true);
+  });
+
+  it('aborts the in-flight stream on pagehide', async () => {
+    const { result } = renderHook(() => useChat('conversation-1'));
+    await act(async () => {
+      await result.current.sendMessage('hello');
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+
+    expect(handlers?.controller.signal.aborted).toBe(true);
+    expect(result.current.isStreaming).toBe(false);
+  });
 });
 
 describe('useChat message loading', () => {

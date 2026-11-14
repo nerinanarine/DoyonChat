@@ -173,12 +173,19 @@ function App() {
   }, []);
 
   const handleNewChat = useCallback(() => {
+    // 旧会話のストリームを止めてから切替える（部分保存はサーバー側に任せる）
+    if (activeConversationId !== null) stop();
     setActiveConversationId(null);
-  }, []);
+  }, [activeConversationId, stop]);
 
-  const handleSelect = useCallback((id: string) => {
-    setActiveConversationId(id);
-  }, []);
+  const handleSelect = useCallback(
+    (id: string) => {
+      // 別会話へ切替える前に旧ストリームを止め、旧会話の onDone 再読込を防ぐ
+      if (id !== activeConversationId) stop();
+      setActiveConversationId(id);
+    },
+    [activeConversationId, stop],
+  );
 
   const handleDelete = useCallback(
     async (id: string) => {

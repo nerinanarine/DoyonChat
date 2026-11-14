@@ -46,6 +46,7 @@ const isRenamed = vi.fn();
 const updateSettings = vi.fn().mockResolvedValue(undefined);
 const loadMessages = vi.fn();
 const clearChat = vi.fn();
+const stop = vi.fn();
 
 function mockHooks(
   conversations: Conversation[] = [],
@@ -78,7 +79,7 @@ function mockHooks(
     sendMessage,
     retrySend: vi.fn(),
     retry: vi.fn(),
-    stop: vi.fn(),
+    stop,
     dismissError: vi.fn(),
     respondApproval: vi.fn(),
     clearChat,
@@ -135,6 +136,46 @@ describe('App chat bootstrap', () => {
     await waitFor(() => expect(clearChat).toHaveBeenCalled());
     // 新規チャットでは過去会話の再読込を行わない
     expect(loadMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops the previous stream before switching conversations', async () => {
+    mockHooks([
+      { ...createdConversation, id: 'conversation-a', title: '会話A' },
+      { ...createdConversation, id: 'conversation-b', title: '会話B' },
+    ]);
+    render(<App />);
+    fireEvent.click(await screen.findByText('会話A', { selector: 'span' }));
+    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('conversation-a'));
+
+    stop.mockClear();
+    fireEvent.click(screen.getByText('会話B', { selector: 'span' }));
+
+    await waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('conversation-b'));
+  });
+
+  it('does not stop the stream when re-selecting the active conversation', async () => {
+    mockHooks([{ ...createdConversation, id: 'conversation-a', title: '会話A' }]);
+    render(<App />);
+    fireEvent.click(await screen.findByText('会話A', { selector: 'span' }));
+    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('conversation-a'));
+
+    stop.mockClear();
+    fireEvent.click(screen.getByText('会話A', { selector: 'span' }));
+
+    expect(stop).not.toHaveBeenCalled();
+  });
+
+  it('stops the previous stream when starting a new chat', async () => {
+    mockHooks([{ ...createdConversation, id: 'existing-conversation', title: '既存トーク' }]);
+    render(<App />);
+    fireEvent.click(await screen.findByText('既存トーク', { selector: 'span' }));
+    await waitFor(() => expect(loadMessages).toHaveBeenCalledWith('existing-conversation'));
+
+    stop.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: '新規チャット' }));
+
+    await waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
   });
 
   it('does not create a conversation when the new chat button is clicked', async () => {
