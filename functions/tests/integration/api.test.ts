@@ -68,38 +68,40 @@ describe('Functions API contract', () => {
     const models = await modelsHandler(request('GET', '/api/models'), {} as never);
     expect(models.status).toBe(200);
     expect(Array.isArray(models.jsonBody)).toBe(true);
-    expect(models.jsonBody).toHaveLength(30);
+    expect(models.jsonBody).toHaveLength(32);
     expect((models.jsonBody as Array<{ id: string }>).map(({ id }) => id)).toEqual([
       'grok-4.7',
-      'grok-4.6',
       'gpt-6-luna',
       'gpt-5.6-luna',
+      'claude-haiku-5-5',
+      'gemini-4-argon',
       'glm-5.3-flash',
       'glm-5.3',
       'glm-5.2',
+      'kimi-k3.1-pro',
       'kimi-k3',
       'kimi-k2.7-code',
-      'kimi-k2.6',
-      'longcat-2.5-preview-free',
+      'longcat-2.5-free',
       'longcat-2.0',
       'deepseek-v4.1-flash',
       'deepseek-v4-pro',
-      'deepseek-v4-flash',
-      'deepseek-v4-flash-vision-exp',
       'mimo-v2.6-flash',
       'mimo-v2.6-pro',
       'mimo-v2.5',
       'mimo-v2.5-pro',
+      'minimax-m3.1-flash',
       'minimax-m3',
-      'minimax-m2.7',
       'muse-spark-1.3-contributor',
       'muse-spark-1.2-contributor',
       'qwen3.8-max',
       'qwen3.8-flash',
       'qwen3.7-plus',
+      'hy4',
       'hy4-preview',
       'hy3',
-      'space-bunny-free',
+      'step-5-preview',
+      'beam-free',
+      'iceman-contributor-free',
     ]);
   });
 

@@ -6,6 +6,8 @@
 
 **Implementation Status**: Original 23-model implementation was verified and deployed (2026-08-23). The 2026-08-31 catalog refresh is implemented, automated tests and 26-model live verification pass; production deployment is pending.
 
+**Current catalog size**: The current canonical catalog is 32 models; see [spec.md](./spec.md) for the breakdown and canonical table (the 23/26 figures in this document are historical).
+
 ## Summary
 
 OpenCode Go公式Endpoints表の26モデルをFunctions内の単一カタログへ定義し、Responses 3件、Chat Completions 15件、Messages 8件を正しい上流APIへルーティングする。Frontendは`GET /api/models`を通じて26件を表示し、利用不可モデルを保持する既存会話では履歴を維持しながら送信を停止して再選択を促す。

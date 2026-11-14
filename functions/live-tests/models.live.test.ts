@@ -40,7 +40,7 @@ describe('OpenCode Go official model catalog', () => {
       throw new Error(`Live model checks failed: ${summary}`);
     }
 
-    expect(results).toHaveLength(30);
+    expect(results).toHaveLength(32);
   });
 });
 

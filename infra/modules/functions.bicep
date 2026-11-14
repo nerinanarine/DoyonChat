@@ -13,8 +13,8 @@ param cosmosDbKey string
 param cosmosDbDatabase string = 'chatdb'
 @secure()
 param openCodeGoApiKey string
-param openCodeGoModel string = 'kimi-k2.6'
-param openCodeGoTitleModel string = 'deepseek-v4-flash'
+param openCodeGoModel string = 'kimi-k3'
+param openCodeGoTitleModel string = 'deepseek-v4.1-flash'
 param authEnabled string = 'false'
 param entraTenantId string = ''
 param entraApiClientId string = ''

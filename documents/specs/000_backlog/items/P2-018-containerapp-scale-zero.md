@@ -38,7 +38,7 @@ Azure料金削減のため、agent gateway の ContainerApp の常時起動イ�
 ## 関連ファイル
 
 - `infra/modules/agentPool.bicep`（`minReplicas`）
-- `infra/main.json`（生成物・要再生成確認）
+- `infra/main.json`（生成物・`minReplicas: 0` の反映確認済み）
 - `frontend/src/`（起動中ローディングUI）
 - `functions/src/`（起動待ち検出・中継があれば）
 - `agent/`（ヘルスチェック・起動時間）

@@ -1,8 +1,10 @@
 # Feature Specification: OpenCode Go公式モデルカタログ更新
 
-**Feature Branch**: `[009-opencode-go-models]`
+**Feature Branch**: `009-opencode-go-models`
 
 **Created**: 2026-08-22
+
+**Updated**: 2026-11-14 — カタログを32モデル（Responses 5 / Chat Completions 21 / Messages 5 / Google 1）へ更新。既定モデルを`kimi-k3`、タイトル生成モデルを`deepseek-v4.1-flash`へ変更
 
 **Updated**: 2026-10-03 — 公式Endpoints表を再確認し、カタログを正規30モデル（Responses 6 / Chat Completions 19 / Messages 5）へ正規化（P2-019）
 
@@ -14,29 +16,30 @@
 
 **Input**: [P2-011 backlog item](../000_backlog/items/P2-011-opencode-go-models.md)
 
-**Authoritative Source**: [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-10-03確認）
+**Authoritative Source**: [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-11-14確認）
 
-> **対象の定義:** 公式ページの「Endpoints」表に掲載された30モデルをDoyonChatの正規モデルとする。`GET https://opencode.ai/zen/go/v1/models`が返す36件を実行時に自動採用せず、表にない6件は本機能の対象外とする。
+> **対象の定義:** 公式ページの「Endpoints」表に掲載された32モデルをDoyonChatの正規モデルとする。`GET https://opencode.ai/zen/go/v1/models`が返す実行時レスポンスを自動採用せず、表にないモデルは本機能の対象外とする。
 
 ## User Scenarios & Testing
 
-### User Story 1 - 公式30モデルを選択してチャットする (Priority: P2)
+### User Story 1 - 公式32モデルを選択してチャットする (Priority: P2)
 
-ユーザーはOpenCode Go公式Endpoints表に掲載された30モデルから任意のモデルを選択し、会話単位で保存してテキストチャットできる。
+ユーザーはOpenCode Go公式Endpoints表に掲載された32モデルから任意のモデルを選択し、会話単位で保存してテキストチャットできる。
 
-**Why this priority**: 現行カタログは公式表の一部だけを提供し、上流APIもChat Completionsと一部Responsesに限定されているため、新しいモデルを選択しても正しいプロトコルでチャットできる状態を保証する必要がある。
+**Why this priority**: 現行カタログは公式表の一部だけを提供し、上流APIも4プロトコルに分かれているため、新しいモデルを選択しても正しいプロトコルでチャットできる状態を保証する必要がある。
 
-**Independent Test**: `GET /api/models`から30件を取得し、各モデルを会話へ設定する。モデルごとの正規プロトコルへリクエストされ、ストリーム本文が既存チャットUIへ表示されることを確認できる。
+**Independent Test**: `GET /api/models`から32件を取得し、各モデルを会話へ設定する。モデルごとの正規プロトコルへリクエストされ、ストリーム本文が既存チャットUIへ表示されることを確認できる。
 
 **Acceptance Scenarios**:
 
-1. **Given** モデル一覧を取得できる状態、**When** モデル選択UIを開く、**Then** 正規30モデルが重複なく安定した順序で表示される
+1. **Given** モデル一覧を取得できる状態、**When** モデル選択UIを開く、**Then** 正規32モデルが重複なく安定した順序で表示される
 2. **Given** 任意の正規モデルを選択した状態、**When** 会話を再読み込みする、**Then** 保存したモデルが再選択される
 3. **Given** Responsesモデルを選択した状態、**When** メッセージを送信する、**Then** `POST /v1/responses`のストリームが利用される
 4. **Given** Chat Completionsモデルを選択した状態、**When** メッセージを送信する、**Then** `POST /v1/chat/completions`のストリームが利用される
 5. **Given** Messagesモデルを選択した状態、**When** メッセージを送信する、**Then** `POST /v1/messages`のストリームが利用される
-6. **Given** いずれかの正規モデルから本文とReasoningが届く状態、**When** ストリームを受信する、**Then** 本文とReasoningが既存の共通チャンク形式へ正規化される
-7. **Given** 新規会話を作成する状態、**When** Frontendがmodelを省略して作成APIを呼ぶ、**Then** Backend既定値の`kimi-k2.6`が保存される
+6. **Given** Googleモデルを選択した状態、**When** メッセージを送信する、**Then** `:streamGenerateContent`のストリームが利用される
+7. **Given** いずれかの正規モデルから本文とReasoningが届く状態、**When** ストリームを受信する、**Then** 本文とReasoningが既存の共通チャンク形式へ正規化される
+8. **Given** 新規会話を作成する状態、**When** Frontendがmodelを省略して作成APIを呼ぶ、**Then** Backend既定値の`kimi-k3`が保存される
 
 ### User Story 2 - 利用不可モデルを保持した会話を安全に扱う (Priority: P2)
 
@@ -44,28 +47,28 @@
 
 **Why this priority**: 保存済みモデルが一覧にない場合に先頭モデル名を表示しながら別のモデルIDを上流へ送る不整合と、ユーザーメッセージだけが保存される部分更新を防ぐため。
 
-**Independent Test**: 正規30件にないモデルIDを持つ会話を読み込み、保存IDと「利用不可」が表示され、入力・送信が停止されることを確認する。正規モデルへ変更後は送信可能になることを確認できる。
+**Independent Test**: 正規32件にないモデルIDを持つ会話を読み込み、保存IDと「利用不可」が表示され、入力・送信が停止されることを確認する。正規モデルへ変更後は送信可能になることを確認できる。
 
 **Acceptance Scenarios**:
 
 1. **Given** 利用不可モデルを保持する既存会話、**When** 会話を開く、**Then** タイトルと既存メッセージは通常どおり表示される
 2. **Given** 利用不可モデルを保持する既存会話、**When** モデル表示を確認する、**Then** 先頭モデルへフォールバックせず保存済みIDと「利用不可」が表示される
 3. **Given** 利用不可モデルを保持する既存会話、**When** メッセージを送信しようとする、**Then** 入力・送信が停止され、現行モデルの再選択を促す案内が表示される
-4. **Given** 利用不可モデルを保持する既存会話、**When** 正規30モデルのいずれかへ変更する、**Then** 新しいモデルが保存され、チャット送信が再開できる
+4. **Given** 利用不可モデルを保持する既存会話、**When** 正規32モデルのいずれかへ変更する、**Then** 新しいモデルが保存され、チャット送信が再開できる
 5. **Given** 利用不可モデルの会話へAPIを直接送信する状態、**When** chat APIを呼ぶ、**Then** 409が返り、新しいuserメッセージは保存されない
 6. **Given** モデル一覧が読み込み中または取得失敗した状態、**When** 会話を表示する、**Then** 一時状態を利用不可モデルと誤判定しない
 
-### User Story 3 - 全30モデルの実API疎通を安全に確認する (Priority: P2)
+### User Story 3 - 全32モデルの実API疎通を安全に確認する (Priority: P2)
 
-開発者は、通常テストとCIから分離されたlive testを明示実行し、公式30モデルすべてで実際のテキストチャットが完了することを確認できる。
+開発者は、通常テストとCIから分離されたlive testを明示実行し、公式32モデルすべてで実際のテキストチャットが完了することを確認できる。
 
 **Why this priority**: mock testだけでは、モデル提供状況、正しいエンドポイント、実際のSSEイベント形式を保証できないため。
 
-**Independent Test**: 実APIキーをローカル設定し、専用コマンドを1回実行する。30モデルを直列に1リクエストずつ呼び、各モデルで空でない回答本文と正常完了を確認し、30/30の結果を得られる。
+**Independent Test**: 実APIキーをローカル設定し、専用コマンドを1回実行する。32モデルを直列に1リクエストずつ呼び、各モデルで空でない回答本文と正常完了を確認し、32/32の結果を得られる。
 
 **Acceptance Scenarios**:
 
-1. **Given** 実APIキーと明示的なlive testコマンド、**When** テストを実行する、**Then** 正規30モデルがそれぞれ1回ずつ直列実行される
+1. **Given** 実APIキーと明示的なlive testコマンド、**When** テストを実行する、**Then** 正規32モデルがそれぞれ1回ずつ直列実行される
 2. **Given** 各モデルのlive test、**When** 正常応答を受信する、**Then** 空でない回答本文を1回以上受信し、ストリーム完了へ到達した場合だけ成功となる
 3. **Given** 一部モデルが失敗した状態、**When** live testを続行する、**Then** 残りのモデルも検証され、最後に失敗モデルが集約される
 4. **Given** timeout、429、HTTPエラー、SSEエラー、本文なし、未完了のいずれか、**When** 判定する、**Then** 成功として扱わない
@@ -77,54 +80,58 @@
 | Protocol | Display Name | Model ID |
 |---|---|---|
 | Responses | Grok 4.7 | `grok-4.7` |
-| Responses | Grok 4.6 | `grok-4.6` |
 | Responses | GPT 6 Luna | `gpt-6-luna` |
-| Responses | GPT 5.6 Luna | `gpt-5.6-luna` |
+| Responses | GPT-5.6 Luna | `gpt-5.6-luna` |
+| Messages | Claude Haiku 5.5 | `claude-haiku-5-5` |
+| Google | Gemini 4 Argon | `gemini-4-argon` |
 | Chat Completions | GLM-5.3-Flash | `glm-5.3-flash` |
 | Chat Completions | GLM-5.3 | `glm-5.3` |
 | Chat Completions | GLM-5.2 | `glm-5.2` |
+| Chat Completions | Kimi K3.1 Pro | `kimi-k3.1-pro` |
 | Chat Completions | Kimi K3 | `kimi-k3` |
 | Chat Completions | Kimi K2.7 Code | `kimi-k2.7-code` |
-| Chat Completions | Kimi K2.6 | `kimi-k2.6` |
-| Chat Completions | LongCat-2.5-Preview-Free | `longcat-2.5-preview-free` |
+| Chat Completions | LongCat 2.5 Free | `longcat-2.5-free` |
 | Chat Completions | LongCat-2.0 | `longcat-2.0` |
 | Chat Completions | DeepSeek V4.1 Flash | `deepseek-v4.1-flash` |
 | Chat Completions | DeepSeek V4 Pro | `deepseek-v4-pro` |
-| Chat Completions | DeepSeek V4 Flash | `deepseek-v4-flash` |
-| Chat Completions | DeepSeek V4 Flash Vision Exp | `deepseek-v4-flash-vision-exp` |
 | Chat Completions | MiMo-V2.6 Flash | `mimo-v2.6-flash` |
 | Chat Completions | MiMo-V2.6 Pro | `mimo-v2.6-pro` |
 | Chat Completions | MiMo-V2.5 | `mimo-v2.5` |
 | Chat Completions | MiMo-V2.5-Pro | `mimo-v2.5-pro` |
+| Chat Completions | MiniMax M3.1 Flash | `minimax-m3.1-flash` |
 | Messages | MiniMax M3 | `minimax-m3` |
-| Messages | MiniMax M2.7 | `minimax-m2.7` |
 | Responses | Muse Spark 1.3 Contributor | `muse-spark-1.3-contributor` |
 | Responses | Muse Spark 1.2 Contributor | `muse-spark-1.2-contributor` |
 | Messages | Qwen3.8 Max | `qwen3.8-max` |
 | Messages | Qwen3.8 Flash | `qwen3.8-flash` |
 | Messages | Qwen3.7 Plus | `qwen3.7-plus` |
+| Chat Completions | Hy4 | `hy4` |
 | Chat Completions | Hy4 preview | `hy4-preview` |
 | Chat Completions | Hy3 | `hy3` |
-| Chat Completions | Space Bunny Free | `space-bunny-free` |
+| Chat Completions | Step 5 Preview | `step-5-preview` |
+| Chat Completions | Beam Free | `beam-free` |
+| Chat Completions | Iceman Contributor Free | `iceman-contributor-free` |
 
 Contract counts:
 
-- Responses: 6
-- Chat Completions: 19
+- Responses: 5
+- Chat Completions: 21
 - Messages: 5
-- Total: 30
+- Google: 1
+- Total: 32
 - Model ID duplicates: 0
-- Default model: `kimi-k2.6`
+- Default model: `kimi-k3`
+- Title generation model: `deepseek-v4.1-flash`
 
-`/v1/models`が返す36件のうち、公式Endpoints表にない6件（`deepseek-flash`, `glm-5.1`, `minimax-m2.5`, `omen-alpha`, `qwen3.6-plus`, `qwen3.7-max`）は対象外とする。以前に除外した`grok-4.5`, `glm-5`, `kimi-k2.5`, `mimo-v2-pro`, `mimo-v2-omni`, `qwen3.5-plus`, `hy3-preview`, `ox-alpha-free`も引き続き対象外とする。
+`/v1/models`の実行時レスポンスはカタログへ自動反映しない。2026-11-14の更新で公式表から外れた`grok-4.6`, `kimi-k2.6`, `longcat-2.5-preview-free`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`, `minimax-m2.7`, `space-bunny-free`は対象外とする。以前に除外した`grok-4.5`, `glm-5`, `glm-5.1`, `kimi-k2.5`, `mimo-v2-pro`, `mimo-v2-omni`, `minimax-m2.5`, `qwen3.7-max`, `qwen3.6-plus`, `qwen3.5-plus`, `hy3-preview`, `omen-alpha`, `ox-alpha-free`も引き続き対象外とする。
 
 ### Public Metadata Policy
 
 - 既存カタログのモデルの公開メタデータは、明示的な公式情報と矛盾しない限り維持する
-- 新規5モデル（`grok-4.6`, `glm-5.3-flash`, `longcat-2.0`, `qwen3.8-flash`, `hy4-preview`）の`name`は公式表の表記に合わせ、推測に基づく性能・速度・context・料金情報を作らない
-- 新規5モデルの`quality`は中立値`3`、公式根拠がない`speed`と`contextLength`は`Unknown`、`cost`は`See OpenCode Go`とする
-- 新規5モデルの`bestFor`はすべて`General use`、`description`は`OpenCode Go model`とする
-- `supportsMultimodal`は、公式ページが画像入力を明示する`deepseek-v4-flash-vision-exp`だけを`true`とし、他のモデルは`false`とする
+- 新規モデル（`claude-haiku-5-5`, `gemini-4-argon`, `kimi-k3.1-pro`, `minimax-m3.1-flash`, `longcat-2.5-free`, `hy4`, `step-5-preview`, `beam-free`, `iceman-contributor-free`）の`name`は公式表の表記に合わせ、推測に基づく性能・速度・context・料金情報を作らない
+- 新規モデルの`quality`は中立値`3`、公式根拠がない`speed`と`contextLength`は`Unknown`、`cost`は`See OpenCode Go`とする
+- 新規モデルの`bestFor`はすべて`General use`、`description`は`OpenCode Go model`とする
+- `supportsMultimodal`は、既存カタログで公式ページが画像入力を明示する`glm-5.2`だけを`true`とし、他のモデルは`false`とする
 - Museの説明へ公式上の地域制限とプロンプト・出力の学習利用を含める
 
 ## Edge Cases
@@ -150,9 +157,9 @@ Contract counts:
 ### Catalog Requirements
 
 - **FR-001**: Functionsは公開用モデル情報と内部protocolを1つの静的カタログで管理しなければならない
-- **FR-002**: `GET /api/models`は正規30モデルを重複・過不足なく返さなければならない
+- **FR-002**: `GET /api/models`は正規32モデルを重複・過不足なく返さなければならない
 - **FR-003**: モデルの表示順は固定し、同じbuildでは変動してはならない
-- **FR-004**: 既定モデルは`kimi-k2.6`を維持しなければならない
+- **FR-004**: 既定モデルは`kimi-k3`とし、タイトル生成モデルは`deepseek-v4.1-flash`としなければならない
 - **FR-005**: protocolはBackend内部情報とし、Frontend向けModelInfoへ公開することを必須としない
 - **FR-006**: `/v1/models`を利用して実行時にモデルを自動追加・削除してはならない
 - **FR-007**: 既存カタログのモデルの公開メタデータは、公式情報との修正が必要な項目を除き維持しなければならない
@@ -164,15 +171,15 @@ Contract counts:
 - **FR-010**: Chat Completionsモデルは`POST https://opencode.ai/zen/go/v1/chat/completions`を使用しなければならない
 - **FR-011**: Messagesモデルは`POST https://opencode.ai/zen/go/v1/messages`を使用しなければならない
 - **FR-012**: protocol選択はモデルIDの文字列規則ではなく、静的カタログのprotocol属性に基づかなければならない
-- **FR-013**: 3プロトコルのイベントは`{ content, reasoning?, done }`の共通チャンク形式へ正規化しなければならない
+- **FR-013**: 4プロトコルのイベントは`{ content, reasoning?, done }`の共通チャンク形式へ正規化しなければならない
 - **FR-014**: 各protocolの本文deltaとReasoning/thinking deltaを可能な範囲で分離しなければならない
 - **FR-015**: HTTPエラー、protocol固有error event、JSONとして解釈できない必須イベントを正常完了として扱ってはならない
-- **FR-016**: `done: true`はChat Completionsの`[DONE]`、Responsesの`response.completed`、Messagesの`message_stop`だけが生成し、完了前のEOFは未完了エラーにしなければならない
+- **FR-016**: `done: true`はChat Completionsの`[DONE]`、Responsesの`response.completed`、Messagesの`message_stop`、Googleの`finishReason`が`STOP`/`MAX_TOKENS`/`SAFETY`/`RECITATION`/`OTHER`のいずれかだけが生成し、完了前のEOFは未完了エラーにしなければならない
 
 ### Model Validation Requirements
 
-- **FR-017**: Frontendは新規会話作成時にmodelを送らず、Backendはmodelが省略された場合に`kimi-k2.6`を保存しなければならない
-- **FR-018**: 会話作成とモデル変更は正規30モデルだけを受理し、modelが存在するが文字列でない場合と未知modelを400で拒否しなければならない
+- **FR-017**: Frontendは新規会話作成時にmodelを送らず、Backendはmodelが省略された場合に`kimi-k3`を保存しなければならない
+- **FR-018**: 会話作成とモデル変更は正規32モデルだけを受理し、modelが存在するが文字列でない場合と未知modelを400で拒否しなければならない
 - **FR-019**: chat送信時もConversationのmodelをカタログと照合しなければならない
 - **FR-020**: 利用不可モデルを保持する既存Conversationのmodel値、タイトル、メッセージを自動変更してはならない
 - **FR-021**: 利用不可モデルの会話へのchat送信は409で拒否し、userメッセージを保存してはならない
@@ -186,7 +193,7 @@ Contract counts:
 - **FR-026**: live testは通常Jestのroots外に置き、専用設定と明示的なnpm scriptからだけ実行されなければならない
 - **FR-027**: live testは`OPENCODE_GO_API_KEY`をprocess environmentまたはGit除外済み`functions/local.settings.json`から読み込まなければならない
 - **FR-028**: APIキーが未設定またはテンプレート値の場合、実APIを呼ぶ前に明示的に停止しなければならない
-- **FR-029**: live testは30モデルを直列に各1リクエスト、自動retryなしで実行しなければならない
+- **FR-029**: live testは32モデルを直列に各1リクエスト、自動retryなしで実行しなければならない
 - **FR-030**: 固定プロンプトは非機密の短文とし、Reasoningが本文を圧迫しないよう出力上限を512 tokens以下にしなければならない
 - **FR-031**: 各モデルは120秒で`AbortController`を発火し、上流fetchの中断完了後に次モデルへ進み、timeoutを成功として扱ってはならない
 - **FR-032**: 一部モデルの失敗後も残りを実行し、最後に失敗モデルを集約しなければならない
@@ -197,7 +204,7 @@ Contract counts:
 
 ### Documentation Requirements
 
-- **FR-037**: READMEのモデル表・外部API説明・live test手順を正規30モデルと3プロトコルへ同期しなければならない
+- **FR-037**: READMEのモデル表・外部API説明・live test手順を正規32モデルと4プロトコルへ同期しなければならない
 - **FR-038**: `specs/001-chat-app/spec.md`と`plan.md`の単一Chat Completions前提および旧モデル表を更新しなければならない
 - **FR-039**: 実API疎通完了後、P3-007へP2-011で実施済みの参照を追記しなければならない
 
@@ -205,7 +212,8 @@ Contract counts:
 
 - **FR-040**: Messages requestは`Content-Type: application/json`、`x-api-key: <OPENCODE_GO_API_KEY>`、`anthropic-version: 2023-06-01`を送り、bodyを`{ model, messages, max_tokens, stream: true }`形式にしなければならない
 - **FR-041**: Messagesモデルでは新規画像送信を保存前に400で拒否し、既存履歴に画像partがある場合は保存内容を変更せずtext partだけを上流へ送り、画像だけで空contentになる過去メッセージはrequestから除外しなければならない
-- **FR-042**: 上流stream呼び出しは任意の`AbortSignal`を受け取り、3protocolすべてのfetchへ渡さなければならない
+- **FR-042**: 上流stream呼び出しは任意の`AbortSignal`を受け取り、4protocolすべてのfetchへ渡さなければならない
+- **FR-043**: Googleモデルは`POST https://opencode.ai/inference/go/google/v1beta/models/{model}:streamGenerateContent?alt=sse`へ`x-goog-api-key`を付けて送り、bodyを`{ contents, generationConfig: { maxOutputTokens } }`形式にしなければならない
 
 ## API Behavior
 
@@ -215,7 +223,7 @@ Contract counts:
 GET /api/models
 ```
 
-- 200: 公開用ModelInfoの配列。正規30件、ID一意、固定順序
+- 200: 公開用ModelInfoの配列。正規32件、ID一意、固定順序
 - protocolは内部ルーティング用であり、レスポンスへ含めなくてよい
 
 ### Unknown Model on Create or Update
@@ -251,28 +259,29 @@ npm run test:live:models
 - timeout action: `AbortController`で上流fetchを中断し、中断完了後に次モデルを実行
 - concurrency: 1
 - automatic retries: 0
-- success: non-empty final content and protocol固有の正常完了マーカー（`[DONE]` / `response.completed` / `message_stop`）
+- success: non-empty final content and protocol固有の正常完了マーカー（`[DONE]` / `response.completed` / `message_stop` / `finishReason: STOP/MAX_TOKENS/SAFETY/RECITATION/OTHER`）
 
 ## Success Criteria
 
-- **SC-001**: 正規モデルIDが30件で一意であり、protocol件数が6 / 19 / 5である
-- **SC-002**: `GET /api/models`とFrontendモデル選択UIに30件が重複なく表示される
+- **SC-001**: 正規モデルIDが32件で一意であり、protocol件数が5 / 21 / 5 / 1である
+- **SC-002**: `GET /api/models`とFrontendモデル選択UIに32件が重複なく表示される
 - **SC-003**: 各モデルが正規protocolへルーティングされることをmock testで固定する
-- **SC-004**: 3プロトコルの本文・Reasoning・完了・エラーイベントが共通形式へ正規化され、完了マーカー前のEOFは失敗する
+- **SC-004**: 4プロトコルの本文・Reasoning・完了・エラーイベントが共通形式へ正規化され、完了マーカー前のEOFは失敗する
 - **SC-005**: 未知modelの会話作成・モデル変更が400となり、保存されない
 - **SC-006**: 利用不可モデルを保持する既存会話は閲覧でき、送信はメッセージ保存前に409となる
 - **SC-007**: 利用不可表示、送信停止、再選択後の送信再開がFrontend testで確認される
-- **SC-008**: 専用live testで30/30モデルが空でない本文と正常完了を返す
+- **SC-008**: 専用live testで32/32モデルが空でない本文と正常完了を返す
 - **SC-009**: 通常テスト・CIは実APIを呼ばず、live testログに機密情報・本文が含まれない
 - **SC-010**: Functions / Frontendの既存testとbuildが成功し、今回の差分に起因するlint警告がない
 - **SC-011**: README、MVP仕様、バックログが実装後のモデルカタログと一致する
 - **SC-012**: live testのtimeoutが実際の上流fetchを中断し、中断完了前に次モデルを開始しない
 - **SC-013**: Messages requestのURL、headers、body、text-only変換がfixture contract testで確認される
+- **SC-014**: Google requestのURL、headers、bodyとthought part分離がfixture contract testで確認される
 
 ## Out of Scope
 
 - `/v1/models`レスポンスによる実行時カタログ同期
-- 公式Endpoints表にない6モデルの提供
+- 公式Endpoints表にないモデルの提供
 - モデル料金や利用上限の動的取得・表示
 - 画像アップロードUIやマルチモーダル入力の新規実装
 - Museの地域制限をIPやアカウント情報から事前判定する機能
@@ -285,5 +294,6 @@ npm run test:live:models
 - 公式表は将来変更されるため、更新はコード・テスト・ドキュメント・live testを同じ変更単位で行う
 - 前回の正規23件から`grok-4.5`と`ox-alpha-free`を除いた21件を維持し、今回追加するモデルは5件である（カタログは正規27件。2026-09-03に`muse-spark-1.3-contributor`をP2-015で追加）
 - 2026-10-03のP2-019で公式Endpoints表を再確認し、削除12件（`grok-4.5`, `glm-5`, `glm-5.1`, `kimi-k2.5`, `mimo-v2-pro`, `mimo-v2-omni`, `minimax-m2.5`, `qwen3.7-max`, `qwen3.6-plus`, `qwen3.5-plus`, `hy3-preview`, `omen-alpha`）を除去し、追加7件（`grok-4.7`, `gpt-6-luna`, `longcat-2.5-preview-free`, `deepseek-v4.1-flash`, `mimo-v2.6-flash`, `mimo-v2.6-pro`, `space-bunny-free`）を追加してカタログを正規30件とした
-- 既定モデル`kimi-k2.6`は正規30件に含まれるため変更しない
+- 2026-11-14に公式Endpoints表を再確認し、削除7件（`grok-4.6`, `kimi-k2.6`, `longcat-2.5-preview-free`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`, `minimax-m2.7`, `space-bunny-free`）を除去し、追加9件（`claude-haiku-5-5`, `gemini-4-argon`, `kimi-k3.1-pro`, `minimax-m3.1-flash`, `longcat-2.5-free`, `hy4`, `step-5-preview`, `beam-free`, `iceman-contributor-free`）を追加してカタログを正規32モデルとした
+- 既定モデルは`kimi-k3`、タイトル生成モデルは`deepseek-v4.1-flash`とし、どちらも正規32モデルに含まれる
 - 実APIキーはユーザーがローカルへ設定し、チャットやGit管理ファイルへ貼り付けない

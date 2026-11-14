@@ -54,7 +54,7 @@
 
 | API | 用途 |
 |-----|------|
-| OpenCode Go API | AI モデルへのリクエスト（Responses / Chat Completions / Messages SSE） |
+| OpenCode Go API | AI モデルへのリクエスト（Responses / Chat Completions / Messages / Google SSE） |
 
 ## ディレクトリ構成
 
@@ -214,39 +214,41 @@ Function App名、API URL、Static Web App URLはBicepのdeployment outputsか�
 | Protocol | モデル | マルチモーダル | 備考 |
 |----------|--------|-------------|------|
 | Responses | `grok-4.7` | ❌ | OpenCode Go model |
-| Responses | `grok-4.6` | ❌ | OpenCode Go model |
 | Responses | `gpt-6-luna` | ❌ | OpenCode Go model |
 | Responses | `gpt-5.6-luna` | ❌ | 一般推論・コーディング |
+| Messages | `claude-haiku-5-5` | ❌ | OpenCode Go model |
+| Google | `gemini-4-argon` | ❌ | OpenCode Go model |
 | Chat Completions | `glm-5.3-flash` | ❌ | OpenCode Go model |
 | Chat Completions | `glm-5.3` | ❌ | OpenCode Go model |
 | Chat Completions | `glm-5.2` | ✅ | 高品質、画像入力対応 |
-| Chat Completions | `kimi-k3` | ❌ | 高度な推論・コーディング |
+| Chat Completions | `kimi-k3.1-pro` | ❌ | OpenCode Go model |
+| Chat Completions | `kimi-k3` | ❌ | 高度な推論・コーディング（既定モデル） |
 | Chat Completions | `kimi-k2.7-code` | ❌ | コーディング特化 |
-| Chat Completions | `kimi-k2.6` | ❌ | 高品質、長文対応 |
-| Chat Completions | `longcat-2.5-preview-free` | ❌ | OpenCode Go model |
+| Chat Completions | `longcat-2.5-free` | ❌ | OpenCode Go model |
 | Chat Completions | `longcat-2.0` | ❌ | OpenCode Go model |
-| Chat Completions | `deepseek-v4.1-flash` | ❌ | OpenCode Go model |
+| Chat Completions | `deepseek-v4.1-flash` | ❌ | OpenCode Go model（タイトル生成） |
 | Chat Completions | `deepseek-v4-pro` | ❌ | エージェント・コーディング |
-| Chat Completions | `deepseek-v4-flash` | ❌ | 高速処理・大量処理 |
-| Chat Completions | `deepseek-v4-flash-vision-exp` | ✅ | 画像入力対応の実験モデル |
 | Chat Completions | `mimo-v2.6-flash` | ❌ | OpenCode Go model |
 | Chat Completions | `mimo-v2.6-pro` | ❌ | OpenCode Go model |
 | Chat Completions | `mimo-v2.5` | ❌ | 高速・大量処理 |
 | Chat Completions | `mimo-v2.5-pro` | ❌ | 高品質、汎用タスク |
+| Chat Completions | `minimax-m3.1-flash` | ❌ | OpenCode Go model |
 | Messages | `minimax-m3` | ❌ | 長文・汎用タスク |
-| Messages | `minimax-m2.7` | ❌ | 品質とコストのバランス |
 | Responses | `muse-spark-1.3-contributor` | ❌ | 地域制限・学習利用に関する公式注意あり |
 | Responses | `muse-spark-1.2-contributor` | ❌ | 地域制限・学習利用に関する公式注意あり |
 | Messages | `qwen3.8-max` | ❌ | 高品質、汎用タスク |
 | Messages | `qwen3.8-flash` | ❌ | OpenCode Go model |
 | Messages | `qwen3.7-plus` | ❌ | 汎用コーディング |
+| Chat Completions | `hy4` | ❌ | OpenCode Go model |
 | Chat Completions | `hy4-preview` | ❌ | OpenCode Go model |
 | Chat Completions | `hy3` | ❌ | 実験的モデル |
-| Chat Completions | `space-bunny-free` | ❌ | OpenCode Go model |
+| Chat Completions | `step-5-preview` | ❌ | OpenCode Go model |
+| Chat Completions | `beam-free` | ❌ | OpenCode Go model |
+| Chat Completions | `iceman-contributor-free` | ❌ | OpenCode Go model |
 
-> モデルID・protocol・提供状況は [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-10-03確認）を基準にしています。提供モデルは変更される可能性があります。
+> モデルID・protocol・提供状況は [OpenCode Go公式Endpoints表](https://opencode.ai/docs/go/)（2026-11-14確認）を基準にしています。提供モデルは変更される可能性があります。
 
-### 全30モデルの実API確認
+### 全32モデルの実API確認
 
 `functions/local.settings.json`の`Values.OPENCODE_GO_API_KEY`へ実キーを設定し、明示的に次を実行します。
 
@@ -255,7 +257,7 @@ cd functions
 npm run test:live:models
 ```
 
-このコマンドは30モデルを直列に各1回、512 tokens上限・120秒timeout・retryなしで呼びます。通常の`npm test`やCIからは実行されません。APIキー、リクエスト・回答本文、上流エラー本文はログへ出力しません。
+このコマンドは32モデルを直列に各1回、512 tokens上限・120秒timeout・retryなしで呼びます。通常の`npm test`やCIからは実行されません。APIキー、リクエスト・回答本文、上流エラー本文はログへ出力しません。
 
 ## バックログ（未実装機能）
 

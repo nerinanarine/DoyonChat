@@ -4,7 +4,7 @@
 
 ## Design Decisions
 
-- **D1 — 選択肢は30件再利用**: `GET /api/models`（P2-019正規30件）を両ドロップダウンの供給源にする。新規APIは作らない
+- **D1 — 選択肢は32件再利用**: `GET /api/models`（P2-019正規32件）を両ドロップダウンの供給源にする。新規APIは作らない
 - **D2 — 既定は `agentModel`**: 設定画面の選択は既存 `agentModel` 設定に保存する（テキスト入力→ドロップダウン置換）。保存値は `opencode-go/<modelId>` 形式に正規化し（gateway実行契約）、検証はbare抽出でカタログ照合する
 - **D3 — 会話単位は新設フィールド**: `Conversation.agentModel?` を新設し、作成・更新・解決 precedence（override ＞ settings ＞ 未設定）を実装する。既存 `model` フィールドは触らない
 - **D4 — 検証**: 保存時にカタログ検証（未知IDは400）。実行時は解決済み値を使う
@@ -21,7 +21,7 @@
 - [ ] backlog P1-013 を 🟡 進行中に更新する（本plan確定時）
 
 ### Phase 1 — 既定モデル（設定画面＋backend検証）
-- [ ] `SettingsMenu` の `agentModel` テキスト入力を30モデルドロップダウンに置換する
+- [ ] `SettingsMenu` の `agentModel` テキスト入力を32モデルドロップダウンに置換する
 - [ ] `PATCH /users/me/settings` の `agentModel` にカタログ検証（未知IDは400）を追加する
 - [ ] 既存テスト更新＋新規テスト（選択・保存・拒否）
 - [ ] `reviewer` レビューを通過してから Phase 2 へ進む

@@ -50,7 +50,7 @@ pi 起動は `--no-tools`（全ツール無効）を既定とする。`--no-buil
 
 ### D4. モデル選択はユーザー設定＋pi スコープの二層にする
 
-許可範囲は基盤側の `--models` / `enabledModels`（管理者・環境変数で制御）、選択はユーザー設定 `agentModel`（メイン）/ `agentSubagentModel`（pi-subagents のデフォルト。未設定時は pi 既定）。カタログ `/api/models`（OpenCode Go 27件）とは独立させ、エージェント用モデル一覧は `get_available_models` 相当を gateway 経由で取得する。
+許可範囲は基盤側の `--models` / `enabledModels`（管理者・環境変数で制御）、選択はユーザー設定 `agentModel`（メイン）/ `agentSubagentModel`（pi-subagents のデフォルト。未設定時は pi 既定）。カタログ `/api/models`（OpenCode Go 32件）とは独立させ、エージェント用モデル一覧は `get_available_models` 相当を gateway 経由で取得する。
 
 ### D5. 承認は自作ゲート拡張＋Extension UI プロトコルの中継＋タイムアウト安全側で実装する
 

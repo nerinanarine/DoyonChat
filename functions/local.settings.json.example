@@ -9,7 +9,7 @@
     "COSMOSDB_DATABASE": "chatdb",
     "COSMOSDB_REQUIRED": "false",
     "OPENCODE_GO_API_KEY": "sk-opencode-your-key-here",
-    "OPENCODE_GO_MODEL": "kimi-k2.6",
+    "OPENCODE_GO_MODEL": "kimi-k3",
     "AUTH_ENABLED": "false",
     "ENTRA_TENANT_ID": "<tenant-id>",
     "ENTRA_API_CLIENT_ID": "<api-client-id>",

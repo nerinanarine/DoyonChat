@@ -4,10 +4,10 @@
 
 ## Design Decisions
 
-- **D1 — 正は公式表**: 2026-10-03取得の公式Endpoints表（30件）を正とし、本ブランチの35件を正規化する
+- **D1 — 正は公式表**: 2026-11-14取得の公式Endpoints表（32件）を正とし、本ブランチの旧35件を削除17件・追加14件で正規化する（longcat-2.5-preview-free・space-bunny-free の2件は、旧表の削除と新表の追加が同数で打ち消し合うため相殺）
 - **D2 — P2-011 と同型**: カタログ差分＋件数テスト更新＋live test の手順を踏襲する。新規手順は作らない
-- **D3 — 中立メタデータ**: 追加7件の公開メタデータは中立値＋必要最小限の description とする
-- **D4 — P2-016 吸収**: live test 30/30に grok-4.6 を含め、成功すれば P2-016 解消として backlog へ記録する
+- **D3 — 中立メタデータ**: 追加14件（純増）の公開メタデータは中立値＋必要最小限の description とする
+- **D4 — P2-016 吸収**: 2026-10-03 の live test 30/30 に grok-4.6 を含めて成功し、P2-016 は解消済み（2026-11-14 更新で grok-4.6 はカタログから削除）
 
 ## Review Policy
 
@@ -17,22 +17,22 @@
 ## Phases
 
 ### Phase 0 — 準備
-- [ ] 公式表（本spec記載の30件）とカタログ現状の差分を再確認する（`gpt-5.6-luna` が公式表に残存していることも明示確認する）
+- [ ] 公式表（本spec記載の32件）とカタログ現状の差分を再確認する（`gpt-5.6-luna` が公式表に残存していることも明示確認する）
 - [ ] backlog P2-019 を 🟡 進行中に更新する
 
 ### Phase 1 — カタログ更新＋unit test
-- [ ] `functions/src/config/modelCatalog.ts`：削除12件の除去・追加7件の追加（指定プロトコル・中立メタデータ）
+- [ ] `functions/src/config/modelCatalog.ts`：削除19件（うち相殺2件: longcat-2.5-preview-free・space-bunny-free）・追加16件（うち相殺2件: 同上）を実操作で反映する。正味は削除17・追加14。相殺2件は正味差分の計上外（指定プロトコル・中立メタデータ）
 - [ ] 新規 deepseek 項目への `maxTokens` 方針適用、`kimi-k3` temperature 特例の維持確認
-- [ ] `functions/tests/unit/modelCatalog.test.ts`：件数・内訳・順序を30件化する
-- [ ] `functions/tests/integration/api.test.ts`：`GET /api/models` の固定リスト＋件数期待を30件化する
-- [ ] `functions/live-tests/models.live.test.ts`：件数期待値を30に更新する
+- [ ] `functions/tests/unit/modelCatalog.test.ts`：件数・内訳・順序を32件化する
+- [ ] `functions/tests/integration/api.test.ts`：`GET /api/models` の固定リスト＋件数期待を32件化する
+- [ ] `functions/live-tests/models.live.test.ts`：件数期待値を32に更新する
 - [ ] `npm test`・ビルドが green であることを確認する
 - [ ] `reviewer` レビューを通過してから Phase 2 へ進む
 
 ### Phase 2 — live test・ドキュメント同期
-- [ ] `npm run test:live:models` を実行し、30/30成功を確認する（grok-4.6 含む）
+- [ ] `npm run test:live:models` を実行し、32/32成功を確認する
 - [ ] 失敗時は上流起因かを切り分け、P2-016 と同型で分離する
-- [ ] README のモデル表と `specs/009-opencode-go-models/spec.md` の正規表を30件化する
+- [ ] README のモデル表と `specs/009-opencode-go-models/spec.md` の正規表を32件化する
 - [ ] P2-011・P2-016 の backlog へ本件の参照・解消記録を追記する
 - [ ] `reviewer` レビューを通過してから Phase 3 へ進む
 

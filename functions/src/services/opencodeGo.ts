@@ -13,8 +13,9 @@ import {
 } from './reasoningNormalizer';
 
 const API_BASE = 'https://opencode.ai/zen/go/v1';
+const GOOGLE_API_BASE = 'https://opencode.ai/inference/go/google/v1beta';
 
-export const DEFAULT_TITLE_MODEL_ID = 'deepseek-v4-flash';
+export const DEFAULT_TITLE_MODEL_ID = 'deepseek-v4.1-flash';
 
 const TITLE_GENERATION_TIMEOUT_MS = 20_000;
 const TITLE_MAX_TOKENS = 60;
@@ -129,6 +130,25 @@ function toMessagesInput(messages: OpenCodeGoMessage[]): MessagesInput[] {
   });
 }
 
+function toGoogleContents(messages: OpenCodeGoMessage[]) {
+  return messages.flatMap((message) => {
+    const text =
+      typeof message.content === 'string'
+        ? message.content
+        : message.content
+            .filter((part) => part.type === 'text')
+            .map((part) => part.text || '')
+            .join('');
+    if (!text) return [];
+    return [
+      {
+        role: message.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text }],
+      },
+    ];
+  });
+}
+
 async function getApiKey(): Promise<string> {
   const key = process.env.OPENCODE_GO_API_KEY;
   if (!key) {
@@ -137,13 +157,19 @@ async function getApiKey(): Promise<string> {
   return key;
 }
 
+// 上流がtemperature指定に対応しないモデル。送信自体を省略する。
+const TEMPERATURE_UNSUPPORTED_MODELS = new Set([
+  'kimi-k3',
+  'kimi-k2.7-code',
+  'kimi-k3.1-pro',
+]);
+
 function getTemperature(
   model: string,
   requestedTemperature: number | undefined,
 ): number | undefined {
-  if (model === 'kimi-k3') return undefined;
+  if (TEMPERATURE_UNSUPPORTED_MODELS.has(model)) return undefined;
   if (requestedTemperature !== undefined) return requestedTemperature;
-  if (model === 'kimi-k2.7-code') return 1;
   return 0.7;
 }
 
@@ -263,6 +289,25 @@ function createRequest(
           messages: toMessagesInput(messages),
           max_tokens: maxTokens,
           stream: true,
+        }),
+        signal,
+      },
+    };
+  }
+
+  if (protocol === 'google') {
+    return {
+      url: `${GOOGLE_API_BASE}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
+      init: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+          ...extraHeaders,
+        },
+        body: JSON.stringify({
+          contents: toGoogleContents(messages),
+          generationConfig: { maxOutputTokens: maxTokens },
         }),
         signal,
       },
@@ -436,6 +481,9 @@ async function* normalizeProtocolStream(
     }
     if (protocol === 'messages') {
       return parseMessagesSSELine(line, markupParser);
+    }
+    if (protocol === 'google') {
+      return parseGoogleSSELine(line, markupParser);
     }
     throw new Error(`Unsupported OpenCode Go protocol: ${String(protocol)}`);
   };
@@ -615,4 +663,93 @@ function parseMessagesSSELine(
       : null;
   }
   return null;
+}
+
+// Google の終端 finishReason。生成が打ち切られた理由であり、途中切断ではないため
+// 完了として扱う。理由の値そのものは UI・ログへ出さない。
+const GOOGLE_COMPLETED_FINISH_REASONS = new Set([
+  'STOP',
+  'MAX_TOKENS',
+  'SAFETY',
+  'RECITATION',
+  'OTHER',
+]);
+
+// 非text part の種別のみを返す（値は決してログへ出さない）。
+function googlePartKind(part: Record<string, unknown>): string {
+  const known = [
+    'inlineData',
+    'fileData',
+    'functionCall',
+    'functionResponse',
+    'executableCode',
+    'codeExecutionResult',
+    'text',
+  ];
+  return known.find((key) => key in part) ?? 'unknown';
+}
+
+function parseGoogleSSELine(
+  line: string,
+  markupParser: ReasoningMarkupParser,
+): ProtocolEvent | null {
+  const trimmed = line.trim();
+  if (!trimmed || !trimmed.startsWith('data:')) return null;
+  if (trimmed.slice(5).trim() === '[DONE]') return { kind: 'completed' };
+
+  const event = parseJsonData(line, 'Google');
+  if (!event) return null;
+  if (event.error) return { kind: 'error', message: errorMessage(event.error) };
+
+  const candidates = Array.isArray(event.candidates) ? event.candidates : [];
+  const candidate =
+    candidates[0] && typeof candidates[0] === 'object'
+      ? (candidates[0] as Record<string, unknown>)
+      : undefined;
+  const content =
+    candidate?.content && typeof candidate.content === 'object'
+      ? (candidate.content as Record<string, unknown>)
+      : undefined;
+  const parts = Array.isArray(content?.parts) ? content.parts : [];
+
+  let text = '';
+  let reasoning = '';
+  for (const part of parts) {
+    if (!part || typeof part !== 'object') {
+      console.warn('[opencodeGo] dropped malformed Google content part');
+      continue;
+    }
+    const record = part as Record<string, unknown>;
+    const value = textFromValue(record.text);
+    if (!value) {
+      // TODO(google): inlineData / functionCall など非text part は未対応。
+      // 黙殺せず種別だけを記録する（将来のマルチモーダル対応の足がかり）。
+      if (typeof record.text !== 'string') {
+        console.warn(
+          `[opencodeGo] dropped non-text Google content part: ${googlePartKind(record)}`,
+        );
+      }
+      continue;
+    }
+    if (record.thought === true) reasoning += value;
+    else text += value;
+  }
+
+  const normalized = text
+    ? markupParser.push(text)
+    : { content: '', reasoning: '' };
+  const merged = {
+    content: normalized.content,
+    reasoning: reasoning + normalized.reasoning,
+  };
+  const finishReason = candidate?.finishReason;
+  const completed =
+    typeof finishReason === 'string' &&
+    GOOGLE_COMPLETED_FINISH_REASONS.has(finishReason);
+  if (!merged.content && !merged.reasoning) {
+    return completed ? { kind: 'completed' } : null;
+  }
+  return completed
+    ? { kind: 'delta_then_completed', ...merged }
+    : { kind: 'delta', ...merged };
 }

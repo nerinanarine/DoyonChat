@@ -1,6 +1,10 @@
 import { ModelInfo } from '../types';
 
-export type OpenCodeGoProtocol = 'responses' | 'chat-completions' | 'messages';
+export type OpenCodeGoProtocol =
+  | 'responses'
+  | 'chat-completions'
+  | 'messages'
+  | 'google';
 
 export interface OpenCodeGoModelConfig {
   info: ModelInfo;
@@ -15,16 +19,20 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'responses',
   },
   {
-    info: { id: 'grok-4.6', name: 'Grok 4.6', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
-    protocol: 'responses',
-  },
-  {
     info: { id: 'gpt-6-luna', name: 'GPT-6 Luna', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'responses',
   },
   {
     info: { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna', description: 'General reasoning and coding', quality: 5, speed: 'Fast', cost: '★★★★☆', supportsMultimodal: false, contextLength: '272K', bestFor: 'General reasoning, coding' },
     protocol: 'responses',
+  },
+  {
+    info: { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'messages',
+  },
+  {
+    info: { id: 'gemini-4-argon', name: 'Gemini 4 Argon', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'google',
   },
   {
     info: { id: 'glm-5.3-flash', name: 'GLM-5.3-Flash', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
@@ -39,6 +47,10 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'chat-completions',
   },
   {
+    info: { id: 'kimi-k3.1-pro', name: 'Kimi K3.1 Pro', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
     info: { id: 'kimi-k3', name: 'Kimi K3', description: 'High-end reasoning and coding', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '256K', bestFor: 'Advanced coding, reasoning' },
     protocol: 'chat-completions',
   },
@@ -47,11 +59,7 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'chat-completions',
   },
   {
-    info: { id: 'kimi-k2.6', name: 'Kimi K2.6', description: 'Complex coding, general tasks', quality: 5, speed: 'Fast', cost: '★★☆', supportsMultimodal: false, contextLength: '256K', bestFor: 'Coding, reasoning' },
-    protocol: 'chat-completions',
-  },
-  {
-    info: { id: 'longcat-2.5-preview-free', name: 'LongCat-2.5-Preview-Free', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    info: { id: 'longcat-2.5-free', name: 'LongCat 2.5 Free', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
   },
   {
@@ -65,16 +73,6 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
   },
   {
     info: { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', description: 'Coding and agent workflows', quality: 5, speed: 'Medium', cost: '★☆☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Agents, coding' },
-    protocol: 'chat-completions',
-    maxTokens: 16384,
-  },
-  {
-    info: { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', description: 'Fast coding and background tasks', quality: 4, speed: 'Fast', cost: '★★★★★', supportsMultimodal: false, contextLength: '1M', bestFor: 'Fast tasks, high volume' },
-    protocol: 'chat-completions',
-    maxTokens: 16384,
-  },
-  {
-    info: { id: 'deepseek-v4-flash-vision-exp', name: 'DeepSeek V4 Flash Vision Exp', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: true, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
     maxTokens: 16384,
   },
@@ -95,11 +93,11 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'chat-completions',
   },
   {
-    info: { id: 'minimax-m3', name: 'MiniMax M3', description: 'General tasks with long context', quality: 4, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Long context, general tasks' },
-    protocol: 'messages',
+    info: { id: 'minimax-m3.1-flash', name: 'MiniMax M3.1 Flash', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
   },
   {
-    info: { id: 'minimax-m2.7', name: 'MiniMax M2.7', description: 'Balanced quality and cost', quality: 3, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '~128K', bestFor: 'Balanced tasks' },
+    info: { id: 'minimax-m3', name: 'MiniMax M3', description: 'General tasks with long context', quality: 4, speed: 'Medium', cost: '★★★★☆', supportsMultimodal: false, contextLength: '1M', bestFor: 'Long context, general tasks' },
     protocol: 'messages',
   },
   {
@@ -123,6 +121,10 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'messages',
   },
   {
+    info: { id: 'hy4', name: 'Hy4', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
     info: { id: 'hy4-preview', name: 'Hy4 preview', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
   },
@@ -131,14 +133,22 @@ export const MODEL_CATALOG: OpenCodeGoModelConfig[] = [
     protocol: 'chat-completions',
   },
   {
-    info: { id: 'space-bunny-free', name: 'Space Bunny Free', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    info: { id: 'step-5-preview', name: 'Step 5 Preview', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
+    info: { id: 'beam-free', name: 'Beam Free', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
+    protocol: 'chat-completions',
+  },
+  {
+    info: { id: 'iceman-contributor-free', name: 'Iceman Contributor Free', description: 'OpenCode Go model', quality: 3, speed: 'Unknown', cost: 'See OpenCode Go', supportsMultimodal: false, contextLength: 'Unknown', bestFor: 'General use' },
     protocol: 'chat-completions',
   },
 ];
 
 export const PUBLIC_MODELS: ModelInfo[] = MODEL_CATALOG.map(({ info }) => info);
 
-export const DEFAULT_MODEL_ID = 'kimi-k2.6';
+export const DEFAULT_MODEL_ID = 'kimi-k3';
 
 const MODEL_CONFIG_BY_ID = new Map(MODEL_CATALOG.map((config) => [config.info.id, config]));
 

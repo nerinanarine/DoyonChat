@@ -37,7 +37,7 @@
 | [P1-010](items/P1-010-user-management.md) | ユーザー管理 | P1 | 🔴 未対応 | 管理機能 | P1-009 | 管理対象・操作範囲は後で決定 |
 | [P1-011](items/P1-011-long-reasoning-error.md) | 長文推論時のエラー修正 | P1 | 🟢 対応済み | 品質・安定性 | [仕様](../P1-011/spec.md) | 本番デプロイ完了、[Issue #20](https://github.com/nerinanarine/DoyonChat/issues/20) 対応 |
 | [P1-012](items/P1-012-always-agent.md) | 常時Agentモード・旧一問一答の廃止 | P1 | 🟡 進行中 | 機能追加 | P3-010 | Agentモードに一本化、通常チャットのUI・API導線を削除 |
-| [P1-013](items/P1-013-agent-model-selector.md) | Agent実行モデル選択ドロップダウン（Pi model連動） | P1 | 🟡 進行中 | 機能追加 | P1-012 | spec/plan起草済み、30モデル・agentModel連動＋会話override |
+| [P1-013](items/P1-013-agent-model-selector.md) | Agent実行モデル選択ドロップダウン（Pi model連動） | P1 | 🟡 進行中 | 機能追加 | P1-012 | spec/plan起草済み、32モデル・agentModel連動＋会話override |
 | [P2-001](items/P2-001-context-length-warning.md) | 長い会話履歴の警告 | P2 | 🔴 未対応 | UX改善 | — | 推定トークン数で判定 |
 | [P2-002](items/P2-002-multi-tab-sync.md) | 複数タブ間の状態同期 | P2 | 🔴 未対応 | 利便性 | — | BroadcastChannel 使用 |
 | [P2-003](items/P2-003-error-ux.md) | API エラー時のユーザーフレンドリーな表示 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-003/spec.md) | 実装・自動テスト完了、SafeErrorCode/再試行/401遷移。本番デプロイまで管理済み |
@@ -48,7 +48,7 @@
 | [P2-008](items/P2-008-user-settings.md) | ユーザーごとに設定を保存できる機能 | P2 | 🟢 対応済み | 利便性 | [仕様](../P2-008/spec.md) | 既定モデル設定・設定メニューへログアウト移動、本番デプロイ済み |
 | [P2-009](items/P2-009-playwright-ci-e2e.md) | Playwright による CI/CD ブラウザテスト導入 | P2 | 🔴 未対応 | 品質・運用 | P1-005 | PR smoke、デプロイ後検証、実 Entra E2E の段階導入 |
 | [P2-010](items/P2-010-model-and-generation-time.md) | 生成メッセージへのモデル名・生成時間表示 | P2 | 🔴 未対応 | UX改善 | — | メッセージ単位の利用モデルと初回回答表示時間を表示 |
-| [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟡 進行中 | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 26モデル・3プロトコル対応へ更新（2026-08-31、grok-4.5/ox-alpha-free廃止）。26/26 live test成功、本番デプロイ待ち |
+| [P2-011](items/P2-011-opencode-go-models.md) | OpenCode Goモデルカタログ更新・全モデル実API疎通 | P2 | 🟡 進行中 | 機能追加・品質 | [仕様](../009-opencode-go-models/spec.md) | 32モデル・4プロトコル対応へ更新（2026-11-14、P2-019。grok-4.5/ox-alpha-free廃止）。live test 32/32待ち、本番デプロイ待ち |
 | [P2-012](items/P2-012-mobile-line-break-send.md) | モバイル入力の改行とCtrl+Enter送信 | P2 | 🔴 未対応 | UX改善 | — | [Issue #33](https://github.com/nerinanarine/DoyonChat/issues/33) |
 | [P2-013](items/P2-013-loading-state.md) | データ取得中のローディング画面 | P2 | 🟢 対応済み | UX改善 | [仕様](../P2-013/spec.md) | 実装・自動テスト完了、bootstrap/メッセージloading。本番デプロイまで管理済み、[Issue #34](https://github.com/nerinanarine/DoyonChat/issues/34) |
 | [P2-014](items/P2-014-display-names.md) | チャット画面の発言者名をカスタマイズ | P2 | 🟢 対応済み | UX改善 | — | AI側はモデル名、ユーザー側は設定した名前を表示。P2-008・P2-010と連携、本番デプロイまで管理済み |
@@ -56,7 +56,7 @@
 | [P2-016](items/P2-016-grok-4-6-capacity.md) | grok-4.6 上流キャパシティ不足の追従 | P2 | 🟢 対応済み | 品質・安定性 | — | P2-019 live test 30/30で解消 |
 | [P2-017](items/P2-017-draft-send-failure.md) | 新規作成失敗時の入力保持・エラー表示 | P2 | 🔴 未対応 | UX改善 | — | P2-015残存リスク。作成失敗で入力が消える問題 |
 | [P2-018](items/P2-018-containerapp-scale-zero.md) | Agent gateway ContainerAppのスケールゼロ化＋起動中ローディング | P2 | 🟢 対応済み | コスト・スケーリング | — | `minReplicas: 0`、起動中ローディング表示 |
-| [P2-019](items/P2-019-opencode-latest-models.md) | OpenCode Go最新モデルカタログ追従 | P2 | 🟡 進行中 | 機能追加・品質 | P2-011 | 実装・live 30/30完了、本番デプロイ待ち |
+| [P2-019](items/P2-019-opencode-latest-models.md) | OpenCode Go最新モデルカタログ追従 | P2 | 🟡 進行中 | 機能追加・品質 | P2-011 | 実装・live 32/32待ち、本番デプロイ待ち |
 | [P2-020](items/P2-020-user-agents-md.md) | ユーザー別AGENTS.md編集UI | P2 | 🟡 進行中 | 機能追加 | P3-016 | spec/plan起草済み、保存先既定案C＋Aは要確認 |
 | [P3-001](items/P3-001-dark-mode.md) | ダークモード | P3 | 🔴 未対応 | UI/UX | — | Tailwind dark: 修飾子 |
 | [P3-002](items/P3-002-search.md) | 会話の検索 | P3 | 🔴 未対応 | 利便性 | — | クライアントサイド検索 |

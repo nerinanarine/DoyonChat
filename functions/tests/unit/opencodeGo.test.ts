@@ -34,6 +34,7 @@ function streamingResponse(...events: string[]) {
 function completionEvent(protocol: OpenCodeGoProtocol): string {
   if (protocol === 'responses') return 'data: {"type":"response.completed"}\n\n';
   if (protocol === 'chat-completions') return 'data: [DONE]\n\n';
+  if (protocol === 'google') return 'data: {"candidates":[{"finishReason":"STOP"}]}\n\n';
   return 'data: {"type":"message_stop"}\n\n';
 }
 
@@ -41,6 +42,9 @@ function expectedUrl(protocol: OpenCodeGoProtocol): string {
   if (protocol === 'responses') return 'https://opencode.ai/zen/go/v1/responses';
   if (protocol === 'chat-completions') {
     return 'https://opencode.ai/zen/go/v1/chat/completions';
+  }
+  if (protocol === 'google') {
+    return 'https://opencode.ai/inference/go/google/v1beta/models/gemini-4-argon:streamGenerateContent?alt=sse';
   }
   return 'https://opencode.ai/zen/go/v1/messages';
 }
@@ -88,11 +92,11 @@ describe('Functions OpenCode Go API Service', () => {
     );
     mockFetch.mockResolvedValueOnce(response);
 
-    const chunks = await collectStream('grok-4.6');
+    const chunks = await collectStream('grok-4.7');
 
     const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
     expect(requestBody).toEqual({
-      model: 'grok-4.6',
+      model: 'grok-4.7',
       input: [
         { role: 'user', content: [{ type: 'input_text', text: 'ping' }] },
       ],
@@ -117,11 +121,11 @@ describe('Functions OpenCode Go API Service', () => {
       ),
     );
 
-    const chunks = await collectStream('kimi-k2.6');
+    const chunks = await collectStream('glm-5.3');
 
     const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
     expect(requestBody).toEqual({
-      model: 'kimi-k2.6',
+      model: 'glm-5.3',
       messages: [{ role: 'user', content: 'ping' }],
       stream: true,
       temperature: 0.7,
@@ -134,16 +138,19 @@ describe('Functions OpenCode Go API Service', () => {
     ]);
   });
 
-  it('omits unsupported temperature for Kimi K3', async () => {
-    mockFetch.mockResolvedValueOnce(
-      streamingResponse('data: [DONE]\n\n'),
-    );
+  it.each(['kimi-k3', 'kimi-k2.7-code', 'kimi-k3.1-pro'])(
+    'omits unsupported temperature for %s',
+    async (model) => {
+      mockFetch.mockResolvedValueOnce(
+        streamingResponse('data: [DONE]\n\n'),
+      );
 
-    await collectStream('kimi-k3', undefined, { temperature: 0.7 });
+      await collectStream(model, undefined, { temperature: 0.7 });
 
-    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-    expect(requestBody).not.toHaveProperty('temperature');
-  });
+      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+      expect(requestBody).not.toHaveProperty('temperature');
+    },
+  );
 
   it('uses Messages headers/body, strips images, and normalizes text and thinking', async () => {
     const signal = new AbortController().signal;
@@ -205,10 +212,85 @@ describe('Functions OpenCode Go API Service', () => {
     ]);
   });
 
+  it('uses Google request shape and separates thought parts from content', async () => {
+    mockFetch.mockResolvedValueOnce(
+      streamingResponse(
+        'data: {"candidates":[{"content":{"role":"model","parts":[{"thought":true,"text":"考察"}]}}]}\n\n' +
+          'data: {"candidates":[{"content":{"role":"model","parts":[{"text":"回答"}]}}]}\n\n' +
+          'data: {"candidates":[{"content":{"role":"model"},"finishReason":"STOP"}]}\n\n',
+      ),
+    );
+
+    const chunks = await collectStream('gemini-4-argon');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://opencode.ai/inference/go/google/v1beta/models/gemini-4-argon:streamGenerateContent?alt=sse',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'x-goog-api-key': 'test-key',
+        }),
+      }),
+    );
+    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(requestBody).toEqual({
+      contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+      generationConfig: { maxOutputTokens: 4096 },
+    });
+    expect(chunks).toEqual([
+      { content: '', reasoning: '考察', done: false },
+      { content: '回答', done: false },
+      { content: '', done: true },
+    ]);
+  });
+
+  it.each(['MAX_TOKENS', 'SAFETY', 'RECITATION', 'OTHER'])(
+    'treats Google finishReason %s as a completed stream',
+    async (finishReason) => {
+      mockFetch.mockResolvedValueOnce(
+        streamingResponse(
+          'data: {"candidates":[{"content":{"role":"model","parts":[{"text":"回答"}]}}]}\n\n' +
+            `data: {"candidates":[{"finishReason":"${finishReason}"}]}\n\n`,
+        ),
+      );
+
+      await expect(collectStream('gemini-4-argon')).resolves.toEqual([
+        { content: '回答', done: false },
+        { content: '', done: true },
+      ]);
+    },
+  );
+
+  it('logs dropped non-text Google parts without leaking their values', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      mockFetch.mockResolvedValueOnce(
+        streamingResponse(
+          'data: {"candidates":[{"content":{"role":"model","parts":[{"inlineData":{"mimeType":"image/png","data":"SECRET_PAYLOAD"}},{"text":"回答"}]}}]}\n\n' +
+            'data: {"candidates":[{"finishReason":"STOP"}]}\n\n',
+        ),
+      );
+
+      await expect(collectStream('gemini-4-argon')).resolves.toEqual([
+        { content: '回答', done: false },
+        { content: '', done: true },
+      ]);
+
+      const logged = warn.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(logged).toContain(
+        'dropped non-text Google content part: inlineData',
+      );
+      expect(logged).not.toContain('SECRET_PAYLOAD');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it.each([
-    ['grok-4.6', 'responses' as const],
-    ['kimi-k2.6', 'chat-completions' as const],
+    ['grok-4.7', 'responses' as const],
+    ['glm-5.3', 'chat-completions' as const],
     ['minimax-m3', 'messages' as const],
+    ['gemini-4-argon', 'google' as const],
   ])('passes AbortSignal to %s fetch', async (model, protocol) => {
     const signal = new AbortController().signal;
     mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent(protocol)));
@@ -219,9 +301,10 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.6', 'responses' as const],
-    ['kimi-k2.6', 'chat-completions' as const],
+    ['grok-4.7', 'responses' as const],
+    ['glm-5.3', 'chat-completions' as const],
     ['minimax-m3', 'messages' as const],
+    ['gemini-4-argon', 'google' as const],
   ])('sends x-opencode-session header for %s when sessionId is provided', async (model, protocol) => {
     const sessionId = 'conversation-abc-123';
     mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent(protocol)));
@@ -239,9 +322,10 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.6', 'responses' as const],
-    ['kimi-k2.6', 'chat-completions' as const],
+    ['grok-4.7', 'responses' as const],
+    ['glm-5.3', 'chat-completions' as const],
     ['minimax-m3', 'messages' as const],
+    ['gemini-4-argon', 'google' as const],
   ])('omits x-opencode-session header for %s when sessionId is absent', async (model, protocol) => {
     mockFetch.mockResolvedValueOnce(streamingResponse(completionEvent(protocol)));
 
@@ -252,9 +336,10 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.6', 'responses' as const],
-    ['kimi-k2.6', 'chat-completions' as const],
+    ['grok-4.7', 'responses' as const],
+    ['glm-5.3', 'chat-completions' as const],
     ['minimax-m3', 'messages' as const],
+    ['gemini-4-argon', 'google' as const],
   ])('keeps x-opencode-session stable across two requests for %s', async (model, protocol) => {
     const sessionId = 'conversation-stable-001';
     mockFetch
@@ -269,9 +354,10 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.6', 'data: {"type":"response.output_text.delta","delta":"partial"}\n\n'],
-    ['kimi-k2.6', 'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'],
+    ['grok-4.7', 'data: {"type":"response.output_text.delta","delta":"partial"}\n\n'],
+    ['glm-5.3', 'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n'],
     ['minimax-m3', 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"partial"}}\n\n'],
+    ['gemini-4-argon', 'data: {"candidates":[{"content":{"role":"model","parts":[{"text":"partial"}]}}]}\n\n'],
   ])('rejects %s when EOF arrives before its completion marker', async (model, event) => {
     mockFetch.mockResolvedValueOnce(streamingResponse(event));
 
@@ -281,9 +367,10 @@ describe('Functions OpenCode Go API Service', () => {
   });
 
   it.each([
-    ['grok-4.6', 'data: {"type":"response.failed","error":{"message":"unavailable"}}\n\n'],
-    ['kimi-k2.6', 'data: {"error":{"message":"unavailable"}}\n\n'],
+    ['grok-4.7', 'data: {"type":"response.failed","error":{"message":"unavailable"}}\n\n'],
+    ['glm-5.3', 'data: {"error":{"message":"unavailable"}}\n\n'],
     ['minimax-m3', 'data: {"type":"error","error":{"message":"unavailable"}}\n\n'],
+    ['gemini-4-argon', 'data: {"error":{"message":"unavailable"}}\n\n'],
   ])('surfaces %s protocol errors as a safe server code', async (model, event) => {
     mockFetch.mockResolvedValueOnce(streamingResponse(event));
 
@@ -298,7 +385,7 @@ describe('Functions OpenCode Go API Service', () => {
   it('rejects malformed mandatory SSE data', async () => {
     mockFetch.mockResolvedValueOnce(streamingResponse('data: {invalid}\n\n'));
 
-    await expect(collectStream('kimi-k2.6')).rejects.toThrow(
+    await expect(collectStream('glm-5.3')).rejects.toThrow(
       'Invalid Chat Completions SSE event',
     );
   });
@@ -317,7 +404,7 @@ describe('Functions OpenCode Go API Service', () => {
       text: jest.fn().mockResolvedValue('rate limited secret body'),
     });
 
-    await expect(collectStream('kimi-k2.6')).rejects.toMatchObject({
+    await expect(collectStream('glm-5.3')).rejects.toMatchObject({
       name: 'UpstreamError',
       code: 'rate_limit',
     });
@@ -338,7 +425,7 @@ describe('Functions OpenCode Go API Service', () => {
       text: jest.fn().mockResolvedValue('error body'),
     });
 
-    await expect(collectStream('kimi-k2.6')).rejects.toMatchObject({ code });
+    await expect(collectStream('glm-5.3')).rejects.toMatchObject({ code });
   });
 
   it('classifies AbortError as interrupted and network TypeError as network', async () => {
@@ -376,7 +463,7 @@ describe('Functions OpenCode Go API Service', () => {
   it('uses model-specific max_tokens for DeepSeek V4 Flash', async () => {
     mockFetch.mockResolvedValueOnce(streamingResponse('data: [DONE]\n\n'));
 
-    await collectStream('deepseek-v4-flash');
+    await collectStream('deepseek-v4.1-flash');
 
     const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
     expect(requestBody.max_tokens).toBe(16384);
@@ -386,7 +473,7 @@ describe('Functions OpenCode Go API Service', () => {
     process.env.OPENCODE_GO_MAX_TOKENS = '2048';
     mockFetch.mockResolvedValueOnce(streamingResponse('data: [DONE]\n\n'));
 
-    await collectStream('deepseek-v4-flash');
+    await collectStream('deepseek-v4.1-flash');
 
     const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
     expect(requestBody.max_tokens).toBe(2048);
@@ -406,7 +493,7 @@ describe('Functions OpenCode Go API Service', () => {
       ),
     );
 
-    const chunks = await collectStream('deepseek-v4-flash');
+    const chunks = await collectStream('deepseek-v4.1-flash');
 
     const reasoningChunks = chunks.filter((c) => c.reasoning);
     const totalReasoning = reasoningChunks.reduce(
@@ -425,7 +512,7 @@ describe('Functions OpenCode Go API Service', () => {
       ),
     );
 
-    const chunks = await collectStream('deepseek-v4-flash');
+    const chunks = await collectStream('deepseek-v4.1-flash');
 
     expect(chunks).toEqual([
       { content: 'partial answer', done: false },
@@ -442,7 +529,7 @@ describe('Functions OpenCode Go API Service', () => {
       ),
     );
 
-    const chunks = await collectStream('deepseek-v4-flash');
+    const chunks = await collectStream('deepseek-v4.1-flash');
 
     expect(chunks).toEqual([
       { content: 'answer', done: false },
@@ -460,6 +547,7 @@ describe('generateTitle', () => {
       streamingResponse(
         'data: {"choices":[{"delta":{"reasoning_content":"考察"}}]}\n\n' +
           'data: {"choices":[{"delta":{"content":"タイトル"}}]}\n\n' +
+          'data: {"choices":[{"delta":{"reasoning_content":"補足"}}]}\n\n' +
           'data: [DONE]\n\n',
       ),
     );
