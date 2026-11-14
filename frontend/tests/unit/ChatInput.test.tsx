@@ -48,6 +48,41 @@ describe('ChatInput disabled reason', () => {
   });
 });
 
+describe('ChatInput IME conversion', () => {
+  it('does not send while the IME is composing', () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} onStop={vi.fn()} isStreaming={false} />);
+
+    const input = screen.getByPlaceholderText('メッセージを入力...');
+    fireEvent.change(input, { target: { value: 'にほんご' } });
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('does not send on the legacy keyCode 229 of a composing Enter', () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} onStop={vi.fn()} isStreaming={false} />);
+
+    const input = screen.getByPlaceholderText('メッセージを入力...');
+    fireEvent.change(input, { target: { value: 'にほんご' } });
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
+
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('sends on a plain Enter', () => {
+    const onSend = vi.fn();
+    render(<ChatInput onSend={onSend} onStop={vi.fn()} isStreaming={false} />);
+
+    const input = screen.getByPlaceholderText('メッセージを入力...');
+    fireEvent.change(input, { target: { value: '確定' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onSend).toHaveBeenCalledWith('確定');
+  });
+});
+
 describe('ChatInput text-only composer', () => {
   it('does not render an image attach control', () => {
     render(<ChatInput onSend={vi.fn()} onStop={vi.fn()} isStreaming={false} />);

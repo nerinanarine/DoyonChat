@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Send, Square } from 'lucide-react';
+import { isComposingEnter } from '../../utils/ime';
 
 interface ChatInputProps {
   onSend: (text: string) => void;
@@ -28,6 +29,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      if (isComposingEnter(e)) return;
       e.preventDefault();
       handleSend();
     }
@@ -61,7 +63,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         {isStreaming ? (
           <button
             onClick={onStop}
-            className="p-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
             title="停止"
             type="button"
           >
@@ -71,7 +73,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           <button
             onClick={handleSend}
             disabled={!text.trim() || disabled}
-            className="p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             title="送信"
             type="button"
           >

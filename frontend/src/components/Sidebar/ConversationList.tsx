@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Conversation } from '../../types';
 import { MessageSquare, Trash2, Plus } from 'lucide-react';
+import { isComposingEnter } from '../../utils/ime';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -107,7 +108,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                   onKeyDown={(event) => {
                     event.stopPropagation();
                     if (event.key === 'Enter') {
-                      if (event.nativeEvent.isComposing) return;
+                      if (isComposingEnter(event)) return;
                       event.preventDefault();
                       void saveTitle(conv.id);
                     } else if (event.key === 'Escape') {
@@ -140,7 +141,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                   onDelete(conv.id);
                 }
               }}
-              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-red-400 transition-opacity"
+              className="reveal-on-hover p-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-gray-700 text-gray-400 hover:text-red-400 transition-opacity"
               title="削除"
             >
               <Trash2 size={13} />

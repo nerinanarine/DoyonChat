@@ -265,14 +265,14 @@ function App() {
 
   if (bootstrapLoading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-dvh flex items-center justify-center">
         <LoadingState label="データを読み込み中..." />
       </div>
     );
   }
   if (bootstrapError) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-dvh flex items-center justify-center">
         <ErrorMessage message={BOOTSTRAP_ERROR_MESSAGE} onRetry={retryBootstrap} />
       </div>
     );
@@ -280,7 +280,7 @@ function App() {
   // P2-018 FR-004: ウォームアップのタイムアウト・設定エラーは P2-003 型のエラーUIへ遷移する。
   if (agentWarmupError) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-dvh flex items-center justify-center">
         <ErrorMessage message={agentWarmupError} onRetry={retryAgentWarmup} />
       </div>
     );

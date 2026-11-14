@@ -20,7 +20,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, models = [], setting
     : models.find((m) => m.id === effectiveModelId)?.name || effectiveModelId || 'AI';
 
   return (
-    <div className={`flex gap-3 px-4 py-5 ${isUser ? 'bg-white' : 'bg-gray-50'}`}>
+    <div className={`max-w-3xl mx-auto w-full flex gap-3 px-4 py-5 ${isUser ? 'bg-white' : 'bg-gray-50'}`}>
       <div className="flex-shrink-0 mt-0.5">
         <div
           className={`w-7 h-7 rounded-full flex items-center justify-center ${isUser ? 'bg-gray-200' : 'bg-blue-600'}`}

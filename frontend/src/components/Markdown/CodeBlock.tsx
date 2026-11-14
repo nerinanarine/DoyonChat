@@ -36,7 +36,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children }) =>
     <div className="relative group my-3">
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-2 p-1.5 rounded bg-white/80 hover:bg-white border border-gray-200 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="reveal-on-hover absolute top-2 right-2 p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded bg-white/80 hover:bg-white border border-gray-200 text-gray-600 transition-opacity"
         title="コピー"
       >
         {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}

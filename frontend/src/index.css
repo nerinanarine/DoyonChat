@@ -12,4 +12,23 @@
   .pb-safe {
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* P4-001: hover で表示する操作はポインター端末のみ隠し、タッチ端末とキーボードフォーカスでは表示する */
+  .reveal-on-hover {
+    opacity: 0;
+  }
+
+  .reveal-on-hover:focus-visible {
+    opacity: 1;
+  }
+
+  .group:hover .reveal-on-hover {
+    opacity: 1;
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    .reveal-on-hover {
+      opacity: 1;
+    }
+  }
 }

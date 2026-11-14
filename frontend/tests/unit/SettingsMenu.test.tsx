@@ -117,6 +117,32 @@ describe('SettingsMenu agent settings', () => {
     await vi.waitFor(() => expect(agentProps.onChangeAgentModel).toHaveBeenCalledWith(null));
   });
 
+  it('does not save the agent model on a composing Enter', () => {
+    const onChangeAgentModel = vi.fn().mockResolvedValue(undefined);
+    render(<SettingsMenu {...props} settings={{}} onChangeAgentModel={onChangeAgentModel} />);
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+
+    const input = screen.getByLabelText('エージェントのモデル');
+    fireEvent.change(input, { target: { value: 'にほんご' } });
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+    expect(onChangeAgentModel).not.toHaveBeenCalled();
+  });
+
+  it('does not save the subagent model on the legacy keyCode 229 of a composing Enter', () => {
+    const onChangeAgentSubagentModel = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsMenu {...props} settings={{}} onChangeAgentSubagentModel={onChangeAgentSubagentModel} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '設定' }));
+
+    const input = screen.getByLabelText('サブエージェントのモデル');
+    fireEvent.change(input, { target: { value: 'にほんご' } });
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
+
+    expect(onChangeAgentSubagentModel).not.toHaveBeenCalled();
+  });
+
   it('saves the subagent model on Enter key', async () => {
     render(<SettingsMenu {...agentProps} />);
     fireEvent.click(screen.getByRole('button', { name: '設定' }));

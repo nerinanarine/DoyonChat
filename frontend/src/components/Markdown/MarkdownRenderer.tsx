@@ -41,7 +41,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
           return <blockquote className="border-l-4 border-gray-300 pl-3 italic text-gray-600 my-2">{children}</blockquote>;
         },
         table({ children }) {
-          return <table className="w-full border-collapse text-sm my-2">{children}</table>;
+          return (
+            <div className="overflow-x-auto max-w-full my-2">
+              <table className="w-full border-collapse text-sm">{children}</table>
+            </div>
+          );
         },
         th({ children }) {
           return <th className="border border-gray-300 px-2 py-1 bg-gray-50 text-left font-semibold">{children}</th>;

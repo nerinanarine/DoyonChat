@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, LogOut } from 'lucide-react';
 import { AgentApprovalLevel, UserSettings, SettingsStatus } from '../../types';
+import { isComposingEnter } from '../../utils/ime';
 
 const APPROVAL_LEVEL_LABELS: Record<AgentApprovalLevel, string> = {
   auto: '自動（確認なし）',
@@ -96,7 +97,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
         aria-expanded={open}
         title="設定"
         aria-label="設定"
-        className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+        className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600"
       >
         <Settings size={18} />
       </button>
@@ -111,7 +112,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               <h2 className="font-semibold text-gray-900">設定</h2>
               <button
                 onClick={() => setOpen(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-500"
+                className="p-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500"
                 aria-label="閉じる"
               >
                 <span aria-hidden>×</span>
@@ -128,6 +129,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 onBlur={handleDisplayNameSave}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    if (isComposingEnter(e)) return;
                     e.preventDefault();
                     handleDisplayNameSave();
                   }
@@ -170,6 +172,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               }
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
+                  if (isComposingEnter(event)) return;
                   event.preventDefault();
                   if (onChangeAgentModel) {
                     void saveAgentModel(agentModelDraft, settings.agentModel, onChangeAgentModel);
@@ -194,6 +197,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               }
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
+                  if (isComposingEnter(event)) return;
                   event.preventDefault();
                   if (onChangeAgentSubagentModel) {
                     void saveAgentModel(agentSubagentModelDraft, settings.agentSubagentModel, onChangeAgentSubagentModel);

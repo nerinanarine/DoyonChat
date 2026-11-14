@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { Menu, X } from 'lucide-react';
 import {
@@ -47,12 +47,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
+  // P4-001: モバイルサイドバーは Escape キーでも閉じる
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarOpen]);
+
   const handleLogout = () => {
     instance.logoutRedirect();
   };
 
   return (
-    <div className="h-screen flex bg-white">
+    <div className="h-dvh flex bg-white">
       {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <ConversationList
@@ -104,7 +114,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600"
             >
               <Menu size={20} />
             </button>

@@ -70,12 +70,12 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto max-w-3xl mx-auto w-full">
       {messages.map((msg) => (
         <ChatMessage key={msg.id} message={msg} models={models} settings={settings} currentModel={currentModel} />
       ))}
       {isStreaming && (
-        <div className="flex gap-3 px-4 py-5 bg-gray-50">
+        <div className="flex gap-3 px-4 py-5 bg-gray-50 max-w-3xl mx-auto">
           <div className="flex-shrink-0 mt-0.5">
             <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center">
               <Bot size={14} className="text-white" />
