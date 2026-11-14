@@ -12,7 +12,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        code(props: any) {
+        code(props: React.ComponentProps<'code'> & { inline?: boolean }) {
           const { inline, className, children } = props;
           return <CodeBlock inline={!!inline} className={className}>{children}</CodeBlock>;
         },

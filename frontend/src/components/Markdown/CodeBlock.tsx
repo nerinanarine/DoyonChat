@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import type { SyntaxHighlighterProps } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Check, Copy } from 'lucide-react';
 
-// Workaround for react-syntax-highlighter type incompatibility with React 18
-const SH = SyntaxHighlighter as any;
+// @types/react-syntax-highlighter bundles its own @types/react, so its class component
+// is not a valid JSX element type for the React version used by this app.
+const SH = SyntaxHighlighter as unknown as React.ComponentType<SyntaxHighlighterProps>;
 
 interface CodeBlockProps {
   inline?: boolean;
