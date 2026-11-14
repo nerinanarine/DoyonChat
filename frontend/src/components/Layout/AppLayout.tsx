@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMsal } from '@azure/msal-react';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import {
   AgentApprovalLevel,
   Conversation,
