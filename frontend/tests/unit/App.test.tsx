@@ -113,6 +113,14 @@ describe('App chat bootstrap', () => {
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
   });
 
+  it('does not render the artifact download form', async () => {
+    render(<App />);
+    await screen.findByRole('button', { name: '新規チャット' });
+
+    expect(screen.queryByLabelText('成果物ファイル名')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ダウンロード/ })).not.toBeInTheDocument();
+  });
+
   it('clears the chat view when starting a new chat from an existing conversation', async () => {
     mockHooks([{ ...createdConversation, id: 'existing-conversation', title: '既存トーク' }]);
     render(<App />);
